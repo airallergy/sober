@@ -1,0 +1,9 @@
+# mac
+.DS_Store
+
+# python
+__pycache__
+.vscode
+.ipynb_checkpoints
+.pytest_cache
+.coverage
