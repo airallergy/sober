@@ -3,7 +3,7 @@ from platform import system
 from subprocess import run, PIPE, STDOUT
 
 
-def _energyplus_default_root(major: int, minor: int, patch: int = 0) -> Path:
+def _default_root(major: int, minor: int, patch: int = 0) -> Path:
     version = "-".join((major, minor, patch))
     match system():
         case "Linux":
@@ -38,7 +38,7 @@ def _run_readvars(
     output_directory: Path,
     frequency: str,
     energyplus_root: Path,
-):
+) -> None:
     commands = (
         energyplus_root / "PostProcess" / "ReadVarsESO",
         rvi_file,
@@ -46,3 +46,15 @@ def _run_readvars(
         "FixHeader",
     ) + ((frequency,) if frequency else ())
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=output_directory, text=True)
+
+
+def _model_splited(model_file: Path) -> tuple[list, list]:
+    macro_lines = []
+    regular_lines = []
+    with model_file.open("rt") as fp:
+        for line in fp:
+            if line.lstrip().startswith("##"):
+                macro_lines.append(line)
+            else:
+                regular_lines.append(line)
+    return macro_lines, regular_lines

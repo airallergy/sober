@@ -1,5 +1,5 @@
 from pathlib import Path
-from ._simulator import _energyplus_default_root
+from ._simulator import _default_root
 
 from ._tools import AnyPath
 
@@ -14,7 +14,7 @@ def config_energyplus(
     schema: AnyPath = None,
 ) -> None:
     if version_parts is not None:
-        root = _energyplus_default_root(*version_parts)
+        root = _default_root(*version_parts)
 
     if root is not None:
         root = Path(root)
