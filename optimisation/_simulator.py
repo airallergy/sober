@@ -59,3 +59,8 @@ def _model_split(model_file: Path) -> tuple[str, str]:
             elif trimmed_line != "":
                 regular_lines.append(trimmed_line)
     return "\n".join(macro_lines) + "\n", "\n".join(regular_lines) + "\n"
+
+
+def _model_joined(macros: str, regulars: str, model_file_tagged: Path) -> None:
+    with model_file_tagged.open("wt") as fp:
+        fp.write(macros + regulars)
