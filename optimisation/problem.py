@@ -12,7 +12,7 @@ from ._simulator import _model_split, _model_joined
 
 from typing import Callable, TypeVar
 from collections.abc import Sequence
-from ._tools import AnyPath
+from ._tools import AnyStrPath
 
 AnyReals = TypeVar("AnyReals", bound=float | Sequence[float])
 
@@ -64,7 +64,7 @@ class _Problem(ABC):
 
 @dataclass(**DATACLASS_PARAMS)
 class Problem(_Problem):
-    model_file: AnyPath
+    model_file: AnyStrPath
 
     def __post_init__(self) -> None:
         self.model_file = Path(self.model_file)

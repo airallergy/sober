@@ -4,7 +4,7 @@ from typing import TypeAlias
 
 # from numpy.typing import _ArrayLikeFloat_co
 
-AnyPath: TypeAlias = str | bytes | PathLike[str] | PathLike[bytes]
+AnyStrPath: TypeAlias = str | PathLike[str]
 # AnyRArray: TypeAlias = _ArrayLikeFloat_co
 
 DATACLASS_PARAMS = {
