@@ -12,6 +12,9 @@ from collections.abc import Sequence
 AnyModel = TypeVar("AnyModel", bound=IDF | str)
 
 
+#############################################################################
+#######                     ABSTRACT BASE CLASSES                     #######
+#############################################################################
 @dataclass(**DATACLASS_PARAMS)
 class _Tagger(ABC):
     tag: str = field(init=False)
@@ -25,6 +28,16 @@ class _Tagger(ABC):
         ...
 
 
+@dataclass(**DATACLASS_PARAMS)
+class _Parameter(ABC):
+    tagger: _Tagger
+    low: float
+    high: float
+
+
+#############################################################################
+#######                        TAGGER CLASSES                         #######
+#############################################################################
 @dataclass(**DATACLASS_PARAMS)
 class IndexTagger(_Tagger):
     input_type: ClassVar[str] = "regular"
@@ -64,13 +77,9 @@ class StringTagger(_Tagger):
         return model.replace(self.string, self.prefix + self.tag + self.suffix)
 
 
-@dataclass(**DATACLASS_PARAMS)
-class _Parameter(ABC):
-    tagger: _Tagger
-    low: float
-    high: float
-
-
+#############################################################################
+#######                       PARAMETER CLASSES                       #######
+#############################################################################
 @dataclass(**DATACLASS_PARAMS)
 class ContinuousParameter(_Parameter):
     ...
