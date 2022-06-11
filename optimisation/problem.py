@@ -70,7 +70,7 @@ class Problem(_Problem):
 
         for parameter in self.parameters:
             tagger = parameter.tagger
-            match tagger.input_type:
+            match tagger._loc:
                 case "regular":
                     idf = tagger._tagged(idf)
                 case "macro":

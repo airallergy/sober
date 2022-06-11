@@ -45,7 +45,7 @@ class IndexTagger(_Tagger):
     No support for nested regular commands.
     """
 
-    input_type: ClassVar[str] = "regular"
+    _loc: ClassVar[str] = "regular"
     class_name: str
     object_name: str
     field_name: str
@@ -68,7 +68,7 @@ class StringTagger(_Tagger):
     No support for nested macro commands.
     """
 
-    input_type: ClassVar[str] = "macro"
+    _loc: ClassVar[str] = "macro"
     string: str
     prefix: str = ""
     suffix: str = ""
