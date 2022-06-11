@@ -75,7 +75,9 @@ class StringTagger(_Tagger):
     suffix: str = None
 
     def __post_init__(self) -> None:
-        self.prefix, self.suffix = _checked_empty(self.prefix, self.suffix, type=str)
+        self.prefix, self.suffix = _checked_empty(
+            self.prefix, self.suffix, arg_type=str
+        )
         if (not self.string.startswith(self.prefix)) or (
             not self.string.endswith(self.suffix)
         ):
