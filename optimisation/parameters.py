@@ -40,6 +40,11 @@ class _Parameter(ABC):
 #############################################################################
 @dataclass(**DATACLASS_PARAMS)
 class IndexTagger(_Tagger):
+    """Tagger for regular commands by indexing.
+
+    No support for nested regular commands.
+    """
+
     input_type: ClassVar[str] = "regular"
     class_name: str
     object_name: str
@@ -59,6 +64,11 @@ class IndexTagger(_Tagger):
 
 @dataclass(**DATACLASS_PARAMS)
 class StringTagger(_Tagger):
+    """Tagger for macro commands by string replacement.
+
+    No support for nested macro commands.
+    """
+
     input_type: ClassVar[str] = "macro"
     string: str
     prefix: str = None
