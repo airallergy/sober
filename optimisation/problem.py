@@ -27,14 +27,14 @@ class PymooProblem(_PymooProblem):
         xl: AnyReals,
         xu: AnyReals,
         callback: Callable,
-    ):
+    ) -> None:
         self.evaluator = evaluator
         super().__init__(
             n_var=n_var, n_obj=n_obj, n_constr=n_constr, xl=xl, xu=xu, callback=callback
         )
 
-    def _evaluate(self, x, out, *args, **kwargs):
-        self.evaluator(x, out, *args, **kwargs)
+    def _evaluate(self, x, out, *args, **kwargs) -> None:
+        ...
 
 
 @dataclass(**DATACLASS_PARAMS)
@@ -44,16 +44,22 @@ class _Problem(ABC):
     parameters: Sequence[_Parameter]
     # collector: Sequence[_Collector]
     callback: Callable = None
+    _model_type: str = field(init=False)
     _tagged_model: str = field(init=False)
     # objectives: Sequence[_Objective] = field(init=False)
     # constraints: Sequence[_Constraint] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self._model_type = self.model_file.suffix
+        if self._model_type not in ("idf", "imf"):
+            raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
 
     @abstractmethod
     def _tag_model(self) -> None:
         ...
 
     @abstractmethod
-    def _to_pymoo(self):
+    def _to_pymoo(self) -> None:
         ...
 
 
@@ -63,6 +69,7 @@ class Problem(_Problem):
 
     def __post_init__(self) -> None:
         self.model_file = Path(self.model_file)
+        super().__post_init__()
 
     def _tag_model(self) -> None:
         macros, regulars = _split_model(self.model_file)
