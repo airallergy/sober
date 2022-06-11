@@ -48,13 +48,14 @@ def _run_readvars(
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=output_directory, text=True)
 
 
-def _model_splited(model_file: Path) -> tuple[list, list]:
+def _model_split(model_file: Path) -> tuple[str, str]:
     macro_lines = []
     regular_lines = []
     with model_file.open("rt") as fp:
         for line in fp:
-            if line.lstrip().startswith("##"):
-                macro_lines.append(line)
-            else:
-                regular_lines.append(line)
-    return macro_lines, regular_lines
+            trimmed_line = line.strip()
+            if trimmed_line.startswith("##"):
+                macro_lines.append(trimmed_line)
+            elif trimmed_line != "":
+                regular_lines.append(trimmed_line)
+    return "\n".join(macro_lines) + "\n", "\n".join(regular_lines) + "\n"
