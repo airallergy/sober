@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import ClassVar, TypeVar
 from eppy.modeleditor import IDF
+from eppy.bunchhelpers import makefieldname
 from uuid import uuid5, NAMESPACE_X500
 from ._args_check import _checked_empty
 
@@ -54,11 +55,10 @@ class IndexTagger(_Tagger):
         self.tag = self._uuid(self.class_name, self.object_name, self.field_name)
 
     def _tagged(self, model: IDF) -> IDF:
-        setattr(
-            model.getobject(self.class_name, self.object_name),
-            self.field_name,
-            self.tag,
-        )
+        # NOTE: maybe applicable to multiple fields
+        model.getobject(self.class_name, self.object_name)[
+            makefieldname(self.field_name)
+        ] = self.tag
         return model
 
 
@@ -102,10 +102,10 @@ class DiscreteParameter(_Parameter):
     low: float = field(init=False)
     high: float = field(init=False)
     variations: Sequence[float]
-    uncertainties: Sequence[Sequence[float]]
+    uncertainties: Sequence[Sequence[float]] = None
 
 
 @dataclass(**DATACLASS_PARAMS)
 class CategoricalParameter(DiscreteParameter):
     variations: Sequence[str]
-    uncertainties: Sequence[Sequence[str]]
+    uncertainties: Sequence[Sequence[str]] = None
