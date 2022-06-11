@@ -8,7 +8,7 @@ from pymoo.core.problem import Problem as _PymooProblem
 from .parameters import _Parameter
 from ._tools import DATACLASS_PARAMS
 from .config import _CONFIG
-from ._simulator import _model_split, _model_joined
+from ._simulator import _split_model
 
 from typing import Callable, TypeVar
 from collections.abc import Sequence
@@ -42,16 +42,11 @@ class _Problem(ABC):
     model_file: Path
     weather: _Parameter
     parameters: Sequence[_Parameter]
-    # objectives: Sequence[_Objective]
-    # constraints: Sequence[_Constraint]
-    # evaluator: Evaluator = None
+    # collector: Sequence[_Collector]
     callback: Callable = None
-    model_file_tagged: str = field(init=False)
-
-    def __post_init__(self) -> None:
-        self.model_file_tagged = self.model_file.with_stem(
-            self.model_file.stem + "_tagged"
-        )
+    _tagged_model: str = field(init=False)
+    # objectives: Sequence[_Objective] = field(init=False)
+    # constraints: Sequence[_Constraint] = field(init=False)
 
     @abstractmethod
     def _tag_model(self) -> None:
@@ -68,10 +63,9 @@ class Problem(_Problem):
 
     def __post_init__(self) -> None:
         self.model_file = Path(self.model_file)
-        super().__post_init__()
 
     def _tag_model(self) -> None:
-        macros, regulars = _model_split(self.model_file)
+        macros, regulars = _split_model(self.model_file)
         idf = openidf(StringIO(regulars), _CONFIG["schema.energyplus"])
 
         for parameter in self.parameters:
@@ -82,7 +76,7 @@ class Problem(_Problem):
                 case "macro":
                     macros = tagger._tagged(macros)
 
-        _model_joined(macros, idf.idfstr(), self.model_file_tagged)
+        self._tagged_model = macros + idf.idfstr()
 
     def _to_pymoo(self) -> PymooProblem:
         return PymooProblem(
