@@ -1,6 +1,8 @@
-from pathlib import Path
+from pathlib import Path, PurePath
 from platform import system
 from subprocess import run, PIPE, STDOUT
+
+from ._tools import AnyStrPath
 
 
 def _default_root(major: int, minor: int, patch: int = 0) -> Path:
@@ -48,7 +50,31 @@ def _run_readvars(
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=output_directory, text=True)
 
 
-def _model_split(model_file: Path) -> tuple[str, str]:
+def _resolved_path(path: AnyStrPath, default_parent: AnyStrPath) -> str:
+    pure_path = PurePath(path)
+    if pure_path.is_absolute():
+        return str(Path(pure_path).resolve())
+    else:
+        return str(Path(default_parent).resolve() / pure_path)
+
+
+def _resolved_macros(macro_lines: list[str], model_directory: Path) -> list[str]:
+    # lines should have been trimmed
+    fileprefix = model_directory.resolve()
+    resolved_macro_lines = []
+    for line in macro_lines:
+        if line.startswith("##fileprefix"):
+            fileprefix = _resolved_path(line.split(" ", 1)[1], model_directory)
+        elif line.startswith("##include"):
+            resolved_macro_lines.append(
+                "##include " + _resolved_path(line.split(" ", 1)[1], fileprefix)
+            )
+        else:
+            resolved_macro_lines.append(line)
+    return resolved_macro_lines
+
+
+def _split_model(model_file: Path) -> tuple[str, str]:
     macro_lines = []
     regular_lines = []
     with model_file.open("rt") as fp:
@@ -58,9 +84,7 @@ def _model_split(model_file: Path) -> tuple[str, str]:
                 macro_lines.append(trimmed_line)
             elif trimmed_line != "":
                 regular_lines.append(trimmed_line)
-    return "\n".join(macro_lines) + "\n", "\n".join(regular_lines) + "\n"
-
-
-def _model_joined(macros: str, regulars: str, model_file_tagged: Path) -> None:
-    with model_file_tagged.open("wt") as fp:
-        fp.write(macros + regulars)
+    return (
+        "\n".join(_resolved_macros(macro_lines, model_file.parent)) + "\n",
+        "\n".join(regular_lines) + "\n",
+    )
