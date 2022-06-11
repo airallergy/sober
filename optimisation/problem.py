@@ -40,7 +40,7 @@ class PymooProblem(_PymooProblem):
 @dataclass(**DATACLASS_PARAMS)
 class _Problem(ABC):
     model_file: Path
-    weather: _Parameter
+    weathers: Sequence[_Parameter]
     parameters: Sequence[_Parameter]
     # collector: Sequence[_Collector]
     callback: Callable = None
