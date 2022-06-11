@@ -7,7 +7,7 @@ from pymoo.core.problem import Problem as _PymooProblem
 
 from .parameters import _Parameter
 from ._tools import DATACLASS_PARAMS
-from .config import CONFIG
+from .config import _CONFIG
 from ._simulator import _model_split, _model_joined
 
 from typing import Callable, TypeVar
@@ -72,7 +72,7 @@ class Problem(_Problem):
 
     def _tag_model(self) -> None:
         macros, regulars = _model_split(self.model_file)
-        idf = openidf(StringIO(regulars), CONFIG["schema.energyplus"])
+        idf = openidf(StringIO(regulars), _CONFIG["schema.energyplus"])
 
         for parameter in self.parameters:
             tagger = parameter.tagger
