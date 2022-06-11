@@ -4,7 +4,6 @@ from typing import ClassVar, TypeVar
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 from uuid import uuid5, NAMESPACE_X500
-from ._args_check import _checked_empty
 
 from ._tools import DATACLASS_PARAMS
 
@@ -71,13 +70,10 @@ class StringTagger(_Tagger):
 
     input_type: ClassVar[str] = "macro"
     string: str
-    prefix: str = None
-    suffix: str = None
+    prefix: str = ""
+    suffix: str = ""
 
     def __post_init__(self) -> None:
-        self.prefix, self.suffix = _checked_empty(
-            self.prefix, self.suffix, arg_type=str
-        )
         if (not self.string.startswith(self.prefix)) or (
             not self.string.endswith(self.suffix)
         ):
