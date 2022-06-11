@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar, TypeVar
 from eppy.modeleditor import IDF
 from uuid import uuid5, NAMESPACE_X500
+from ._args_check import _checked_empty
 
 from ._tools import DATACLASS_PARAMS
 
@@ -44,32 +45,20 @@ class IndexTagger(_Tagger):
 
 
 @dataclass(**DATACLASS_PARAMS)
-class _StringTagger(_Tagger):
-    """
-    This is dangerous to be used directly, so kept internal.
-    """
-
-    string: str
-
-    def __post_init__(self) -> None:
-        self.tag = self._uuid(self.string)
-
-    def _tagged(self, model: str) -> str:
-        return model.replace(self.string, self.tag)
-
-
-@dataclass(**DATACLASS_PARAMS)
-class MacroTagger(_StringTagger):
+class StringTagger(_Tagger):
     input_type: ClassVar[str] = "macro"
-    prefix: str = ""
-    suffix: str = ""
+    string: str
+    prefix: str = None
+    suffix: str = None
 
     def __post_init__(self) -> None:
-        if not (
-            self.string.startswith(self.prefix) and self.string.endswith(self.suffix)
+        self.prefix, self.suffix = _checked_empty(self.prefix, self.suffix, type=str)
+        if (not self.string.startswith(self.prefix)) or (
+            not self.string.endswith(self.suffix)
         ):
             raise ValueError("string needs to share the prefix and the suffix.")
-        super().__post_init__()
+
+        self.tag = self._uuid(self.string)
 
     def _tagged(self, model: str) -> str:
         return model.replace(self.string, self.prefix + self.tag + self.suffix)
