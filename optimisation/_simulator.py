@@ -20,18 +20,27 @@ def _default_root(major: int, minor: int, patch: int = 0) -> Path:
             raise NotImplementedError(f"unsupported system: '{system_name}'.")
 
 
+def _run_epmacro(imf_file: Path) -> None:
+    if imf_file.stem != "in":
+        (imf_file.parent / "in.imf").symlink_to(imf_file)
+
+    commands = (_CONFIG["exec.epmacro"],)
+    run(commands, stdout=PIPE, stderr=STDOUT, cwd=imf_file.parent, text=True)
+
+    if imf_file.stem != "in":
+        (imf_file.parent / "in.imf").unlink()
+
+
 def _run_energyplus(
-    model_file: Path,
-    weather_file: Path,
+    idf_file: Path,
+    epw_file: Path,
     output_directory: Path,
-    has_macros: bool,
     has_templates: bool,
 ) -> None:
     commands = (
         (_CONFIG["exec.energyplus"],)
-        + (("-m",) if has_macros else ())
         + (("-x",) if has_templates else ())
-        + ("-w", weather_file, model_file)
+        + ("-w", epw_file, idf_file)
     )
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=output_directory, text=True)
 
