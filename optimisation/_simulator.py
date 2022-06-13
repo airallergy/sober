@@ -2,6 +2,8 @@ from pathlib import Path, PurePath
 from platform import system
 from subprocess import run, PIPE, STDOUT
 
+from .config import _CONFIG
+
 from ._tools import AnyStrPath
 
 
@@ -24,10 +26,9 @@ def _run_energyplus(
     output_directory: Path,
     has_macros: bool,
     has_templates: bool,
-    energyplus_root: Path,
 ) -> None:
     commands = (
-        (energyplus_root / "energyplus",)
+        (_CONFIG["exec.energyplus"],)
         + (("-m",) if has_macros else ())
         + (("-x",) if has_templates else ())
         + ("-w", weather_file, model_file)
@@ -39,10 +40,9 @@ def _run_readvars(
     rvi_file: Path,
     output_directory: Path,
     frequency: str,
-    energyplus_root: Path,
 ) -> None:
     commands = (
-        energyplus_root / "PostProcess" / "ReadVarsESO",
+        _CONFIG["exec.readvars"],
         rvi_file,
         "Unlimited",
         "FixHeader",
