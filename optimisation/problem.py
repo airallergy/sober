@@ -1,18 +1,17 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from io import StringIO
 from pathlib import Path
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
+from typing import TypeVar, Callable
+from dataclasses import field, dataclass
+
 from eppy import openidf
 from pymoo.core.problem import Problem as _PymooProblem
 
-from .parameters import _Parameter
-from ._tools import DATACLASS_PARAMS
 from .config import _CONFIG
+from .parameters import _Parameter
 from ._simulator import _split_model
-
-from typing import Callable, TypeVar
-from collections.abc import Sequence
-from ._tools import AnyStrPath
+from ._tools import DATACLASS_PARAMS, AnyStrPath
 
 AnyReals = TypeVar("AnyReals", bound=float | Sequence[float])
 

@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import ClassVar, TypeVar
+from collections.abc import Sequence
+from typing import TypeVar, ClassVar
+from uuid import NAMESPACE_X500, uuid5
+from dataclasses import field, dataclass
+
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
-from uuid import uuid5, NAMESPACE_X500
 
 from ._tools import DATACLASS_PARAMS
-
-from collections.abc import Sequence
 
 AnyModel = TypeVar("AnyModel", bound=IDF | str)
 

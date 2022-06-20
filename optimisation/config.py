@@ -1,9 +1,8 @@
-from pathlib import Path
-from ._simulator import _default_root
-
-
 from typing import Any
+from pathlib import Path
+
 from ._tools import AnyStrPath
+from ._simulator import _default_root
 
 _CONFIG: dict[str, Any] = {
     "exec.energyplus": None,

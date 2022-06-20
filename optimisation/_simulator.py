@@ -1,9 +1,8 @@
-from pathlib import Path, PurePath
 from platform import system
-from subprocess import run, PIPE, STDOUT
+from pathlib import Path, PurePath
+from subprocess import PIPE, STDOUT, run
 
 from .config import _CONFIG
-
 from ._tools import AnyStrPath
 
 
