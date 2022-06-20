@@ -7,7 +7,7 @@ from ._tools import AnyStrPath
 
 
 def _default_root(major: int, minor: int, patch: int = 0) -> Path:
-    version = "-".join((major, minor, patch))
+    version = "-".join((str(major), str(minor), str(patch)))
     match system():
         case "Linux":
             return Path(f"/usr/local/EnergyPlus-{version}")
@@ -58,12 +58,12 @@ def _run_readvars(
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=output_directory, text=True)
 
 
-def _resolved_path(path: AnyStrPath, default_parent: AnyStrPath) -> str:
+def _resolved_path(path: AnyStrPath, default_parent: AnyStrPath) -> Path:
     pure_path = PurePath(path)
     if pure_path.is_absolute():
-        return str(Path(pure_path).resolve())
+        return Path(pure_path).resolve()
     else:
-        return str(Path(default_parent).resolve() / pure_path)
+        return Path(default_parent).resolve() / pure_path
 
 
 def _resolved_macros(macro_lines: list[str], model_directory: Path) -> list[str]:
@@ -75,7 +75,7 @@ def _resolved_macros(macro_lines: list[str], model_directory: Path) -> list[str]
             fileprefix = _resolved_path(line.split(" ", 1)[1], model_directory)
         elif line.startswith("##include"):
             resolved_macro_lines.append(
-                "##include " + _resolved_path(line.split(" ", 1)[1], fileprefix)
+                "##include " + str(_resolved_path(line.split(" ", 1)[1], fileprefix))
             )
         else:
             resolved_macro_lines.append(line)
