@@ -1,21 +1,21 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import TypeVar, ClassVar
 from uuid import NAMESPACE_X500, uuid5
 from dataclasses import field, dataclass
+from typing import Any, TypeVar, ClassVar, Optional
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 
 from ._tools import DATACLASS_PARAMS
 
-AnyModel = TypeVar("AnyModel", bound=IDF | str)
+AnyModel = TypeVar("AnyModel", IDF, str)
 
 
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
-@dataclass(**DATACLASS_PARAMS)
+@dataclass(**DATACLASS_PARAMS)  # type: ignore[misc] # python/mypy#5374
 class _Tagger(ABC):
     tag: str = field(init=False)
 
@@ -24,15 +24,23 @@ class _Tagger(ABC):
         return str(uuid5(NAMESPACE_X500, cls.__name__ + "-".join(descriptions)))
 
     @abstractmethod
-    def _tagged(self, model: AnyModel) -> AnyModel:
+    def _tagged(self, model: Any) -> Any:
         ...
 
 
 @dataclass(**DATACLASS_PARAMS)
 class _Parameter(ABC):
-    tagger: _Tagger
+    tagger: _Tagger  # TODO: may remove out of abc, as weather does not need one
     low: float
     high: float
+
+
+@dataclass(**DATACLASS_PARAMS)
+class _IntegerParameter(_Parameter):
+    low: int = field(init=False)
+    high: int = field(init=False)
+    variations: Sequence[Any]
+    uncertainties: Optional[Sequence[Sequence[Any]]] = None
 
 
 #############################################################################
@@ -94,14 +102,12 @@ class ContinuousParameter(_Parameter):
 
 
 @dataclass(**DATACLASS_PARAMS)
-class DiscreteParameter(_Parameter):
-    low: float = field(init=False)
-    high: float = field(init=False)
+class DiscreteParameter(_IntegerParameter):
     variations: Sequence[float]
-    uncertainties: Sequence[Sequence[float]] = None
+    uncertainties: Optional[Sequence[Sequence[float]]] = None
 
 
 @dataclass(**DATACLASS_PARAMS)
-class CategoricalParameter(DiscreteParameter):
+class CategoricalParameter(_IntegerParameter):
     variations: Sequence[str]
-    uncertainties: Sequence[Sequence[str]] = None
+    uncertainties: Optional[Sequence[Sequence[str]]] = None
