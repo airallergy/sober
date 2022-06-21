@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
 from uuid import NAMESPACE_X500, uuid5
-from typing import Any, TypeVar, ClassVar
+from typing import Any, TypeVar, ClassVar, Iterable
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
@@ -48,19 +47,19 @@ class _FloatParameter(_Parameter):
 class _IntParameter(_Parameter):
     low: int
     high: int
-    variations: Sequence[Any]
-    uncertainties: Sequence[Sequence[Any]] | None = None
+    variations: tuple[Any, ...]
+    uncertainties: tuple[tuple[Any, ...], ...]
 
     def __init__(
         self,
         tagger: _Tagger,
-        variations: Sequence[Any],
-        uncertainties: Sequence[Sequence[Any]] | None = None,
+        variations: Iterable[Any],
+        uncertainties: Iterable[Iterable[Any]] = ((),),
     ) -> None:
         super().__init__(tagger)
 
-        self.variations = variations
-        self.uncertainties = uncertainties
+        self.variations = tuple(variations)
+        self.uncertainties = tuple(tuple(uncertainty) for uncertainty in uncertainties)
 
 
 #############################################################################
@@ -125,10 +124,10 @@ class ContinuousParameter(_FloatParameter):
 
 
 class DiscreteParameter(_IntParameter):
-    variations: Sequence[float]
-    uncertainties: Sequence[Sequence[float]] | None = None
+    variations: tuple[float, ...]
+    uncertainties: tuple[tuple[float, ...], ...]
 
 
 class CategoricalParameter(_IntParameter):
-    variations: Sequence[str]
-    uncertainties: Sequence[Sequence[str]] | None = None
+    variations: tuple[str, ...]
+    uncertainties: tuple[tuple[str, ...], ...]
