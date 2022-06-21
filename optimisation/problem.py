@@ -1,17 +1,15 @@
 from io import StringIO
 from pathlib import Path
-from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from dataclasses import field, dataclass
-from typing import Any, TypeVar, Callable, Optional
+from typing import TypeVar, Callable, Iterable, Optional
 
 from eppy import openidf
 from pymoo.core.problem import Problem as _PymooProblem
 
 from .config import _CONFIG
+from ._tools import AnyStrPath
 from .parameters import _Parameter
 from ._simulator import _split_model
-from ._tools import DATACLASS_PARAMS, AnyStrPath
 
 AnyReals = TypeVar("AnyReals", bound=float | Sequence[float])
 
@@ -36,40 +34,40 @@ class PymooProblem(_PymooProblem):
         ...
 
 
-@dataclass(**DATACLASS_PARAMS)  # type: ignore[misc] # python/mypy#5374
-class _Problem(ABC):
-    model_file: AnyStrPath
+#############################################################################
+#######                        PROBLEM CLASSES                        #######
+#############################################################################
+class Problem:
+    model_file: Path
     weather: _Parameter
-    parameters: Sequence[_Parameter]
+    parameters: tuple[_Parameter, ...]
     # collector: Sequence[_Collector]
     callback: Optional[Callable] = None
-    _model_type: str = field(init=False)
-    _tagged_model: str = field(init=False)
+    _model_type: str
+    _tagged_model: str
     # objectives: Sequence[_Objective] = field(init=False)
     # constraints: Sequence[_Constraint] = field(init=False)
 
-    def __post_init__(self) -> None:
-        self.model_file = Path(self.model_file)
+    def __init__(
+        self,
+        model_file: AnyStrPath,
+        weather: _Parameter,
+        parameters: Iterable[_Parameter],
+        # collector: Iterable[_Collector],
+        callback: Optional[Callable] = None,
+        # objectives: Sequence[_Objective] = field(init=False),
+        # constraints: Sequence[_Constraint] = field(init=False),
+    ) -> None:
+        self.model_file = Path(model_file)
+        self.weather = weather
+        self.parameters = tuple(parameters)
 
         self._model_type = self.model_file.suffix
         if self._model_type not in ("idf", "imf"):
             raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
 
-    @abstractmethod
-    def _tag_model(self) -> Any:
-        ...
-
-    @abstractmethod
-    def _to_pymoo(self) -> Any:
-        ...
-
-
-@dataclass(**DATACLASS_PARAMS)  # type: ignore[misc] # python/mypy#5374
-class Problem(_Problem):
-    model_file: AnyStrPath
-
     def _tag_model(self) -> None:
-        macros, regulars = _split_model(self.model_file)  # type: ignore[arg-type] # python/mypy/#13000
+        macros, regulars = _split_model(self.model_file)
         idf = openidf(StringIO(regulars), _CONFIG["schema.energyplus"])
 
         for parameter in self.parameters:
