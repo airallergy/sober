@@ -1,13 +1,10 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from uuid import NAMESPACE_X500, uuid5
-from dataclasses import field, dataclass
 from typing import Any, TypeVar, ClassVar, Optional
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
-
-from ._tools import DATACLASS_PARAMS
 
 AnyModel = TypeVar("AnyModel", IDF, str)
 
@@ -15,10 +12,12 @@ AnyModel = TypeVar("AnyModel", IDF, str)
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
-@dataclass(**DATACLASS_PARAMS)  # type: ignore[misc] # python/mypy#5374
 class _Tagger(ABC):
-    tag: str = field(init=False)
     _loc: ClassVar[str]
+    _tag: str
+
+    def __init__(self, uuid_descriptions: tuple[str, ...]) -> None:
+        self._tag = self._uuid(*uuid_descriptions)
 
     @classmethod
     def _uuid(cls, *descriptions: str) -> str:
@@ -29,25 +28,45 @@ class _Tagger(ABC):
         ...
 
 
-@dataclass(**DATACLASS_PARAMS)
 class _Parameter(ABC):
-    tagger: _Tagger  # TODO: may remove out of abc, as weather does not need one
+    tagger: _Tagger  # TODO: may remove out of here, as weather does not need one
+
+    def __init__(self, tagger: _Tagger) -> None:
+        self.tagger = tagger
+
+
+class _FloatParameter(_Parameter):
     low: float
     high: float
 
+    def __init__(self, tagger: _Tagger, low: float, high: float) -> None:
+        super().__init__(tagger)
 
-@dataclass(**DATACLASS_PARAMS)
-class _IntegerParameter(_Parameter):
-    low: int = field(init=False)
-    high: int = field(init=False)
+        self.low = low
+        self.high = high
+
+
+class _IntParameter(_Parameter):
+    low: int
+    high: int
     variations: Sequence[Any]
     uncertainties: Optional[Sequence[Sequence[Any]]] = None
+
+    def __init__(
+        self,
+        tagger: _Tagger,
+        variations: Sequence[Any],
+        uncertainties: Optional[Sequence[Sequence[Any]]] = None,
+    ) -> None:
+        super().__init__(tagger)
+
+        self.variations = variations
+        self.uncertainties = uncertainties
 
 
 #############################################################################
 #######                        TAGGER CLASSES                         #######
 #############################################################################
-@dataclass(**DATACLASS_PARAMS)
 class IndexTagger(_Tagger):
     """Tagger for regular commands by indexing.
 
@@ -59,18 +78,21 @@ class IndexTagger(_Tagger):
     object_name: str
     field_name: str
 
-    def __post_init__(self) -> None:
-        self.tag = self._uuid(self.class_name, self.object_name, self.field_name)
+    def __init__(self, class_name: str, object_name: str, field_name: str) -> None:
+        self.class_name = class_name
+        self.object_name = object_name
+        self.field_name = field_name
+
+        super().__init__((self.class_name, self.object_name, self.field_name))
 
     def _tagged(self, model: IDF) -> IDF:
         # NOTE: maybe applicable to multiple fields
         model.getobject(self.class_name, self.object_name)[
             makefieldname(self.field_name)
-        ] = self.tag
+        ] = self._tag
         return model
 
 
-@dataclass(**DATACLASS_PARAMS)
 class StringTagger(_Tagger):
     """Tagger for macro commands by string replacement.
 
@@ -79,36 +101,35 @@ class StringTagger(_Tagger):
 
     _loc: ClassVar[str] = "macro"
     string: str
-    prefix: str = ""
-    suffix: str = ""
+    prefix: str
+    suffix: str
 
-    def __post_init__(self) -> None:
-        if (not self.string.startswith(self.prefix)) or (
-            not self.string.endswith(self.suffix)
-        ):
+    def __init__(self, string: str, prefix: str = "", suffix: str = "") -> None:
+        if not (string.startswith(prefix) and string.endswith(suffix)):
             raise ValueError("string needs to share the prefix and the suffix.")
 
-        self.tag = self._uuid(self.string)
+        self.string = string
+        self.prefix = prefix
+        self.suffix = suffix
+
+        super().__init__((self.string,))
 
     def _tagged(self, model: str) -> str:
-        return model.replace(self.string, self.prefix + self.tag + self.suffix)
+        return model.replace(self.string, self.prefix + self._tag + self.suffix)
 
 
 #############################################################################
 #######                       PARAMETER CLASSES                       #######
 #############################################################################
-@dataclass(**DATACLASS_PARAMS)
-class ContinuousParameter(_Parameter):
+class ContinuousParameter(_FloatParameter):
     ...
 
 
-@dataclass(**DATACLASS_PARAMS)
-class DiscreteParameter(_IntegerParameter):
+class DiscreteParameter(_IntParameter):
     variations: Sequence[float]
     uncertainties: Optional[Sequence[Sequence[float]]] = None
 
 
-@dataclass(**DATACLASS_PARAMS)
-class CategoricalParameter(_IntegerParameter):
+class CategoricalParameter(_IntParameter):
     variations: Sequence[str]
     uncertainties: Optional[Sequence[Sequence[str]]] = None
