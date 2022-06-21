@@ -1,11 +1,11 @@
 from io import StringIO
 from pathlib import Path
-from collections.abc import Sequence
-from typing import Callable, Iterable
+from typing import Iterable
 
 import numpy as np
 from eppy import openidf
 from numpy.typing import NDArray
+from pymoo.core.callback import Callback
 from pymoo.core.problem import Problem as _PymooProblem
 
 from .config import _CONFIG
@@ -24,7 +24,7 @@ class PymooProblem(_PymooProblem):
         n_constr: int,
         xl: NDArray[np.float_],
         xu: NDArray[np.float_],
-        callback: Callable | None,
+        callback: Callback | None,
     ) -> None:
         super().__init__(
             n_var=n_var, n_obj=n_obj, n_constr=n_constr, xl=xl, xu=xu, callback=callback
@@ -43,7 +43,7 @@ class Problem:
     parameters: tuple[_Parameter, ...]
     objectives: tuple[_Collector, ...]
     constraints: tuple[_Collector, ...]
-    callback: Callable | None = None
+    callback: Callback | None = None
     _model_type: str
     _tagged_model: str
 
@@ -54,7 +54,7 @@ class Problem:
         parameters: Iterable[_Parameter],
         objectives: Iterable[_Collector],
         constraints: Iterable[_Collector] = (),
-        callback: Callable | None = None,
+        callback: Callback | None = None,
     ) -> None:
         self.model_file = Path(model_file)
         self.weather = weather
