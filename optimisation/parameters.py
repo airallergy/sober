@@ -18,6 +18,7 @@ AnyModel = TypeVar("AnyModel", IDF, str)
 @dataclass(**DATACLASS_PARAMS)  # type: ignore[misc] # python/mypy#5374
 class _Tagger(ABC):
     tag: str = field(init=False)
+    _loc: ClassVar[str]
 
     @classmethod
     def _uuid(cls, *descriptions: str) -> str:
