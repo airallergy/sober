@@ -39,7 +39,7 @@ class PymooProblem(_PymooProblem):
 @dataclass(**DATACLASS_PARAMS)  # type: ignore[misc] # python/mypy#5374
 class _Problem(ABC):
     model_file: AnyStrPath
-    weathers: Sequence[_Parameter]
+    weather: _Parameter
     parameters: Sequence[_Parameter]
     # collector: Sequence[_Collector]
     callback: Optional[Callable] = None
