@@ -30,15 +30,14 @@ class _Tagger(ABC):
 
 class _Parameter(ABC):
     tagger: _Tagger  # TODO: may remove out of here, as weather does not need one
+    low: float
+    high: float
 
     def __init__(self, tagger: _Tagger) -> None:
         self.tagger = tagger
 
 
 class _FloatParameter(_Parameter):
-    low: float
-    high: float
-
     def __init__(self, tagger: _Tagger, low: float, high: float) -> None:
         super().__init__(tagger)
 
