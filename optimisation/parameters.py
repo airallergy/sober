@@ -48,7 +48,7 @@ class _IntParameter(_Parameter):
     low: int
     high: int
     variations: tuple[Any, ...]
-    uncertainties: tuple[tuple[Any, ...], ...]
+    uncertainties: tuple[tuple[Any, ...], ...] | tuple[Any, ...]
     _is_uncertain: bool
 
     def __init__(
