@@ -44,7 +44,8 @@ class Problem:
     objectives: tuple[_Collector, ...]
     constraints: tuple[_Collector, ...]
     extra_outputs: tuple[_Collector, ...]
-    callback: Callback | None = None
+    callback: Callback | None
+    outputs_directory: Path
     _model_type: str
     _tagged_model: str
 
@@ -57,6 +58,7 @@ class Problem:
         constraints: Iterable[_Collector] = (),
         extra_outputs: Iterable[_Collector] = (),
         callback: Callback | None = None,
+        outputs_directory: AnyStrPath | None = None,
     ) -> None:
         self.model_file = Path(model_file)
         self.weather = weather
@@ -65,6 +67,11 @@ class Problem:
         self.constraints = tuple(constraints)
         self.extra_outputs = tuple(extra_outputs)
         self.callback = callback
+        self.outputs_directory = (
+            self.model_file.parent / "outputs"
+            if outputs_directory is None
+            else Path(outputs_directory)
+        )
 
         self._model_type = self.model_file.suffix
         if self._model_type not in ("idf", "imf"):
