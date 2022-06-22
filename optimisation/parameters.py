@@ -1,7 +1,7 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
 from uuid import NAMESPACE_X500, uuid5
-from typing import Any, TypeVar, ClassVar, Iterable
+from typing import Any, TypeVar, ClassVar, Iterable, TypeAlias
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
@@ -173,3 +173,7 @@ class WeatherParameter(_IntParameter):
         uncertainties: Iterable[Iterable[str]] | Iterable[str] = (),
     ) -> None:
         super().__init__((Path(variation) for variation in variations), uncertainties)
+
+
+AnyIntModelParameter: TypeAlias = DiscreteParameter | CategoricalParameter
+AnyModelParameter: TypeAlias = ContinuousParameter | AnyIntModelParameter
