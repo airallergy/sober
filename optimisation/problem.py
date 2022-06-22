@@ -77,6 +77,9 @@ class Problem:
         if self._model_type not in (".idf", ".imf"):
             raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
 
+        if None in set(_CONFIG.values()):
+            raise ValueError(f"missing configuration: {_CONFIG}")
+
     def _tag_model(self) -> None:
         macros, regulars = _split_model(self.model_file)
         idf = openidf(StringIO(regulars), _CONFIG["schema.energyplus"])
