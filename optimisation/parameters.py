@@ -31,9 +31,6 @@ class _Parameter(ABC):
     tagger: _Tagger  # TODO: may remove out of here, as weather does not need one
     low: float
     high: float
-    variations: tuple[Any, ...]
-    uncertainties: tuple[tuple[Any, ...], ...] | tuple[Any, ...]
-    _is_uncertain: bool
 
     def __init__(self, tagger: _Tagger) -> None:
         self.tagger = tagger
@@ -50,6 +47,9 @@ class _FloatParameter(_Parameter):
 class _IntParameter(_Parameter):
     low: int
     high: int
+    variations: tuple[Any, ...]
+    uncertainties: tuple[tuple[Any, ...], ...]
+    _is_uncertain: bool
 
     def __init__(
         self,
