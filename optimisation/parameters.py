@@ -32,7 +32,7 @@ class _Parameter(ABC):
     low: float
     high: float
     variations: tuple[Any, ...]
-    uncertainties: tuple[tuple[Any, ...], ...]
+    uncertainties: tuple[tuple[Any, ...], ...] | tuple[Any, ...]
 
     def __init__(self, tagger: _Tagger) -> None:
         self.tagger = tagger
@@ -54,7 +54,7 @@ class _IntParameter(_Parameter):
         self,
         tagger: _Tagger,
         variations: Iterable[Any],
-        uncertainties: Iterable[Iterable[Any]] = ((),),
+        uncertainties: Iterable[Iterable[Any]] | Iterable[Any] = (),
     ) -> None:
         super().__init__(tagger)
 
@@ -125,9 +125,9 @@ class ContinuousParameter(_FloatParameter):
 
 class DiscreteParameter(_IntParameter):
     variations: tuple[float, ...]
-    uncertainties: tuple[tuple[float, ...], ...]
+    uncertainties: tuple[tuple[float, ...], ...] | tuple[float, ...]
 
 
 class CategoricalParameter(_IntParameter):
     variations: tuple[str, ...]
-    uncertainties: tuple[tuple[str, ...], ...]
+    uncertainties: tuple[tuple[str, ...], ...] | tuple[float, ...]
