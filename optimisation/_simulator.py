@@ -5,7 +5,7 @@ from .config import _CONFIG
 from ._tools import AnyStrPath
 
 
-def _run_epmacro(imf_file: Path) -> None:
+def _run_epmacro(imf_file: Path) -> Path:
     if imf_file.stem != "in":
         (imf_file.parent / "in.imf").symlink_to(imf_file)
 
@@ -14,6 +14,8 @@ def _run_epmacro(imf_file: Path) -> None:
 
     if imf_file.stem != "in":
         (imf_file.parent / "in.imf").unlink()
+
+    return imf_file.with_name("out.idf").rename(imf_file.with_name("in.idf"))
 
 
 def _run_energyplus(
