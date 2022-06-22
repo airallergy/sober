@@ -1,9 +1,12 @@
+from pathlib import Path
 from abc import ABC, abstractmethod
 from uuid import NAMESPACE_X500, uuid5
 from typing import Any, TypeVar, ClassVar, Iterable
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
+
+from ._tools import AnyStrPath
 
 AnyModel = TypeVar("AnyModel", IDF, str)
 
@@ -28,18 +31,20 @@ class _Tagger(ABC):
 
 
 class _Parameter(ABC):
-    tagger: _Tagger  # TODO: may remove out of here, as weather does not need one
     low: float
     high: float
 
-    def __init__(self, tagger: _Tagger) -> None:
+
+class _ModelParameterMixin(ABC):
+    tagger: _Tagger
+
+    def __init__(self, tagger: _Tagger, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)  # NOTE: to _FloatParameter/_IntParameter
         self.tagger = tagger
 
 
 class _FloatParameter(_Parameter):
-    def __init__(self, tagger: _Tagger, low: float, high: float) -> None:
-        super().__init__(tagger)
-
+    def __init__(self, low: float, high: float) -> None:
         self.low = low
         self.high = high
 
@@ -53,12 +58,9 @@ class _IntParameter(_Parameter):
 
     def __init__(
         self,
-        tagger: _Tagger,
         variations: Iterable[Any],
-        uncertainties: Iterable[Iterable[Any]] | Iterable[Any] = (),
+        uncertainties: Iterable[Iterable[Any]] | Iterable[Any],
     ) -> None:
-        super().__init__(tagger)
-
         self.variations = tuple(variations)
         if uncertainties == ():
             self._is_uncertain = False
@@ -69,6 +71,9 @@ class _IntParameter(_Parameter):
                 if any(isinstance(item, Iterable) for item in uncertainties)
                 else (tuple(uncertainties),) * len(self.variations)
             )
+
+        self.low = 0
+        self.high = len(self.variations)
 
 
 #############################################################################
@@ -128,15 +133,43 @@ class StringTagger(_Tagger):
 #############################################################################
 #######                       PARAMETER CLASSES                       #######
 #############################################################################
-class ContinuousParameter(_FloatParameter):
+class ContinuousParameter(_ModelParameterMixin, _FloatParameter):
     ...
 
 
-class DiscreteParameter(_IntParameter):
+class DiscreteParameter(_ModelParameterMixin, _IntParameter):
     variations: tuple[float, ...]
     uncertainties: tuple[tuple[float, ...], ...] | tuple[float, ...]
 
+    def __init__(
+        self,
+        tagger: _Tagger,
+        variations: Iterable[float],
+        uncertainties: Iterable[Iterable[float]] | Iterable[float] = (),
+    ) -> None:
+        super().__init__(tagger, variations, uncertainties)
 
-class CategoricalParameter(_IntParameter):
+
+class CategoricalParameter(_ModelParameterMixin, _IntParameter):
     variations: tuple[str, ...]
-    uncertainties: tuple[tuple[str, ...], ...] | tuple[float, ...]
+    uncertainties: tuple[tuple[str, ...], ...] | tuple[str, ...]
+
+    def __init__(
+        self,
+        tagger: _Tagger,
+        variations: Iterable[str],
+        uncertainties: Iterable[Iterable[str]] | Iterable[str] = (),
+    ) -> None:
+        super().__init__(tagger, variations, uncertainties)
+
+
+class WeatherParameter(_IntParameter):
+    variations: tuple[Path, ...]
+    uncertainties: tuple[tuple[str, ...], ...] | tuple[str, ...]
+
+    def __init__(
+        self,
+        variations: Iterable[AnyStrPath],
+        uncertainties: Iterable[Iterable[str]] | Iterable[str] = (),
+    ) -> None:
+        super().__init__((Path(variation) for variation in variations), uncertainties)
