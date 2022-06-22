@@ -43,6 +43,7 @@ class Problem:
     parameters: tuple[_Parameter, ...]
     objectives: tuple[_Collector, ...]
     constraints: tuple[_Collector, ...]
+    extra_outputs: tuple[_Collector, ...]
     callback: Callback | None = None
     _model_type: str
     _tagged_model: str
@@ -54,6 +55,7 @@ class Problem:
         parameters: Iterable[_Parameter],
         objectives: Iterable[_Collector],
         constraints: Iterable[_Collector] = (),
+        extra_outputs: Iterable[_Collector] = (),
         callback: Callback | None = None,
     ) -> None:
         self.model_file = Path(model_file)
@@ -61,6 +63,7 @@ class Problem:
         self.parameters = tuple(parameters)
         self.objectives = tuple(objectives)
         self.constraints = tuple(constraints)
+        self.extra_outputs = tuple(extra_outputs)
         self.callback = callback
 
         self._model_type = self.model_file.suffix
