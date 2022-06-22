@@ -10,9 +10,9 @@ from pymoo.core.problem import Problem as _PymooProblem
 
 from .config import _CONFIG
 from ._tools import AnyStrPath
-from ._evaluator import _evaluate
 from .collector import _Collector
 from ._simulator import _split_model
+from ._evaluator import _pymoo_evaluate, _product_evaluate
 from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
 
@@ -31,7 +31,7 @@ class PymooProblem(_PymooProblem):
         )
 
     def _evaluate(self, x, out, *args, **kwargs) -> None:
-        _evaluate
+        _pymoo_evaluate()
 
 
 #############################################################################
@@ -94,6 +94,9 @@ class Problem:
 
         self._tagged_model = macros + idf.idfstr()
 
+    def _prepare(self) -> None:
+        self._tag_model()
+
     def _to_pymoo(self) -> PymooProblem:
         if self.objectives == ():
             raise ValueError("Optimisation needs at least one objective")
@@ -109,4 +112,21 @@ class Problem:
                 (parameter.high for parameter in self.parameters), dtype=np.float_
             ),
             self.callback,
+        )
+
+    def product(self) -> None:
+        if not all(
+            isinstance(parameter, AnyIntModelParameter) for parameter in self.parameters  # type: ignore[misc, arg-type] # python/mypy#11673
+        ):
+            raise ValueError("Continous parameters cannot perform cartesian product.")
+
+        self._prepare()
+
+        _product_evaluate(
+            self._tagged_model,
+            self.weather,
+            self.parameters,  # type: ignore[arg-type] # python/mypy/#7853
+            self.objectives + self.constraints + self.extra_outputs,
+            self.outputs_directory,
+            self._model_type,
         )
