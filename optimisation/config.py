@@ -1,8 +1,8 @@
 from typing import Any
 from pathlib import Path
+from platform import system
 
 from ._tools import AnyStrPath
-from ._simulator import _default_root
 
 _CONFIG: dict[str, Any] = {
     "exec.energyplus": None,
@@ -12,16 +12,29 @@ _CONFIG: dict[str, Any] = {
 }
 
 
+def _default_energyplus_root(major: int, minor: int, patch: int = 0) -> Path:
+    version = "-".join((str(major), str(minor), str(patch)))
+    match system():
+        case "Linux":
+            return Path(f"/usr/local/EnergyPlus-{version}")
+        case "Darwin":
+            return Path(f"/Applications/EnergyPlus-{version}")
+        case "Windows":
+            return Path(rf"C:\EnergyPlusV{version}")
+        case _ as system_name:
+            raise NotImplementedError(f"unsupported system: '{system_name}'.")
+
+
 def config_energyplus(
-    version_parts: tuple[int, int, int] = None,
-    root: AnyStrPath = None,
-    energyplus_exec: AnyStrPath = None,
-    epmacro_exec: AnyStrPath = None,
-    readvars_exec: AnyStrPath = None,
-    schema: AnyStrPath = None,
+    version_parts: tuple[int, int, int] | tuple[int, int] | None = None,
+    root: AnyStrPath | None = None,
+    energyplus_exec: AnyStrPath | None = None,
+    epmacro_exec: AnyStrPath | None = None,
+    readvars_exec: AnyStrPath | None = None,
+    schema: AnyStrPath | None = None,
 ) -> None:
     if version_parts is not None:
-        root = _default_root(*version_parts)
+        root = _default_energyplus_root(*version_parts)
 
     if root is not None:
         root = Path(root)

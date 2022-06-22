@@ -1,22 +1,8 @@
-from platform import system
 from pathlib import Path, PurePath
 from subprocess import PIPE, STDOUT, run
 
 from .config import _CONFIG
 from ._tools import AnyStrPath
-
-
-def _default_root(major: int, minor: int, patch: int = 0) -> Path:
-    version = "-".join((str(major), str(minor), str(patch)))
-    match system():
-        case "Linux":
-            return Path(f"/usr/local/EnergyPlus-{version}")
-        case "Darwin":
-            return Path(f"/Applications/EnergyPlus-{version}")
-        case "Windows":
-            return Path(rf"C:\EnergyPlusV{version}")
-        case _ as system_name:
-            raise NotImplementedError(f"unsupported system: '{system_name}'.")
 
 
 def _run_epmacro(imf_file: Path) -> None:
