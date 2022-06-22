@@ -76,7 +76,7 @@ class Problem:
 
         for parameter in self.parameters:
             tagger = parameter.tagger
-            match tagger._loc:
+            match tagger._LOCATION:
                 case "regular":
                     idf = tagger._tagged(idf)
                 case "macro":

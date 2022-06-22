@@ -12,7 +12,7 @@ AnyModel = TypeVar("AnyModel", IDF, str)
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Tagger(ABC):
-    _loc: ClassVar[str]
+    _LOCATION: ClassVar[str]
     _tag: str
 
     def __init__(self, uuid_descriptions: tuple[str, ...]) -> None:
@@ -71,7 +71,7 @@ class IndexTagger(_Tagger):
     No support for nested regular commands.
     """
 
-    _loc: ClassVar[str] = "regular"
+    _LOCATION: ClassVar[str] = "regular"
     class_name: str
     object_name: str
     field_name: str
@@ -97,7 +97,7 @@ class StringTagger(_Tagger):
     No support for nested macro commands.
     """
 
-    _loc: ClassVar[str] = "macro"
+    _LOCATION: ClassVar[str] = "macro"
     string: str
     prefix: str
     suffix: str
