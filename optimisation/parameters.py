@@ -33,6 +33,7 @@ class _Parameter(ABC):
     high: float
     variations: tuple[Any, ...]
     uncertainties: tuple[tuple[Any, ...], ...] | tuple[Any, ...]
+    _is_uncertain: bool
 
     def __init__(self, tagger: _Tagger) -> None:
         self.tagger = tagger
@@ -59,7 +60,15 @@ class _IntParameter(_Parameter):
         super().__init__(tagger)
 
         self.variations = tuple(variations)
-        self.uncertainties = tuple(tuple(uncertainty) for uncertainty in uncertainties)
+        if uncertainties == ():
+            self._is_uncertain = False
+        else:
+            self._is_uncertain = True
+            self.uncertainties = (
+                tuple(tuple(uncertainty) for uncertainty in uncertainties)
+                if any(isinstance(item, Iterable) for item in uncertainties)
+                else (tuple(uncertainties),) * len(self.variations)
+            )
 
 
 #############################################################################
