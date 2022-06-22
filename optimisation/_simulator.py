@@ -1,3 +1,4 @@
+from os.path import relpath
 from pathlib import Path, PurePath
 from subprocess import PIPE, STDOUT, run
 
@@ -21,29 +22,29 @@ def _run_epmacro(imf_file: Path) -> Path:
 def _run_energyplus(
     idf_file: Path,
     epw_file: Path,
-    output_directory: Path,
+    job_directory: Path,
     has_templates: bool,
 ) -> None:
     commands = (
         (_CONFIG["exec.energyplus"],)
         + (("-x",) if has_templates else ())
-        + ("-w", epw_file, idf_file)
+        + ("-w", relpath(epw_file, job_directory), relpath(idf_file, job_directory))
     )
-    run(commands, stdout=PIPE, stderr=STDOUT, cwd=output_directory, text=True)
+    run(commands, stdout=PIPE, stderr=STDOUT, cwd=job_directory, text=True)
 
 
 def _run_readvars(
     rvi_file: Path,
-    output_directory: Path,
+    job_directory: Path,
     frequency: str,
 ) -> None:
     commands = (
         _CONFIG["exec.readvars"],
-        rvi_file,
+        relpath(rvi_file, job_directory),
         "Unlimited",
         "FixHeader",
     ) + ((frequency,) if frequency else ())
-    run(commands, stdout=PIPE, stderr=STDOUT, cwd=output_directory, text=True)
+    run(commands, stdout=PIPE, stderr=STDOUT, cwd=job_directory, text=True)
 
 
 def _resolved_path(path: AnyStrPath, default_parent: AnyStrPath) -> Path:
