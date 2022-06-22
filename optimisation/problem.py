@@ -12,8 +12,8 @@ from .config import _CONFIG
 from ._tools import AnyStrPath
 from ._evaluator import _evaluate
 from .collector import _Collector
-from .parameters import _Parameter
 from ._simulator import _split_model
+from .parameters import _Parameter, _IntParameter
 
 
 class PymooProblem(_PymooProblem):
@@ -39,7 +39,7 @@ class PymooProblem(_PymooProblem):
 #############################################################################
 class Problem:
     model_file: Path
-    weather: _Parameter
+    weather: _IntParameter
     parameters: tuple[_Parameter, ...]
     objectives: tuple[_Collector, ...]
     constraints: tuple[_Collector, ...]
@@ -52,7 +52,7 @@ class Problem:
     def __init__(
         self,
         model_file: AnyStrPath,
-        weather: _Parameter,
+        weather: _IntParameter,
         parameters: Iterable[_Parameter],
         objectives: Iterable[_Collector],
         constraints: Iterable[_Collector] = (),
