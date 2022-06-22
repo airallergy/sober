@@ -54,7 +54,7 @@ class Problem:
         model_file: AnyStrPath,
         weather: _IntParameter,
         parameters: Iterable[_Parameter],
-        objectives: Iterable[_Collector],
+        objectives: Iterable[_Collector] = (),
         constraints: Iterable[_Collector] = (),
         extra_outputs: Iterable[_Collector] = (),
         callback: Callback | None = None,
@@ -92,6 +92,9 @@ class Problem:
         self._tagged_model = macros + idf.idfstr()
 
     def _to_pymoo(self) -> PymooProblem:
+        if self.objectives == ():
+            raise ValueError("Optimisation needs at least one objective")
+
         return PymooProblem(
             len(self.parameters),
             len(self.objectives),
