@@ -74,7 +74,7 @@ class Problem:
         )
 
         self._model_type = self.model_file.suffix
-        if self._model_type not in ("idf", "imf"):
+        if self._model_type not in (".idf", ".imf"):
             raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
 
     def _tag_model(self) -> None:
