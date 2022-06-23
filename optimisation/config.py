@@ -12,6 +12,11 @@ _CONFIG: dict[str, Any] = {
 }
 
 
+def _update_config(config: dict[str, Any]) -> None:
+    for key, val in config.items():
+        _CONFIG[key] = val
+
+
 def _default_energyplus_root(major: int, minor: int, patch: int = 0) -> Path:
     version = "-".join((str(major), str(minor), str(patch)))
     match system():

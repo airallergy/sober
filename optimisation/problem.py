@@ -9,10 +9,11 @@ from pymoo.core.callback import Callback
 from pymoo.core.problem import Problem as _PymooProblem
 
 from .config import _CONFIG
+from ._product import _product
 from ._tools import AnyStrPath
 from .collector import _Collector
 from ._simulator import _split_model
-from ._evaluator import _pymoo_evaluate, _product_evaluate
+from ._evaluator import _pymoo_evaluate
 from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
 
@@ -123,7 +124,7 @@ class Problem:
 
         self._prepare()
 
-        _product_evaluate(
+        _product(
             self._tagged_model,
             self.weather,
             self.parameters,  # type: ignore[arg-type] # python/mypy/#7853
