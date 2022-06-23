@@ -1,10 +1,12 @@
-from typing import Any
 from pathlib import Path
 from platform import system
+from typing import Any, TypeAlias
 
 from ._tools import AnyStrPath
 
-_CONFIG: dict[str, Any] = {
+Config: TypeAlias = dict[str, Any]
+
+_config: Config = {
     "exec.energyplus": None,
     "exec.epmacro": None,
     "exec.readvars": None,
@@ -12,9 +14,9 @@ _CONFIG: dict[str, Any] = {
 }
 
 
-def _update_config(config: dict[str, Any]) -> None:
+def _update_config(config: Config) -> None:
     for key, val in config.items():
-        _CONFIG[key] = val
+        _config[key] = val
 
 
 def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:
@@ -54,10 +56,10 @@ def config_energyplus(
         and (readvars_exec is not None)
         and (schema is not None)
     ):
-        _CONFIG["exec.energyplus"] = Path(energyplus_exec).resolve(strict=True)
-        _CONFIG["exec.epmacro"] = Path(epmacro_exec).resolve(strict=True)
-        _CONFIG["exec.readvars"] = Path(readvars_exec).resolve(strict=True)
-        _CONFIG["schema.energyplus"] = Path(schema).resolve(strict=True)
+        _config["exec.energyplus"] = Path(energyplus_exec).resolve(strict=True)
+        _config["exec.epmacro"] = Path(epmacro_exec).resolve(strict=True)
+        _config["exec.readvars"] = Path(readvars_exec).resolve(strict=True)
+        _config["schema.energyplus"] = Path(schema).resolve(strict=True)
     else:
         raise ValueError(
             "One of version_parts, root, (energyplus_exec, epmacro_exec, readvars_exec, schema) needs to be provided."

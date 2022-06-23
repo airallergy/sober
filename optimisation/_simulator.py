@@ -2,7 +2,7 @@ from os.path import relpath
 from pathlib import Path, PurePath
 from subprocess import PIPE, STDOUT, run
 
-from .config import _CONFIG
+from .config import _config
 from ._tools import AnyStrPath
 
 
@@ -10,7 +10,7 @@ def _run_epmacro(imf_file: Path) -> Path:
     if imf_file.stem != "in":
         (imf_file.parent / "in.imf").symlink_to(imf_file)
 
-    commands = (_CONFIG["exec.epmacro"],)
+    commands = (_config["exec.epmacro"],)
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=imf_file.parent, text=True)
 
     if imf_file.stem != "in":
@@ -26,7 +26,7 @@ def _run_energyplus(
     has_templates: bool,
 ) -> None:
     commands = (
-        (_CONFIG["exec.energyplus"],)
+        (_config["exec.energyplus"],)
         + (("-x",) if has_templates else ())
         + ("-w", relpath(epw_file, job_directory), relpath(idf_file, job_directory))
     )
@@ -39,7 +39,7 @@ def _run_readvars(
     frequency: str,
 ) -> None:
     commands = (
-        _CONFIG["exec.readvars"],
+        _config["exec.readvars"],
         relpath(rvi_file, job_directory),
         "Unlimited",
         "FixHeader",

@@ -13,7 +13,7 @@ from .collector import _Collector
 from ._multiplier import _multiply
 from ._simulator import _split_model
 from ._evaluator import _pymoo_evaluate
-from .config import _CONFIG, config_energyplus
+from .config import _config, config_energyplus
 from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
 
@@ -80,11 +80,11 @@ class Problem:
 
     def _tag_model(self) -> None:
         macros, regulars = _split_model(self.model_file)
-        if None in set(_CONFIG.values()):
+        if None in set(_config.values()):
             idf = openidf(StringIO(regulars))
             config_energyplus(idf.idfobjects["Version"][0]["Version_Identifier"])
         else:
-            idf = openidf(StringIO(regulars), _CONFIG["schema.energyplus"])
+            idf = openidf(StringIO(regulars), _config["schema.energyplus"])
 
         for parameter in self.parameters:
             tagger = parameter.tagger
