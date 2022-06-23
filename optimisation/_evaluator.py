@@ -1,8 +1,10 @@
 import itertools as it
 from pathlib import Path
+from platform import system
 from shutil import copyfile
 from multiprocessing import get_context
 from typing import Any, Callable, Iterable
+from multiprocessing.context import BaseContext
 
 from .collector import _Collector
 from .config import _CONFIG, _update_config
@@ -66,12 +68,22 @@ def _pymoo_evaluate():
     ...
 
 
+def _multiprocessing_context() -> BaseContext:
+    match system():
+        case "Linux" | "Darwin":
+            return get_context("forkserver")
+        case "Windows":
+            return get_context("spawn")
+        case _ as system_name:
+            raise NotImplementedError(f"unsupported system: '{system_name}'.")
+
+
 def _parallel_evaluate(
     func: Callable,
     params: Iterable[Iterable[Any]],
     *meta_params,
     processess: int | None = None,
 ) -> None:
-    ctx = get_context("forkserver")
+    ctx = _multiprocessing_context()
     with ctx.Pool(processess, initializer=_update_config, initargs=(_CONFIG,)) as pool:
         pool.starmap(func, zip(params, *map(it.repeat, meta_params)))
