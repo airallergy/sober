@@ -96,6 +96,7 @@ class Problem:
 
     def _prepare(self) -> None:
         self._tag_model()
+        self.outputs_directory.mkdir(exist_ok=True)
 
     def _to_pymoo(self) -> PymooProblem:
         if self.objectives == ():
