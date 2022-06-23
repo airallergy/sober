@@ -8,12 +8,12 @@ from numpy.typing import NDArray
 from pymoo.core.callback import Callback
 from pymoo.core.problem import Problem as _PymooProblem
 
-from .config import _CONFIG
 from ._product import _product
 from ._tools import AnyStrPath
 from .collector import _Collector
 from ._simulator import _split_model
 from ._evaluator import _pymoo_evaluate
+from .config import _CONFIG, config_energyplus
 from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
 
@@ -78,12 +78,13 @@ class Problem:
         if self._model_type not in (".idf", ".imf"):
             raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
 
-        if None in set(_CONFIG.values()):
-            raise ValueError(f"missing configuration: {_CONFIG}")
-
     def _tag_model(self) -> None:
         macros, regulars = _split_model(self.model_file)
-        idf = openidf(StringIO(regulars), _CONFIG["schema.energyplus"])
+        if None in set(_CONFIG.values()):
+            idf = openidf(StringIO(regulars))
+            config_energyplus(idf.idfobjects["Version"][0]["Version_Identifier"])
+        else:
+            idf = openidf(StringIO(regulars), _CONFIG["schema.energyplus"])
 
         for parameter in self.parameters:
             tagger = parameter.tagger

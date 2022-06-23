@@ -17,8 +17,8 @@ def _update_config(config: dict[str, Any]) -> None:
         _CONFIG[key] = val
 
 
-def _default_energyplus_root(major: int, minor: int, patch: int = 0) -> Path:
-    version = "-".join((str(major), str(minor), str(patch)))
+def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:
+    version = "-".join((major, minor, patch))
     match system():
         case "Linux":
             return Path(f"/usr/local/EnergyPlus-{version}")
@@ -31,15 +31,15 @@ def _default_energyplus_root(major: int, minor: int, patch: int = 0) -> Path:
 
 
 def config_energyplus(
-    version_parts: tuple[int, int, int] | tuple[int, int] | None = None,
+    version: str | None = None,
     root: AnyStrPath | None = None,
     energyplus_exec: AnyStrPath | None = None,
     epmacro_exec: AnyStrPath | None = None,
     readvars_exec: AnyStrPath | None = None,
     schema: AnyStrPath | None = None,
 ) -> None:
-    if version_parts is not None:
-        root = _default_energyplus_root(*version_parts)
+    if version is not None:
+        root = _default_energyplus_root(*version.split("."))
 
     if root is not None:
         root = Path(root)
