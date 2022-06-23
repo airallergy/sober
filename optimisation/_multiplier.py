@@ -1,12 +1,12 @@
-import itertools as it
 from pathlib import Path
+from itertools import product
 
 from .collector import _Collector
 from ._evaluator import _product_evaluate, _parallel_evaluate
 from .parameters import WeatherParameter, AnyIntModelParameter
 
 
-def _product(
+def _multiply(
     tagged_model: str,
     weather: WeatherParameter,
     parameters: tuple[AnyIntModelParameter, ...],
@@ -14,7 +14,7 @@ def _product(
     outputs_directory: Path,
     model_type: str,
 ) -> None:
-    variation_idxs_iter = it.product(
+    variation_idxs_iter = product(
         range(len(weather.variations)),
         *(range(len(parameter.variations)) for parameter in parameters),
     )

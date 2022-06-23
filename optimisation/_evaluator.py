@@ -1,7 +1,7 @@
-import itertools as it
 from pathlib import Path
 from platform import system
 from shutil import copyfile
+from itertools import repeat
 from multiprocessing import get_context
 from typing import Any, Callable, Iterable
 from multiprocessing.context import BaseContext
@@ -86,4 +86,4 @@ def _parallel_evaluate(
 ) -> None:
     ctx = _multiprocessing_context()
     with ctx.Pool(processess, initializer=_update_config, initargs=(_CONFIG,)) as pool:
-        pool.starmap(func, zip(params, *map(it.repeat, meta_params)))
+        pool.starmap(func, zip(params, *map(repeat, meta_params)))

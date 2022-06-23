@@ -8,9 +8,9 @@ from numpy.typing import NDArray
 from pymoo.core.callback import Callback
 from pymoo.core.problem import Problem as _PymooProblem
 
-from ._product import _product
 from ._tools import AnyStrPath
 from .collector import _Collector
+from ._multiplier import _multiply
 from ._simulator import _split_model
 from ._evaluator import _pymoo_evaluate
 from .config import _CONFIG, config_energyplus
@@ -117,7 +117,7 @@ class Problem:
             self.callback,
         )
 
-    def product(self) -> None:
+    def run_parametric(self) -> None:
         if not all(
             isinstance(parameter, AnyIntModelParameter) for parameter in self.parameters  # type: ignore[misc, arg-type] # python/mypy#11673
         ):
@@ -125,7 +125,7 @@ class Problem:
 
         self._prepare()
 
-        _product(
+        _multiply(
             self._tagged_model,
             self.weather,
             self.parameters,  # type: ignore[arg-type] # python/mypy/#7853
