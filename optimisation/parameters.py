@@ -17,6 +17,7 @@ class _Tagger(ABC):
     _LOCATION: ClassVar[str]
     _tag: str
 
+    @abstractmethod
     def __init__(self, uuid_descriptions: tuple[str, ...]) -> None:
         self._tag = self._uuid(*uuid_descriptions)
 
@@ -37,12 +38,14 @@ class _Parameter(ABC):
 class _ModelParameterMixin(ABC):
     tagger: _Tagger
 
+    @abstractmethod
     def __init__(self, tagger: _Tagger, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)  # NOTE: to _FloatParameter/_IntParameter
         self.tagger = tagger
 
 
 class _FloatParameter(_Parameter):
+    @abstractmethod
     def __init__(self, low: float, high: float) -> None:
         self.low = low
         self.high = high
@@ -55,6 +58,7 @@ class _IntParameter(_Parameter):
     uncertainties: tuple[tuple[Any, ...], ...] | tuple[Any, ...]
     _is_uncertain: bool
 
+    @abstractmethod
     def __init__(
         self,
         variations: Iterable[Any],
