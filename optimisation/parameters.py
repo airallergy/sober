@@ -2,18 +2,20 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from uuid import NAMESPACE_X500, uuid5
-from typing import Any, ClassVar, TypeAlias, SupportsIndex, overload
+from typing import Generic, TypeVar, ClassVar, TypeAlias, SupportsIndex, overload
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 
 from ._tools import AnyStrPath
 
-
+_M = TypeVar("_M")  # AnyModel
+_V = TypeVar("_V")  # AnyVariation
+_U = TypeVar("_U")  # AnyUncertaintyVar
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
-class _Tagger(ABC):
+class _Tagger(ABC, Generic[_M]):
     _LOCATION: ClassVar[str]
     _tag: str
 
@@ -26,7 +28,7 @@ class _Tagger(ABC):
         return str(uuid5(NAMESPACE_X500, cls.__name__ + "-".join(descriptions)))
 
     @abstractmethod
-    def _tagged(self, model: Any) -> Any:
+    def _tagged(self, model: _M) -> _M:
         ...
 
 
@@ -51,11 +53,11 @@ class _FloatParameter(_Parameter):
         self._high = high
 
 
-class _IntParameter(_Parameter):
+class _IntParameter(_Parameter, Generic[_V, _U]):
     _low: int
     _high: int
-    _variations: tuple[Any, ...]
-    _uncertainties: tuple[tuple[Any, ...], ...]
+    _variations: tuple[_V, ...]
+    _uncertainties: tuple[tuple[_U, ...], ...]
     _n_variations: int
     _ns_uncertainty: tuple[int, ...]
     _is_uncertain: bool
@@ -63,8 +65,8 @@ class _IntParameter(_Parameter):
     @abstractmethod
     def __init__(
         self,
-        variations: Iterable[Any],
-        *uncertainties: Iterable[Any],
+        variations: Iterable[_V],
+        *uncertainties: Iterable[_U],
     ) -> None:
         self._variations = tuple(variations)
         self._n_variations = len(self._variations)
@@ -91,14 +93,26 @@ class _IntParameter(_Parameter):
         self._low = 0
         self._high = self._n_variations
 
-    def __getitem__(self, index: SupportsIndex | tuple[SupportsIndex, SupportsIndex]):
-        match self._is_uncertain, index:  # mypy crash: python/mypy#12533
-            case True, (int() as x, int() as y):
-                return self._uncertainties[x][y]
+    @overload
+    def __getitem__(self, index: SupportsIndex) -> _V:
+        ...
+
+    @overload
+    def __getitem__(self, index: tuple[SupportsIndex, SupportsIndex]) -> _U:
+        ...
+
+    def __getitem__(self, index):
+        match self._is_uncertain, index:
             case False, int() as x:
                 return self._variations[x]
+            case True, (int() as x, int() as y):
+                return self._uncertainties[x][y]
+            case _, int() | (int(), int()):
+                raise IndexError(
+                    "no " * (not self._is_uncertain) + "uncertainties defined."
+                )
             case _:
-                raise
+                raise IndexError(f"invalid index: {index}.")
 
 
 #############################################################################
