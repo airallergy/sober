@@ -1,7 +1,7 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
 from uuid import NAMESPACE_X500, uuid5
-from typing import Any, TypeVar, ClassVar, Iterable, TypeAlias
+from typing import Any, TypeVar, ClassVar, Iterable, TypeAlias, overload
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
@@ -164,15 +164,32 @@ class CategoricalParameter(_ModelParameterMixin, _IntParameter):
 
 
 class WeatherParameter(_IntParameter):
-    variations: tuple[Path, ...]
-    uncertainties: tuple[tuple[str, ...], ...] | tuple[str, ...]
+    variations: tuple[Path | str, ...]
+    uncertainties: tuple[tuple[Path, ...], ...] | tuple[Path, ...]
 
+    @overload
     def __init__(
         self,
         variations: Iterable[AnyStrPath],
-        uncertainties: Iterable[Iterable[str]] | Iterable[str] = (),
+        uncertainties: tuple[()],
     ) -> None:
-        super().__init__((Path(variation) for variation in variations), uncertainties)
+        ...
+
+    @overload
+    def __init__(
+        self,
+        variations: Iterable[str],
+        uncertainties: Iterable[Iterable[AnyStrPath]] | Iterable[AnyStrPath],
+    ) -> None:
+        ...
+
+    def __init__(self, variations, uncertainties=()):
+        super().__init__(
+            (Path(variation) for variation in variations)
+            if uncertainties == ()
+            else (variation for variation in variations),
+            uncertainties,
+        )
 
 
 AnyIntModelParameter: TypeAlias = DiscreteParameter | CategoricalParameter
