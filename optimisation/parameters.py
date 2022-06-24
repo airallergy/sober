@@ -1,7 +1,8 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from uuid import NAMESPACE_X500, uuid5
-from typing import Any, ClassVar, Iterable, TypeAlias, overload
+from typing import Any, ClassVar, TypeAlias, overload
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
