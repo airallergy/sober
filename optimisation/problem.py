@@ -80,7 +80,7 @@ class Problem:
 
     def _tag_model(self) -> None:
         macros, regulars = _split_model(self.model_file)
-        if None in set(_config.values()):
+        if None in _config.values():
             idf = openidf(StringIO(regulars))
             config_energyplus(idf.idfobjects["Version"][0]["Version_Identifier"])
         else:
