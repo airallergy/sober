@@ -13,12 +13,7 @@ from .parameters import WeatherParameter, AnyIntModelParameter
 
 
 def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
-    tagged_model = _meta_params["tagged_model"]
-    weather = _meta_params["weather"]
-    parameters = _meta_params["parameters"]
     outputs = _meta_params["outputs"]
-    outputs_directory = _meta_params["outputs_directory"]
-    model_type = _meta_params["model_type"]
 
     weather_variation_idx = variation_idxs[0]
     parameter_variation_idxs = variation_idxs[1:]
@@ -32,30 +27,35 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
     )
 
     # create job folder
-    job_directory = outputs_directory / job_uid
+    job_directory = _meta_params["outputs_directory"] / job_uid
     job_directory.mkdir(exist_ok=True)
 
     # copy job weather files
     job_epw_file = job_directory / "in.epw"
-    copyfile(weather.variations[weather_variation_idx], job_epw_file)
+    copyfile(_meta_params["weather"].variations[weather_variation_idx], job_epw_file)
 
-    model = tagged_model
+    model = _meta_params["tagged_model"]
     # insert parameter value
-    for variation_idx, parameter in zip(parameter_variation_idxs, parameters):
+    for variation_idx, parameter in zip(
+        parameter_variation_idxs, _meta_params["parameters"]
+    ):
         model = model.replace(
             parameter.tagger._tag, str(parameter.variations[variation_idx])
         )
 
     # write job model file
-    job_model_file = job_directory / ("in" + model_type)
+    job_model_file = job_directory / ("in" + _meta_params["model_type"])
     with open(job_model_file, "wt") as f:
         f.write(model)
 
     # run epmacro if needed
-    if model_type == ".imf":
-        job_idf_file = _run_epmacro(job_model_file)
-    elif model_type == ".idf":
-        job_idf_file = job_model_file
+    match _meta_params["model_type"]:
+        case ".imf":
+            job_idf_file = _run_epmacro(job_model_file)
+        case ".idf":
+            job_idf_file = job_model_file
+        case _:
+            raise
 
     # run energyplus
     _run_energyplus(job_idf_file, job_epw_file, job_directory, False)
