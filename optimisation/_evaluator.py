@@ -42,12 +42,12 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
 
     # copy job weather files
     job_epw_file = job_directory / "in.epw"
-    copyfile(weather.variations[weather_variation_idx], job_epw_file)
+    copyfile(weather._variations[weather_variation_idx], job_epw_file)
 
     # insert parameter value
     for variation_idx, parameter in zip(parameter_variation_idxs, parameters):
         model = model.replace(
-            parameter.tagger._tag, str(parameter.variations[variation_idx])
+            parameter._tagger._tag, str(parameter._variations[variation_idx])
         )
 
     # write job model file

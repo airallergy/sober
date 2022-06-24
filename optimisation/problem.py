@@ -39,14 +39,14 @@ class PymooProblem(_PymooProblem):
 #######                        PROBLEM CLASSES                        #######
 #############################################################################
 class Problem:
-    model_file: Path
-    weather: WeatherParameter
-    parameters: tuple[AnyModelParameter, ...]
-    objectives: tuple[_Collector, ...]
-    constraints: tuple[_Collector, ...]
-    extra_outputs: tuple[_Collector, ...]
-    callback: Callback | None
-    outputs_directory: Path
+    _model_file: Path
+    _weather: WeatherParameter
+    _parameters: tuple[AnyModelParameter, ...]
+    _objectives: tuple[_Collector, ...]
+    _constraints: tuple[_Collector, ...]
+    _extra_outputs: tuple[_Collector, ...]
+    _callback: Callback | None
+    _outputs_directory: Path
     _model_type: str
     _tagged_model: str
 
@@ -61,33 +61,33 @@ class Problem:
         callback: Callback | None = None,
         outputs_directory: AnyStrPath | None = None,
     ) -> None:
-        self.model_file = Path(model_file)
-        self.weather = weather
-        self.parameters = tuple(parameters)
-        self.objectives = tuple(objectives)
-        self.constraints = tuple(constraints)
-        self.extra_outputs = tuple(extra_outputs)
-        self.callback = callback
-        self.outputs_directory = (
-            self.model_file.parent / "outputs"
+        self._model_file = Path(model_file)
+        self._weather = weather
+        self._parameters = tuple(parameters)
+        self._objectives = tuple(objectives)
+        self._constraints = tuple(constraints)
+        self._extra_outputs = tuple(extra_outputs)
+        self._callback = callback
+        self._outputs_directory = (
+            self._model_file.parent / "outputs"
             if outputs_directory is None
             else Path(outputs_directory)
         )
 
-        self._model_type = self.model_file.suffix
+        self._model_type = self._model_file.suffix
         if self._model_type not in (".idf", ".imf"):
             raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
 
     def _tag_model(self) -> None:
-        macros, regulars = _split_model(self.model_file)
+        macros, regulars = _split_model(self._model_file)
         if None in _config.values():
             idf = openidf(StringIO(regulars))
             config_energyplus(idf.idfobjects["Version"][0]["Version_Identifier"])
         else:
             idf = openidf(StringIO(regulars), _config["schema.energyplus"])
 
-        for parameter in self.parameters:
-            tagger = parameter.tagger
+        for parameter in self._parameters:
+            tagger = parameter._tagger
             match tagger._LOCATION:
                 case "regular":
                     idf = tagger._tagged(idf)
@@ -98,38 +98,38 @@ class Problem:
 
     def _prepare(self) -> None:
         self._tag_model()
-        self.outputs_directory.mkdir(exist_ok=True)
+        self._outputs_directory.mkdir(exist_ok=True)
 
     def _to_pymoo(self) -> PymooProblem:
-        if self.objectives == ():
+        if self._objectives == ():
             raise ValueError("Optimisation needs at least one objective")
 
         return PymooProblem(
-            len(self.parameters),
-            len(self.objectives),
-            len(self.constraints),
+            len(self._parameters),
+            len(self._objectives),
+            len(self._constraints),
             np.fromiter(
-                (parameter.low for parameter in self.parameters), dtype=np.float_
+                (parameter._low for parameter in self._parameters), dtype=np.float_
             ),
             np.fromiter(
-                (parameter.high for parameter in self.parameters), dtype=np.float_
+                (parameter._high for parameter in self._parameters), dtype=np.float_
             ),
-            self.callback,
+            self._callback,
         )
 
     def run_parametric(self) -> None:
         if not all(
-            isinstance(parameter, AnyIntModelParameter) for parameter in self.parameters  # type: ignore[misc, arg-type] # python/mypy#11673
+            isinstance(parameter, AnyIntModelParameter) for parameter in self._parameters  # type: ignore[misc, arg-type] # python/mypy#11673
         ):
-            raise ValueError("Continous parameters cannot perform cartesian product.")
+            raise ValueError("With continous parameters cannot run parametric.")
 
         self._prepare()
 
         _multiply(
             self._tagged_model,
-            self.weather,
-            self.parameters,  # type: ignore[arg-type] # python/mypy/#7853
-            self.objectives + self.constraints + self.extra_outputs,
-            self.outputs_directory,
+            self._weather,
+            self._parameters,  # type: ignore[arg-type] # python/mypy/#7853
+            self._objectives + self._constraints + self._extra_outputs,
+            self._outputs_directory,
             self._model_type,
         )

@@ -15,8 +15,8 @@ def _multiply(
     model_type: str,
 ) -> None:
     variation_idxs_iter = product(
-        range(len(weather.variations)),
-        *(range(len(parameter.variations)) for parameter in parameters),
+        range(len(weather._variations)),
+        *(range(len(parameter._variations)) for parameter in parameters),
     )
 
     _parallel_evaluate(

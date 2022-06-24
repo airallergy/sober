@@ -31,31 +31,31 @@ class _Tagger(ABC):
 
 
 class _Parameter(ABC):
-    low: float
-    high: float
+    _low: float
+    _high: float
 
 
 class _ModelParameterMixin(ABC):
-    tagger: _Tagger
+    _tagger: _Tagger
 
     @abstractmethod
     def __init__(self, tagger: _Tagger, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)  # NOTE: to _FloatParameter/_IntParameter
-        self.tagger = tagger
+        self._tagger = tagger
 
 
 class _FloatParameter(_Parameter):
     @abstractmethod
     def __init__(self, low: float, high: float) -> None:
-        self.low = low
-        self.high = high
+        self._low = low
+        self._high = high
 
 
 class _IntParameter(_Parameter):
-    low: int
-    high: int
-    variations: tuple[Any, ...]
-    uncertainties: tuple[tuple[Any, ...], ...] | tuple[Any, ...]
+    _low: int
+    _high: int
+    _variations: tuple[Any, ...]
+    _uncertainties: tuple[tuple[Any, ...], ...] | tuple[Any, ...]
     _is_uncertain: bool
 
     @abstractmethod
@@ -64,26 +64,26 @@ class _IntParameter(_Parameter):
         variations: Iterable[Any],
         uncertainties: Iterable[Iterable[Any]] | Iterable[Any],
     ) -> None:
-        self.variations = tuple(variations)
+        self._variations = tuple(variations)
         if uncertainties == ():
             self._is_uncertain = False
         else:
             self._is_uncertain = True
-            self.uncertainties = (
+            self._uncertainties = (
                 tuple(tuple(uncertainty) for uncertainty in uncertainties)
                 if any(isinstance(item, Iterable) for item in uncertainties)
-                else (tuple(uncertainties),) * len(self.variations)
+                else (tuple(uncertainties),) * len(self._variations)
             )
 
-        self.low = 0
-        self.high = len(self.variations)
+        self._low = 0
+        self._high = len(self._variations)
 
     def __getitem__(self, index: SupportsIndex | tuple[SupportsIndex, SupportsIndex]):
         match self._is_uncertain, index:
             case True, (int() as x, int() as y):
-                return self.uncertainties[x][y]
+                return self._uncertainties[x][y]
             case False, int() as x:
-                return self.variations[x]
+                return self._variations[x]
             case _:
                 raise
 
@@ -98,21 +98,21 @@ class IndexTagger(_Tagger):
     """
 
     _LOCATION: ClassVar[str] = "regular"
-    class_name: str
-    object_name: str
-    field_name: str
+    _class_name: str
+    _object_name: str
+    _field_name: str
 
     def __init__(self, class_name: str, object_name: str, field_name: str) -> None:
-        self.class_name = class_name
-        self.object_name = object_name
-        self.field_name = field_name
+        self._class_name = class_name
+        self._object_name = object_name
+        self._field_name = field_name
 
-        super().__init__((self.class_name, self.object_name, self.field_name))
+        super().__init__((self._class_name, self._object_name, self._field_name))
 
     def _tagged(self, model: IDF) -> IDF:
         # NOTE: maybe applicable to multiple fields
-        model.getobject(self.class_name, self.object_name)[
-            makefieldname(self.field_name)
+        model.getobject(self._class_name, self._object_name)[
+            makefieldname(self._field_name)
         ] = self._tag
         return model
 
@@ -124,22 +124,22 @@ class StringTagger(_Tagger):
     """
 
     _LOCATION: ClassVar[str] = "macro"
-    string: str
-    prefix: str
-    suffix: str
+    _string: str
+    _prefix: str
+    _suffix: str
 
     def __init__(self, string: str, prefix: str = "", suffix: str = "") -> None:
         if not (string.startswith(prefix) and string.endswith(suffix)):
             raise ValueError("string needs to share the prefix and the suffix.")
 
-        self.string = string
-        self.prefix = prefix
-        self.suffix = suffix
+        self._string = string
+        self._prefix = prefix
+        self._suffix = suffix
 
-        super().__init__((self.string,))
+        super().__init__((self._string,))
 
     def _tagged(self, model: str) -> str:
-        return model.replace(self.string, self.prefix + self._tag + self.suffix)
+        return model.replace(self._string, self._prefix + self._tag + self._suffix)
 
 
 #############################################################################
@@ -150,8 +150,8 @@ class ContinuousParameter(_ModelParameterMixin, _FloatParameter):
 
 
 class DiscreteParameter(_ModelParameterMixin, _IntParameter):
-    variations: tuple[float, ...]
-    uncertainties: tuple[tuple[float, ...], ...] | tuple[float, ...]
+    _variations: tuple[float, ...]
+    _uncertainties: tuple[tuple[float, ...], ...] | tuple[float, ...]
 
     def __init__(
         self,
@@ -163,8 +163,8 @@ class DiscreteParameter(_ModelParameterMixin, _IntParameter):
 
 
 class CategoricalParameter(_ModelParameterMixin, _IntParameter):
-    variations: tuple[str, ...]
-    uncertainties: tuple[tuple[str, ...], ...] | tuple[str, ...]
+    _variations: tuple[str, ...]
+    _uncertainties: tuple[tuple[str, ...], ...] | tuple[str, ...]
 
     def __init__(
         self,
@@ -176,8 +176,8 @@ class CategoricalParameter(_ModelParameterMixin, _IntParameter):
 
 
 class WeatherParameter(_IntParameter):
-    variations: tuple[Path | str, ...]
-    uncertainties: tuple[tuple[Path, ...], ...] | tuple[Path, ...]
+    _variations: tuple[Path | str, ...]
+    _uncertainties: tuple[tuple[Path, ...], ...] | tuple[Path, ...]
 
     @overload
     def __init__(self, variations: Iterable[AnyStrPath]) -> None:
