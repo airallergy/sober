@@ -1,10 +1,18 @@
 from pathlib import Path
 from platform import system
-from typing import Any, TypeAlias
+from typing import TypedDict
 
 from ._tools import AnyStrPath
 
-Config: TypeAlias = dict[str, Any]
+Config = TypedDict(
+    "Config",
+    {
+        "exec.energyplus": Path | None,
+        "exec.epmacro": Path | None,
+        "exec.readvars": Path | None,
+        "schema.energyplus": Path | None,
+    },
+)
 
 _config: Config = {
     "exec.energyplus": None,
@@ -16,7 +24,8 @@ _config: Config = {
 
 def _update_config(config: Config) -> None:
     for key, val in config.items():
-        _config[key] = val
+        if key in _config:
+            _config[key] = val  # type: ignore[literal-required] # python/mypy#9953
 
 
 def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:
