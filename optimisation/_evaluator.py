@@ -12,15 +12,14 @@ from ._simulator import _run_epmacro, _run_energyplus
 from .parameters import WeatherParameter, AnyIntModelParameter
 
 
-def _product_evaluate(
-    variation_idxs: tuple[int, ...],
-    tagged_model: str,
-    weather: WeatherParameter,
-    parameters: tuple[AnyIntModelParameter, ...],
-    outputs: tuple[_Collector, ...],
-    outputs_directory: Path,
-    model_type: str,
-) -> None:
+def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
+    tagged_model = _meta_params["tagged_model"]
+    weather = _meta_params["weather"]
+    parameters = _meta_params["parameters"]
+    outputs = _meta_params["outputs"]
+    outputs_directory = _meta_params["outputs_directory"]
+    model_type = _meta_params["model_type"]
+
     weather_variation_idx = variation_idxs[0]
     parameter_variation_idxs = variation_idxs[1:]
 
@@ -78,12 +77,22 @@ def _multiprocessing_context() -> BaseContext:
             raise NotImplementedError(f"unsupported system: '{system_name}'.")
 
 
+def _initialise(config, meta_params) -> None:
+    _update_config(config)
+    global _meta_params
+    _meta_params = meta_params
+
+
 def _parallel_evaluate(
     func: Callable,
     params: Iterable[Iterable[Any]],
-    *meta_params,
     processess: int | None = None,
+    **meta_params,
 ) -> None:
     ctx = _multiprocessing_context()
-    with ctx.Pool(processess, initializer=_update_config, initargs=(_config,)) as pool:
-        pool.starmap(func, zip(params, *map(repeat, meta_params)))
+    with ctx.Manager() as manager:
+        _meta_params = manager.dict(meta_params)
+        with ctx.Pool(
+            processess, initializer=_initialise, initargs=(_config, _meta_params)
+        ) as pool:
+            pool.map(func, params)

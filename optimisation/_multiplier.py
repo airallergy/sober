@@ -22,10 +22,10 @@ def _multiply(
     _parallel_evaluate(
         _product_evaluate,
         variation_idxs_iter,
-        tagged_model,
-        weather,
-        parameters,
-        outputs,
-        outputs_directory,
-        model_type,
+        tagged_model=tagged_model,
+        weather=weather,
+        parameters=parameters,
+        outputs=outputs,
+        outputs_directory=outputs_directory,
+        model_type=model_type,
     )
