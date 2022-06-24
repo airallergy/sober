@@ -1,14 +1,12 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
 from uuid import NAMESPACE_X500, uuid5
-from typing import Any, TypeVar, ClassVar, Iterable, TypeAlias, overload
+from typing import Any, ClassVar, Iterable, TypeAlias, overload
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 
 from ._tools import AnyStrPath
-
-AnyModel = TypeVar("AnyModel", IDF, str)
 
 
 #############################################################################
