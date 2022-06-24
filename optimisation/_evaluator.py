@@ -11,6 +11,8 @@ from .config import _config, _update_config
 from ._simulator import _run_epmacro, _run_energyplus
 from .parameters import WeatherParameter, AnyIntModelParameter
 
+_meta_params: dict[str, Any]
+
 
 def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
     outputs = _meta_params["outputs"]
