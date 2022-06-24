@@ -167,11 +167,7 @@ class WeatherParameter(_IntParameter):
     uncertainties: tuple[tuple[Path, ...], ...] | tuple[Path, ...]
 
     @overload
-    def __init__(
-        self,
-        variations: Iterable[AnyStrPath],
-        uncertainties: tuple[()],
-    ) -> None:
+    def __init__(self, variations: Iterable[AnyStrPath]) -> None:
         ...
 
     @overload
