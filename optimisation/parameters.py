@@ -55,31 +55,44 @@ class _IntParameter(_Parameter):
     _low: int
     _high: int
     _variations: tuple[Any, ...]
-    _uncertainties: tuple[tuple[Any, ...], ...] | tuple[Any, ...]
+    _uncertainties: tuple[tuple[Any, ...], ...]
+    _n_variations: int
+    _ns_uncertainty: tuple[int, ...]
     _is_uncertain: bool
 
     @abstractmethod
     def __init__(
         self,
         variations: Iterable[Any],
-        uncertainties: Iterable[Iterable[Any]] | Iterable[Any],
+        *uncertainties: Iterable[Any],
     ) -> None:
         self._variations = tuple(variations)
-        if uncertainties == ():
-            self._is_uncertain = False
-        else:
-            self._is_uncertain = True
-            self._uncertainties = (
-                tuple(tuple(uncertainty) for uncertainty in uncertainties)
-                if any(isinstance(item, Iterable) for item in uncertainties)
-                else (tuple(uncertainties),) * len(self._variations)
-            )
+        self._n_variations = len(self._variations)
+        match len(uncertainties):
+            case 0:
+                self._ns_uncertainty = ()
+            case 1:
+                self._uncertainties = (tuple(uncertainties[0]),) * self._n_variations
+                self._ns_uncertainty = (
+                    len(self._uncertainties[0]),
+                ) * self._n_variations
+            case self._n_variations:
+                # allow different uncertainty counts for each variation
+                self._uncertainties = tuple(
+                    tuple(uncertainty) for uncertainty in uncertainties
+                )
+                self._ns_uncertainty = tuple(map(len, self._uncertainties))
+            case _:
+                raise ValueError(
+                    f"The number of uncertainties is different from that of variations: '{len(uncertainties)}', '{self._n_variations}'."
+                )
 
+        self._is_uncertain = len(self._ns_uncertainty) != 0
         self._low = 0
-        self._high = len(self._variations)
+        self._high = self._n_variations
 
     def __getitem__(self, index: SupportsIndex | tuple[SupportsIndex, SupportsIndex]):
-        match self._is_uncertain, index:
+        match self._is_uncertain, index:  # mypy crash: python/mypy#12533
             case True, (int() as x, int() as y):
                 return self._uncertainties[x][y]
             case False, int() as x:
@@ -151,33 +164,33 @@ class ContinuousParameter(_ModelParameterMixin, _FloatParameter):
 
 class DiscreteParameter(_ModelParameterMixin, _IntParameter):
     _variations: tuple[float, ...]
-    _uncertainties: tuple[tuple[float, ...], ...] | tuple[float, ...]
+    _uncertainties: tuple[tuple[float, ...], ...]
 
     def __init__(
         self,
         tagger: _Tagger,
         variations: Iterable[float],
-        uncertainties: Iterable[Iterable[float]] | Iterable[float] = (),
+        *uncertainties: Iterable[float],
     ) -> None:
-        super().__init__(tagger, variations, uncertainties)
+        super().__init__(tagger, variations, *uncertainties)
 
 
 class CategoricalParameter(_ModelParameterMixin, _IntParameter):
     _variations: tuple[str, ...]
-    _uncertainties: tuple[tuple[str, ...], ...] | tuple[str, ...]
+    _uncertainties: tuple[tuple[str, ...], ...]
 
     def __init__(
         self,
         tagger: _Tagger,
         variations: Iterable[str],
-        uncertainties: Iterable[Iterable[str]] | Iterable[str] = (),
+        *uncertainties: Iterable[str],
     ) -> None:
-        super().__init__(tagger, variations, uncertainties)
+        super().__init__(tagger, variations, *uncertainties)
 
 
 class WeatherParameter(_IntParameter):
     _variations: tuple[Path | str, ...]
-    _uncertainties: tuple[tuple[Path, ...], ...] | tuple[Path, ...]
+    _uncertainties: tuple[tuple[Path, ...], ...]
 
     @overload
     def __init__(self, variations: Iterable[AnyStrPath]) -> None:
@@ -185,19 +198,18 @@ class WeatherParameter(_IntParameter):
 
     @overload
     def __init__(
-        self,
-        variations: Iterable[str],
-        uncertainties: Iterable[Iterable[AnyStrPath]] | Iterable[AnyStrPath],
+        self, variations: Iterable[str], *uncertainties: Iterable[AnyStrPath]
     ) -> None:
         ...
 
-    def __init__(self, variations, uncertainties=()):
+    def __init__(self, variations, *uncertainties):
         super().__init__(
-            (Path(variation) for variation in variations)
-            if uncertainties == ()
-            else (variation for variation in variations),
-            uncertainties,
+            map(Path, variations) if len(uncertainties) else variations, *uncertainties
         )
+        if self._is_uncertain:
+            self._uncertainties = tuple(
+                tuple(map(Path, item)) for item in self._uncertainties
+            )
 
 
 AnyIntModelParameter: TypeAlias = DiscreteParameter | CategoricalParameter
