@@ -2,7 +2,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from uuid import NAMESPACE_X500, uuid5
-from typing import Any, ClassVar, TypeAlias, overload
+from typing import Any, ClassVar, TypeAlias, SupportsIndex, overload
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
@@ -73,6 +73,15 @@ class _IntParameter(_Parameter):
 
         self.low = 0
         self.high = len(self.variations)
+
+    def __getitem__(self, index: SupportsIndex | tuple[SupportsIndex, SupportsIndex]):
+        match self._is_uncertain, index:
+            case True, (int() as x, int() as y):
+                return self.uncertainties[x][y]
+            case False, int() as x:
+                return self.variations[x]
+            case _:
+                raise
 
 
 #############################################################################
