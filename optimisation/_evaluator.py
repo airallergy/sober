@@ -7,8 +7,8 @@ from multiprocessing import get_context
 from typing import Any, Callable, TypeAlias
 from multiprocessing.context import BaseContext
 
+from . import config as cf
 from .collector import _Collector
-from .config import Config, _config, _update_config
 from ._simulator import _run_epmacro, _run_energyplus
 from .parameters import WeatherParameter, AnyIntModelParameter
 
@@ -83,8 +83,8 @@ def _multiprocessing_context() -> BaseContext:
             raise NotImplementedError(f"unsupported system: '{system_name}'.")
 
 
-def _initialise(config: Config, meta_params: MetaParams) -> None:
-    _update_config(config)
+def _initialise(config: cf.Config, meta_params: MetaParams) -> None:
+    cf._update_config(config)
     global _meta_params
     _meta_params = meta_params
 
@@ -99,6 +99,6 @@ def _parallel_evaluate(
     with ctx.Manager() as manager:
         _meta_params = manager.dict(meta_params)
         with ctx.Pool(
-            processess, initializer=_initialise, initargs=(_config, _meta_params)
+            processess, initializer=_initialise, initargs=(cf._config, _meta_params)
         ) as pool:
             pool.map(func, params)

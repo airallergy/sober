@@ -7,25 +7,23 @@ from ._tools import AnyStrPath
 Config = TypedDict(
     "Config",
     {
-        "exec.energyplus": Path | None,
-        "exec.epmacro": Path | None,
-        "exec.readvars": Path | None,
-        "schema.energyplus": Path | None,
+        "exec.energyplus": Path,
+        "exec.epmacro": Path,
+        "exec.readvars": Path,
+        "schema.energyplus": Path,
     },
 )
 
-_config: Config = {
-    "exec.energyplus": None,
-    "exec.epmacro": None,
-    "exec.readvars": None,
-    "schema.energyplus": None,
-}
+_config: Config
 
 
 def _update_config(config: Config) -> None:
-    for key, val in config.items():
-        if key in _config:
-            _config[key] = val  # type: ignore[literal-required] # python/mypy#9953
+    global _config
+
+    if config.keys() != Config.__annotations__.keys():
+        raise TypeError(f"configuration must follow '{Config.__annotations__}'.")
+
+    _config = config
 
 
 def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:
@@ -49,6 +47,8 @@ def config_energyplus(
     readvars_exec: AnyStrPath | None = None,
     schema: AnyStrPath | None = None,
 ) -> None:
+    global _config
+
     if version is not None:
         root = _default_energyplus_root(*version.split("."))
 
@@ -65,10 +65,12 @@ def config_energyplus(
         and (readvars_exec is not None)
         and (schema is not None)
     ):
-        _config["exec.energyplus"] = Path(energyplus_exec).resolve(strict=True)
-        _config["exec.epmacro"] = Path(epmacro_exec).resolve(strict=True)
-        _config["exec.readvars"] = Path(readvars_exec).resolve(strict=True)
-        _config["schema.energyplus"] = Path(schema).resolve(strict=True)
+        _config = {
+            "exec.energyplus": Path(energyplus_exec).resolve(strict=True),
+            "exec.epmacro": Path(epmacro_exec).resolve(strict=True),
+            "exec.readvars": Path(readvars_exec).resolve(strict=True),
+            "schema.energyplus": Path(schema).resolve(strict=True),
+        }
     else:
         raise ValueError(
             "One of version_parts, root, (energyplus_exec, epmacro_exec, readvars_exec, schema) needs to be provided."

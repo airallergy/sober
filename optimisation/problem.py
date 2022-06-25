@@ -8,12 +8,12 @@ from numpy.typing import NDArray
 from pymoo.core.callback import Callback
 from pymoo.core.problem import Problem as _PymooProblem
 
+from . import config as cf
 from ._tools import AnyStrPath
 from .collector import _Collector
 from ._multiplier import _multiply
 from ._simulator import _split_model
 from ._evaluator import _pymoo_evaluate
-from .config import _config, config_energyplus
 from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
 
@@ -80,11 +80,11 @@ class Problem:
 
     def _tag_model(self) -> None:
         macros, regulars = _split_model(self._model_file)
-        if None in _config.values():
-            idf = openidf(StringIO(regulars))
-            config_energyplus(idf.idfobjects["Version"][0]["Version_Identifier"])
+        if hasattr(cf, "_config"):
+            idf = openidf(StringIO(regulars), cf._config["schema.energyplus"])
         else:
-            idf = openidf(StringIO(regulars), _config["schema.energyplus"])
+            idf = openidf(StringIO(regulars))
+            cf.config_energyplus(idf.idfobjects["Version"][0]["Version_Identifier"])
 
         for parameter in self._parameters:
             tagger = parameter._tagger
