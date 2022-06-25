@@ -1,6 +1,7 @@
 from os.path import relpath
 from typing import TypeAlias
 from pathlib import Path, PurePath
+from collections.abc import Iterable
 from subprocess import PIPE, STDOUT, run
 
 from . import config as cf
@@ -63,7 +64,7 @@ def _resolved_path(path: AnyStrPath, default_parent: AnyStrPath) -> Path:
         return Path(default_parent).resolve() / pure_path
 
 
-def _resolved_macros(macro_lines: list[str], model_directory: Path) -> list[str]:
+def _resolved_macros(macro_lines: Iterable[str], model_directory: Path) -> list[str]:
     # lines should have been trimmed
     fileprefix = model_directory.resolve()
     resolved_macro_lines = []

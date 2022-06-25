@@ -2,9 +2,9 @@ from pathlib import Path
 from platform import system
 from shutil import copyfile
 from itertools import repeat
-from collections.abc import Iterable
+from typing import Any, TypeAlias
 from multiprocessing import get_context
-from typing import Any, Callable, TypeAlias
+from collections.abc import Callable, Iterable
 from multiprocessing.context import BaseContext
 
 from . import config as cf
