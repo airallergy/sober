@@ -1,16 +1,19 @@
 from os.path import relpath
+from typing import TypeAlias
 from pathlib import Path, PurePath
 from subprocess import PIPE, STDOUT, run
 
 from . import config as cf
 from ._tools import AnyStrPath
 
+CMD: TypeAlias = tuple[AnyStrPath, ...]
+
 
 def _run_epmacro(imf_file: Path) -> Path:
     if imf_file.stem != "in":
         (imf_file.parent / "in.imf").symlink_to(imf_file)
 
-    commands = (cf._config["exec.epmacro"],)
+    commands: CMD = (cf._config["exec.epmacro"],)
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=imf_file.parent, text=True)
 
     if imf_file.stem != "in":
@@ -23,12 +26,15 @@ def _run_energyplus(
     idf_file: Path,
     epw_file: Path,
     job_directory: Path,
-    has_templates: bool,
+    has_templates: bool = False,
 ) -> None:
-    commands = (
-        (cf._config["exec.energyplus"],)
-        + (("-x",) if has_templates else ())
-        + ("-w", relpath(epw_file, job_directory), relpath(idf_file, job_directory))
+    commands: CMD = (cf._config["exec.energyplus"],)
+    if has_templates:
+        commands += ("-x",)
+    commands += (
+        "-w",
+        relpath(epw_file, job_directory),
+        relpath(idf_file, job_directory),
     )
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=job_directory, text=True)
 
@@ -36,14 +42,16 @@ def _run_energyplus(
 def _run_readvars(
     rvi_file: Path,
     job_directory: Path,
-    frequency: str,
+    frequency: str = "",
 ) -> None:
-    commands = (
+    commands: CMD = (
         cf._config["exec.readvars"],
         relpath(rvi_file, job_directory),
         "Unlimited",
         "FixHeader",
-    ) + ((frequency,) if frequency else ())
+    )
+    if frequency:
+        commands += (frequency,)
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=job_directory, text=True)
 
 
