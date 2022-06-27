@@ -37,11 +37,11 @@ class _Parameter(ABC):
     _high: float
 
 
-class _ModelParameterMixin(ABC):
-    _tagger: _Tagger
+class _ModelParameterMixin(ABC, Generic[_M]):
+    _tagger: _Tagger[_M]
 
     @abstractmethod
-    def __init__(self, tagger: _Tagger, *args, **kwargs) -> None:
+    def __init__(self, tagger: _Tagger[_M], *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)  # NOTE: to _FloatParameter/_IntParameter
         self._tagger = tagger
 
@@ -118,7 +118,7 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
 #############################################################################
 #######                        TAGGER CLASSES                         #######
 #############################################################################
-class IndexTagger(_Tagger):
+class IndexTagger(_Tagger[IDF]):
     """Tagger for regular commands by indexing.
 
     No support for nested regular commands.
@@ -144,7 +144,7 @@ class IndexTagger(_Tagger):
         return model
 
 
-class StringTagger(_Tagger):
+class StringTagger(_Tagger[str]):
     """Tagger for macro commands by string replacement.
 
     No support for nested macro commands.
@@ -172,37 +172,37 @@ class StringTagger(_Tagger):
 #############################################################################
 #######                       PARAMETER CLASSES                       #######
 #############################################################################
-class ContinuousParameter(_ModelParameterMixin, _FloatParameter):
+class ContinuousParameter(_ModelParameterMixin[_M], _FloatParameter):
     ...
 
 
-class DiscreteParameter(_ModelParameterMixin, _IntParameter):
+class DiscreteParameter(_ModelParameterMixin[_M], _IntParameter[float, float]):
     _variations: tuple[float, ...]
     _uncertainties: tuple[tuple[float, ...], ...]
 
     def __init__(
         self,
-        tagger: _Tagger,
+        tagger: _Tagger[_M],
         variations: Iterable[float],
         *uncertainties: Iterable[float],
     ) -> None:
         super().__init__(tagger, variations, *uncertainties)
 
 
-class CategoricalParameter(_ModelParameterMixin, _IntParameter):
+class CategoricalParameter(_ModelParameterMixin[_M], _IntParameter[str, str]):
     _variations: tuple[str, ...]
     _uncertainties: tuple[tuple[str, ...], ...]
 
     def __init__(
         self,
-        tagger: _Tagger,
+        tagger: _Tagger[_M],
         variations: Iterable[str],
         *uncertainties: Iterable[str],
     ) -> None:
         super().__init__(tagger, variations, *uncertainties)
 
 
-class WeatherParameter(_IntParameter):
+class WeatherParameter(_IntParameter[Path | str, Path]):
     _variations: tuple[Path | str, ...]
     _uncertainties: tuple[tuple[Path, ...], ...]
 
