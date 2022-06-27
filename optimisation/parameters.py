@@ -72,7 +72,7 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
         self._n_variations = len(self._variations)
         match len(uncertainties):
             case 0:
-                self._ns_uncertainty = ()
+                self._ns_uncertainty = (1,) * self._n_variations
             case 1:
                 self._uncertainties = (tuple(uncertainties[0]),) * self._n_variations
                 self._ns_uncertainty = (
@@ -89,7 +89,7 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
                     f"The number of uncertainties is different from that of variations: '{len(uncertainties)}', '{self._n_variations}'."
                 )
 
-        self._is_uncertain = len(self._ns_uncertainty) != 0
+        self._is_uncertain = set(self._ns_uncertainty) != {1}
         self._low = 0
         self._high = self._n_variations
 
@@ -104,6 +104,8 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
     def __getitem__(self, index):
         match self._is_uncertain, index:
             case False, int() as x:
+                return self._variations[x]
+            case False, (int() as x, 0):
                 return self._variations[x]
             case True, (int() as x, int() as y):
                 return self._uncertainties[x][y]
