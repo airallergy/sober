@@ -1,8 +1,8 @@
 from pathlib import Path
 from platform import system
 from shutil import copyfile
-from itertools import repeat
-from typing import Any, TypeAlias
+from typing import Any, TypedDict
+from itertools import chain, product
 from multiprocessing import get_context
 from collections.abc import Callable, Iterable
 from multiprocessing.context import BaseContext
@@ -12,7 +12,17 @@ from .collector import _Collector
 from ._simulator import _run_epmacro, _run_energyplus
 from .parameters import WeatherParameter, AnyIntModelParameter
 
-MetaParams: TypeAlias = dict[str, Any]
+MetaParams = TypedDict(
+    "MetaParams",
+    {
+        "tagged_model": str,
+        "weather": WeatherParameter,
+        "parameters": tuple[AnyIntModelParameter, ...],
+        "outputs": tuple[_Collector, ...],
+        "outputs_directory": Path,
+        "model_type": str,
+    },
+)
 
 _meta_params: MetaParams
 
@@ -29,7 +39,7 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
     parameter_variation_idxs = variation_idxs[1:]
 
     # generate job uid
-    job_uid = f"EP_M-0_W-{weather_variation_idx}_" + "_".join(
+    job_uid = f"V_W-{weather_variation_idx}_" + "_".join(
         (
             f"P{idx}-{variation_idx}"
             for idx, variation_idx in enumerate(parameter_variation_idxs)
@@ -40,33 +50,69 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
     job_directory = outputs_directory / job_uid
     job_directory.mkdir(exist_ok=True)
 
-    # copy job weather files
-    job_epw_file = job_directory / "in.epw"
-    copyfile(weather._variations[weather_variation_idx], job_epw_file)
+    # handle uncertain parameters
+    for uncertainty_idxs in product(
+        range(weather._ns_uncertainty[weather_variation_idx]),
+        *map(
+            range,
+            (
+                parameter._ns_uncertainty[variation_idx]
+                for variation_idx, parameter in zip(
+                    parameter_variation_idxs, parameters
+                )
+            ),
+        ),
+    ):
+        weather_uncertainty_idx = uncertainty_idxs[0]
+        parameter_uncertainty_idxs = uncertainty_idxs[1:]
 
-    # insert parameter value
-    for variation_idx, parameter in zip(parameter_variation_idxs, parameters):
-        model = model.replace(
-            parameter._tagger._tag, str(parameter._variations[variation_idx])
+        # generate task uid
+        task_uid = "_".join(
+            chain(
+                ("U", f"W-{weather_uncertainty_idx}")
+                if weather._is_uncertain
+                else ("U",),
+                (
+                    f"P{idx}-{uncertainty_idx}"
+                    for idx, uncertainty_idx in enumerate(parameter_uncertainty_idxs)
+                    if parameters[idx]._is_uncertain
+                ),
+            )
         )
 
-    # write job model file
-    job_model_file = job_directory / ("in" + model_type)
-    with open(job_model_file, "wt") as f:
-        f.write(model)
+        # create task folder
+        task_directory = job_directory / task_uid
+        task_directory.mkdir(exist_ok=True)
 
-    # run epmacro if needed
-    if model_type == ".imf":
-        job_idf_file = _run_epmacro(job_model_file)
-    elif model_type == ".idf":
-        job_idf_file = job_model_file
-    else:
-        raise
+        # copy task weather files
+        task_epw_file = task_directory / "in.epw"
+        copyfile(weather[weather_variation_idx, weather_uncertainty_idx], task_epw_file)
 
-    # run energyplus
-    _run_energyplus(job_idf_file, job_epw_file, job_directory, False)
+        # insert parameter value
+        for variation_idx, uncertainty_idx, parameter in zip(
+            parameter_variation_idxs, parameter_uncertainty_idxs, parameters
+        ):
+            model = model.replace(
+                parameter._tagger._tag, str(parameter[variation_idx, uncertainty_idx])
+            )
 
-    # collect outputs per job
+        # write task model file
+        task_model_file = task_directory / ("in" + model_type)
+        with open(task_model_file, "wt") as f:
+            f.write(model)
+
+        # run epmacro if needed
+        if model_type == ".imf":
+            task_idf_file = _run_epmacro(task_model_file)
+        elif model_type == ".idf":
+            task_idf_file = task_model_file
+        else:
+            raise
+
+        # run energyplus
+        _run_energyplus(task_idf_file, task_epw_file, task_directory, False)
+
+        # collect outputs per task
 
 
 def _pymoo_evaluate():
