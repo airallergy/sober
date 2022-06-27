@@ -24,36 +24,29 @@ def _run_epmacro(imf_file: Path) -> Path:
 
 
 def _run_energyplus(
-    idf_file: Path,
-    epw_file: Path,
-    job_directory: Path,
-    has_templates: bool = False,
+    idf_file: Path, epw_file: Path, cwd: Path, has_templates: bool = False
 ) -> None:
     commands: CMD = (cf._config["exec.energyplus"],)
     if has_templates:
         commands += ("-x",)
     commands += (
         "-w",
-        relpath(epw_file, job_directory),
-        relpath(idf_file, job_directory),
+        relpath(epw_file, cwd),
+        relpath(idf_file, cwd),
     )
-    run(commands, stdout=PIPE, stderr=STDOUT, cwd=job_directory, text=True)
+    run(commands, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
 
 
-def _run_readvars(
-    rvi_file: Path,
-    job_directory: Path,
-    frequency: str = "",
-) -> None:
+def _run_readvars(rvi_file: Path, cwd: Path, frequency: str = "") -> None:
     commands: CMD = (
         cf._config["exec.readvars"],
-        relpath(rvi_file, job_directory),
+        relpath(rvi_file, cwd),
         "Unlimited",
         "FixHeader",
     )
     if frequency:
         commands += (frequency,)
-    run(commands, stdout=PIPE, stderr=STDOUT, cwd=job_directory, text=True)
+    run(commands, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
 
 
 def _resolved_path(path: AnyStrPath, default_parent: AnyStrPath) -> Path:
