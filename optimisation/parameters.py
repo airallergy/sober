@@ -2,7 +2,15 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from uuid import NAMESPACE_X500, uuid5
-from typing import Generic, TypeVar, ClassVar, TypeAlias, SupportsIndex, overload
+from typing import (
+    Generic,
+    Literal,
+    TypeVar,
+    ClassVar,
+    TypeAlias,
+    SupportsIndex,
+    overload,
+)
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
@@ -12,11 +20,14 @@ from ._tools import AnyStrPath
 _M = TypeVar("_M")  # AnyModel
 _V = TypeVar("_V")  # AnyVariation
 _U = TypeVar("_U")  # AnyUncertaintyVar
+
+AnyLocation = Literal["macro", "regular"]
+
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Tagger(ABC, Generic[_M]):
-    _LOCATION: ClassVar[str]
+    _LOCATION: ClassVar[AnyLocation]
     _tag: str
 
     @abstractmethod
@@ -126,7 +137,7 @@ class IndexTagger(_Tagger[IDF]):
     No support for nested regular commands.
     """
 
-    _LOCATION: ClassVar[str] = "regular"
+    _LOCATION = "regular"  # type: ignore[assignment] # python/mypy#12554
     _class_name: str
     _object_name: str
     _field_name: str
@@ -152,7 +163,7 @@ class StringTagger(_Tagger[str]):
     No support for nested macro commands.
     """
 
-    _LOCATION: ClassVar[str] = "macro"
+    _LOCATION = "macro"  # type: ignore[assignment] # python/mypy#12554
     _string: str
     _prefix: str
     _suffix: str
