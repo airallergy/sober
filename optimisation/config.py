@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Literal
 from platform import system
+from typing import Literal, TypeAlias
 
 from typing_extensions import Required, TypedDict  # TODO: from typing after 3.11
 
 from ._tools import AnyStrPath
 
-AnyLanguage = Literal["python"]
+AnyLanguage: TypeAlias = Literal["python"]
 Config = TypedDict(
     "Config",
     {

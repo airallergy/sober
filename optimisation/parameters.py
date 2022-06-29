@@ -21,7 +21,7 @@ _M = TypeVar("_M")  # AnyModel
 _V = TypeVar("_V")  # AnyVariation
 _U = TypeVar("_U")  # AnyUncertaintyVar
 
-AnyLocation = Literal["macro", "regular"]
+AnyLocation: TypeAlias = Literal["macro", "regular"]
 
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
