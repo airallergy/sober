@@ -8,22 +8,26 @@ from .collector import RVICollector, _Collector
 Config = TypedDict(
     "Config",
     {
-        "exec.energyplus": Path,
+        "schema.energyplus": Path | None,
+        "exec.energyplus": Path | None,
         "exec.epmacro": Path | None,
         "exec.readvars": Path | None,
-        "schema.energyplus": Path,
+        "exec.python": Path | None,
     },
 )
 
-_config: Config
+_config: Config = {
+    "schema.energyplus": None,
+    "exec.energyplus": None,
+    "exec.epmacro": None,
+    "exec.readvars": None,
+    "exec.python": None,
+}
 _config_directory: Path
 
 
 def _update_config(config: Config) -> None:
     global _config
-
-    if config.keys() != Config.__annotations__.keys():
-        raise TypeError(f"configuration must follow '{Config.__annotations__}'.")
 
     _config = config
 
@@ -54,12 +58,13 @@ def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:
 
 
 def config_energyplus(
+    *,
     version: str | None = None,
     root: AnyStrPath | None = None,
+    schema: AnyStrPath | None = None,
     energyplus_exec: AnyStrPath | None = None,
     epmacro_exec: AnyStrPath | None = None,
     readvars_exec: AnyStrPath | None = None,
-    schema: AnyStrPath | None = None,
 ) -> None:
     global _config
 
@@ -68,27 +73,24 @@ def config_energyplus(
 
     if root is not None:
         root = Path(root)
+        schema = root / "Energy+.idd"
         energyplus_exec = root / "energyplus"
         epmacro_exec = root / "EPMacro"
         readvars_exec = root / "PostProcess" / "ReadVarsESO"
-        schema = root / "Energy+.idd"
 
-    if (energyplus_exec is not None) and (schema is not None):
-        _config = {
-            "exec.energyplus": Path(energyplus_exec).resolve(strict=True),
-            "exec.epmacro": (
-                epmacro_exec
-                if epmacro_exec is None
-                else Path(epmacro_exec).resolve(strict=True)
-            ),
-            "exec.readvars": (
-                readvars_exec
-                if readvars_exec is None
-                else Path(readvars_exec).resolve(strict=True)
-            ),
-            "schema.energyplus": Path(schema).resolve(strict=True),
-        }
-    else:
+    if (energyplus_exec is None) or (schema is None):
         raise ValueError(
-            "One of version_parts, root, (energyplus_exec, epmacro_exec, readvars_exec, schema) needs to be provided."
+            "One of version_parts, root, (schema, energyplus_exec) needs to be provided."
         )
+
+    _config["schema.energyplus"] = Path(schema).resolve(strict=True)
+    _config["exec.energyplus"] = Path(energyplus_exec).resolve(strict=True)
+    if epmacro_exec is not None:
+        _config["exec.epmacro"] = Path(epmacro_exec).resolve(strict=True)
+    if readvars_exec is not None:
+        _config["exec.readvars"] = Path(readvars_exec).resolve(strict=True)
+
+
+def config_script(python: AnyStrPath | None = None) -> None:
+    if python is not None:
+        _config[f"exec.python"] = Path(python).resolve(strict=True)

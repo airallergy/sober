@@ -84,15 +84,13 @@ class Problem:
 
     def _tag_model(self) -> None:
         macros, regulars = _split_model(self._model_file)
-        if hasattr(cf, "_config"):
-            idf = openidf(StringIO(regulars), cf._config["schema.energyplus"])
-            cf._check_config(
-                self._model_type,
-                chain(self._objectives, self._constraints, self._extra_outputs),
+        if cf._config["schema.energyplus"] is None:
+            idf = openidf(StringIO(regulars))
+            cf.config_energyplus(
+                version=idf.idfobjects["Version"][0]["Version_Identifier"]
             )
         else:
-            idf = openidf(StringIO(regulars))
-            cf.config_energyplus(idf.idfobjects["Version"][0]["Version_Identifier"])
+            idf = openidf(StringIO(regulars), cf._config["schema.energyplus"])
 
         for parameter in self._parameters:
             tagger = parameter._tagger
@@ -113,6 +111,10 @@ class Problem:
         self._tag_model()
         self._outputs_directory.mkdir(exist_ok=True)
         self._touch_rvi()
+        cf._check_config(
+            self._model_type,
+            chain(self._objectives, self._constraints, self._extra_outputs),
+        )
 
     def _to_pymoo(self) -> PymooProblem:
         if self._objectives == ():
