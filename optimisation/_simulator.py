@@ -1,20 +1,17 @@
 from os.path import relpath
-from typing import TypeAlias
 from pathlib import Path, PurePath
 from collections.abc import Iterable
 from subprocess import PIPE, STDOUT, run
 
 from . import config as cf
-from ._tools import AnyStrPath
-
-CMD: TypeAlias = tuple[AnyStrPath, ...]
+from ._tools import AnyCli, AnyStrPath
 
 
 def _run_epmacro(imf_file: Path) -> Path:
     if imf_file.stem != "in":
         (imf_file.parent / "in.imf").symlink_to(imf_file)
 
-    commands: CMD = (cf._config["exec.epmacro"],)
+    commands: AnyCli = (cf._config["exec.epmacro"],)
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=imf_file.parent, text=True)
 
     if imf_file.stem != "in":
@@ -26,7 +23,7 @@ def _run_epmacro(imf_file: Path) -> Path:
 def _run_energyplus(
     idf_file: Path, epw_file: Path, cwd: Path, has_templates: bool = False
 ) -> None:
-    commands: CMD = (cf._config["exec.energyplus"],)
+    commands: AnyCli = (cf._config["exec.energyplus"],)
     if has_templates:
         commands += ("-x",)
     commands += (
@@ -38,7 +35,7 @@ def _run_energyplus(
 
 
 def _run_readvars(rvi_file: Path, cwd: Path, frequency: str = "") -> None:
-    commands: CMD = (
+    commands: AnyCli = (
         cf._config["exec.readvars"],
         relpath(rvi_file, cwd),
         "Unlimited",
