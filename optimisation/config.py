@@ -1,12 +1,10 @@
 from pathlib import Path
 from typing import Literal
 from platform import system
-from collections.abc import Iterable
 
 from typing_extensions import Required, TypedDict  # TODO: from typing after 3.11
 
 from ._tools import AnyStrPath
-from .collector import RVICollector, ScriptCollector, _Collector
 
 AnyLanguage = Literal["python"]
 Config = TypedDict(
@@ -31,20 +29,19 @@ def _update_config(config: Config) -> None:
     _config = config
 
 
-def _check_config(model_type: str, outputs: Iterable[_Collector]) -> None:
+def _check_config(
+    model_type: str, uses_rvi: bool, used_languages: set[AnyLanguage]
+) -> None:
     if model_type == ".imf":
         assert (
             "exec.epmacro" in _config
         ), f"a macro model is input, but the epmacro executable is not configured: {_config}."
 
-    if any(isinstance(output, RVICollector) for output in outputs):
+    if uses_rvi:
         assert (
             "exec.readvars" in _config
         ), f"an RVICollector is used, but the readvars executable is not configured: {_config}."
 
-    used_languages = set(
-        output._language for output in outputs if isinstance(output, ScriptCollector)
-    )
     # TODO: revision after PEP 675/3.11
     if "python" in used_languages:
         assert (
@@ -104,6 +101,9 @@ def config_energyplus(
 def config_script(python: AnyStrPath | None = None) -> None:
     # TODO: **kwargs from PEP 692/3.12
     global _config
+
+    if "_config" not in globals():
+        raise NameError("configure energyplus first.")
 
     if python is not None:
         _config["exec.python"] = Path(python).resolve(strict=True)

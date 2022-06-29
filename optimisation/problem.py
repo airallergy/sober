@@ -14,7 +14,7 @@ from ._tools import AnyStrPath
 from ._multiplier import _multiply
 from ._simulator import _split_model
 from ._evaluator import _pymoo_evaluate
-from .collector import RVICollector, _Collector
+from .collector import RVICollector, ScriptCollector, _Collector
 from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
 
@@ -84,13 +84,13 @@ class Problem:
 
     def _tag_model(self) -> None:
         macros, regulars = _split_model(self._model_file)
-        if cf._config["schema.energyplus"] is None:
+        if hasattr(cf, "_config"):
+            idf = openidf(StringIO(regulars), cf._config["schema.energyplus"])
+        else:
             idf = openidf(StringIO(regulars))
             cf.config_energyplus(
                 version=idf.idfobjects["Version"][0]["Version_Identifier"]
             )
-        else:
-            idf = openidf(StringIO(regulars), cf._config["schema.energyplus"])
 
         for parameter in self._parameters:
             tagger = parameter._tagger
@@ -107,14 +107,24 @@ class Problem:
             if isinstance(output, RVICollector):
                 output._touch()
 
+    def _check_config(self) -> None:
+        outputs_iter = chain(self._objectives, self._constraints, self._extra_outputs)
+
+        cf._check_config(
+            self._model_type,
+            any(isinstance(output, RVICollector) for output in outputs_iter),
+            set(
+                output._language
+                for output in outputs_iter
+                if isinstance(output, ScriptCollector)
+            ),
+        )
+
     def _prepare(self) -> None:
         self._tag_model()
         self._outputs_directory.mkdir(exist_ok=True)
         self._touch_rvi()
-        cf._check_config(
-            self._model_type,
-            chain(self._objectives, self._constraints, self._extra_outputs),
-        )
+        self._check_config()
 
     def _to_pymoo(self) -> PymooProblem:
         if self._objectives == ():
