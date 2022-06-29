@@ -27,8 +27,6 @@ _config_directory: Path
 
 
 def _update_config(config: Config) -> None:
-    global _config
-
     _config = config
 
 
@@ -66,8 +64,6 @@ def config_energyplus(
     epmacro_exec: AnyStrPath | None = None,
     readvars_exec: AnyStrPath | None = None,
 ) -> None:
-    global _config
-
     if version is not None:
         root = _default_energyplus_root(*version.split("."))
 
