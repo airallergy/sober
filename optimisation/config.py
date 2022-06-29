@@ -20,7 +20,6 @@ Config = TypedDict(
 )
 
 _config: Config
-_config_directory: Path
 
 
 def _update_config(config: Config) -> None:

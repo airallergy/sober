@@ -42,9 +42,9 @@ class RVICollector(_Collector):
 
         super().__init__(csv_name)
 
-    def _touch(self) -> None:
+    def _touch(self, config_directory: Path) -> None:
         self._rvi_file = (
-            cf._config_directory / f"{self._output_name.replace(' ', '_').lower()}.rvi"
+            config_directory / f"{self._output_name.replace(' ', '_').lower()}.rvi"
         )
         suffixes = {"variable": "eso", "meter": "mtr"}
         with self._rvi_file.open("wt") as fp:

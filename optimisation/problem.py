@@ -47,7 +47,9 @@ class Problem:
     _constraints: tuple[_Collector, ...]
     _extra_outputs: tuple[_Collector, ...]
     _callback: Callback | None
+    _model_directory: Path
     _outputs_directory: Path
+    _config_directory: Path
     _model_type: str
     _tagged_model: str
 
@@ -62,25 +64,28 @@ class Problem:
         callback: Callback | None = None,
         outputs_directory: AnyStrPath | None = None,
     ) -> None:
-        self._model_file = Path(model_file)
+        self._model_file = Path(model_file).resolve(strict=True)
         self._weather = weather
         self._parameters = tuple(parameters)
         self._objectives = tuple(objectives)
         self._constraints = tuple(constraints)
         self._extra_outputs = tuple(extra_outputs)
         self._callback = callback
+        self._model_directory = self._model_file.parent
         self._outputs_directory = (
-            self._model_file.parent / "outputs"
+            self._model_directory / "outputs"
             if outputs_directory is None
             else Path(outputs_directory)
         )
-
-        cf._config_directory = self._model_file.parent / f"{__package__}.config"
-        cf._config_directory.mkdir(exist_ok=True)
+        self._config_directory = self._model_directory / f"{__package__}.config"
 
         self._model_type = self._model_file.suffix
         if self._model_type not in (".idf", ".imf"):
             raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
+
+    def _mkdir(self) -> None:
+        self._outputs_directory.mkdir(exist_ok=True)
+        self._config_directory.mkdir(exist_ok=True)
 
     def _tag_model(self) -> None:
         macros, regulars = _split_model(self._model_file)
@@ -105,7 +110,7 @@ class Problem:
     def _touch_rvi(self) -> None:
         for output in chain(self._objectives, self._constraints, self._extra_outputs):
             if isinstance(output, RVICollector):
-                output._touch()
+                output._touch(self._config_directory)
 
     def _check_config(self) -> None:
         outputs_iter = chain(self._objectives, self._constraints, self._extra_outputs)
@@ -121,8 +126,8 @@ class Problem:
         )
 
     def _prepare(self) -> None:
+        self._mkdir()
         self._tag_model()
-        self._outputs_directory.mkdir(exist_ok=True)
         self._touch_rvi()
         self._check_config()
 

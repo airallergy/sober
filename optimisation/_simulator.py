@@ -49,17 +49,18 @@ def _run_readvars(rvi_file: Path, cwd: Path, frequency: str = "") -> None:
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
 
 
-def _resolved_path(path: AnyStrPath, default_parent: AnyStrPath) -> Path:
+def _resolved_path(path: AnyStrPath, default_parent: Path) -> Path:
     pure_path = PurePath(path)
     if pure_path.is_absolute():
-        return Path(pure_path).resolve()
+        return Path(pure_path).resolve(strict=True)
     else:
-        return Path(default_parent).resolve() / pure_path
+        return default_parent / pure_path
 
 
 def _resolved_macros(macro_lines: Iterable[str], model_directory: Path) -> list[str]:
     # lines should have been trimmed
-    fileprefix = model_directory.resolve()
+    # model_directory should have been resolved
+    fileprefix = model_directory
     resolved_macro_lines = []
     for line in macro_lines:
         if line.startswith("##fileprefix"):
