@@ -27,7 +27,7 @@ _config_directory: Path
 
 
 def _update_config(config: Config) -> None:
-    _config = config
+    _config.update(config)  # type: ignore[typeddict-item] # python/mypy#6462
 
 
 def _check_config(model_type: str, outputs: Iterable[_Collector]) -> None:
