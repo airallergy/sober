@@ -20,7 +20,7 @@ MetaParams = TypedDict(
         "parameters": tuple[AnyIntModelParameter, ...],
         "outputs": tuple[_Collector, ...],
         "outputs_directory": Path,
-        "model_type": str,
+        "model_type": cf.AnyModelType,
     },
 )
 

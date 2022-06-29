@@ -17,6 +17,8 @@ from ._evaluator import _pymoo_evaluate
 from .collector import RVICollector, ScriptCollector, _Collector
 from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
+ModelTypes: set[cf.AnyModelType] = {".idf", ".imf"}
+
 
 class PymooProblem(_PymooProblem):
     def __init__(
@@ -50,7 +52,7 @@ class Problem:
     _model_directory: Path
     _outputs_directory: Path
     _config_directory: Path
-    _model_type: str
+    _model_type: cf.AnyModelType
     _tagged_model: str
 
     def __init__(
@@ -79,9 +81,11 @@ class Problem:
         )
         self._config_directory = self._model_directory / f"{__package__}.config"
 
-        self._model_type = self._model_file.suffix
-        if self._model_type not in (".idf", ".imf"):
+        suffix = self._model_file.suffix
+        if suffix not in ModelTypes:
             raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
+
+        self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
 
     def _mkdir(self) -> None:
         self._outputs_directory.mkdir(exist_ok=True)

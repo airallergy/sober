@@ -6,6 +6,7 @@ from typing_extensions import Required, TypedDict  # TODO: from typing after 3.1
 
 from ._tools import AnyStrPath
 
+AnyModelType: TypeAlias = Literal[".idf", ".imf"]
 AnyLanguage: TypeAlias = Literal["python"]
 Config = TypedDict(
     "Config",
@@ -29,7 +30,7 @@ def _update_config(config: Config) -> None:
 
 
 def _check_config(
-    model_type: str, uses_rvi: bool, used_languages: set[AnyLanguage]
+    model_type: AnyModelType, uses_rvi: bool, used_languages: set[AnyLanguage]
 ) -> None:
     if model_type == ".imf":
         assert (
