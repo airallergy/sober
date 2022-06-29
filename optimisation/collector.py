@@ -1,7 +1,7 @@
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
-from pathlib import Path
+from pathlib import Path, PurePath
 from abc import ABC, abstractmethod
 
 from . import config as cf
@@ -9,11 +9,11 @@ from ._simulator import _run_readvars
 
 
 class _Collector(ABC):
-    _csv_name: str
+    _csv_filename: PurePath
 
     @abstractmethod
-    def __init__(self, csv_name: str) -> None:
-        self._csv_name = csv_name
+    def __init__(self, csv_filename: str) -> None:
+        self._csv_filename = PurePath(csv_filename + ".csv")
 
     @abstractmethod
     def _collect(self, cwd: Path) -> None:
@@ -33,14 +33,14 @@ class RVICollector(_Collector):
         self,
         output_name: str,
         output_type: str,
-        csv_name: str,
+        csv_filename: str,
         frequency: str = "",
     ) -> None:
         self._output_name = output_name
         self._output_type = output_type.lower()
         self._frequency = frequency
 
-        super().__init__(csv_name)
+        super().__init__(csv_filename)
 
     def _touch(self, config_directory: Path) -> None:
         self._rvi_file = (
@@ -49,7 +49,7 @@ class RVICollector(_Collector):
         suffixes = {"variable": "eso", "meter": "mtr"}
         with self._rvi_file.open("wt") as fp:
             fp.write(
-                f"eplusout.{suffixes[self._output_type]}\n{self._csv_name}.csv\n{self._output_name}\n0\n"
+                f"eplusout.{suffixes[self._output_type]}\n{self._csv_filename}\n{self._output_name}\n0\n"
             )
 
     def _collect(self, cwd: Path) -> None:
