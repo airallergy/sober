@@ -1,15 +1,16 @@
 from pathlib import Path
 from platform import system
-from typing import TypedDict
+from typing import Iterable, TypedDict
 
 from ._tools import AnyStrPath
+from .collector import RVICollector, _Collector
 
 Config = TypedDict(
     "Config",
     {
         "exec.energyplus": Path,
-        "exec.epmacro": Path,
-        "exec.readvars": Path,
+        "exec.epmacro": Path | None,
+        "exec.readvars": Path | None,
         "schema.energyplus": Path,
     },
 )
@@ -25,6 +26,18 @@ def _update_config(config: Config) -> None:
         raise TypeError(f"configuration must follow '{Config.__annotations__}'.")
 
     _config = config
+
+
+def _check_config(model_type: str, outputs: Iterable[_Collector]) -> None:
+    if model_type == ".imf":
+        assert (
+            _config["exec.epmacro"] is not None
+        ), f"a macro model is input, but epmacro executable is not configured: {_config}."
+
+    if any(isinstance(output, RVICollector) for output in outputs):
+        assert (
+            _config["exec.readvars"] is not None
+        ), f"an RVICollector is used, but readvars executable is not configured: {_config}."
 
 
 def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:
@@ -60,16 +73,19 @@ def config_energyplus(
         readvars_exec = root / "PostProcess" / "ReadVarsESO"
         schema = root / "Energy+.idd"
 
-    if (
-        (energyplus_exec is not None)
-        and (epmacro_exec is not None)
-        and (readvars_exec is not None)
-        and (schema is not None)
-    ):
+    if (energyplus_exec is not None) and (schema is not None):
         _config = {
             "exec.energyplus": Path(energyplus_exec).resolve(strict=True),
-            "exec.epmacro": Path(epmacro_exec).resolve(strict=True),
-            "exec.readvars": Path(readvars_exec).resolve(strict=True),
+            "exec.epmacro": (
+                epmacro_exec
+                if epmacro_exec is None
+                else Path(epmacro_exec).resolve(strict=True)
+            ),
+            "exec.readvars": (
+                readvars_exec
+                if readvars_exec is None
+                else Path(readvars_exec).resolve(strict=True)
+            ),
             "schema.energyplus": Path(schema).resolve(strict=True),
         }
     else:
