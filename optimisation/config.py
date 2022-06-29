@@ -1,45 +1,55 @@
 from pathlib import Path
+from typing import Literal
 from platform import system
-from typing import Iterable, TypedDict
+from collections.abc import Iterable
+
+from typing_extensions import Required, TypedDict  # TODO: from typing after 3.11
 
 from ._tools import AnyStrPath
-from .collector import RVICollector, _Collector
+from .collector import RVICollector, ScriptCollector, _Collector
 
+AnyLanguage = Literal["python"]
 Config = TypedDict(
     "Config",
     {
-        "schema.energyplus": Path | None,
-        "exec.energyplus": Path | None,
-        "exec.epmacro": Path | None,
-        "exec.readvars": Path | None,
-        "exec.python": Path | None,
+        "schema.energyplus": Required[Path],
+        "exec.energyplus": Required[Path],
+        "exec.epmacro": Path,
+        "exec.readvars": Path,
+        "exec.python": Path,
     },
+    total=False,
 )
 
-_config: Config = {
-    "schema.energyplus": None,
-    "exec.energyplus": None,
-    "exec.epmacro": None,
-    "exec.readvars": None,
-    "exec.python": None,
-}
+_config: Config
 _config_directory: Path
 
 
 def _update_config(config: Config) -> None:
-    _config.update(config)  # type: ignore[typeddict-item] # python/mypy#6462
+    global _config
+
+    _config = config
 
 
 def _check_config(model_type: str, outputs: Iterable[_Collector]) -> None:
     if model_type == ".imf":
         assert (
-            _config["exec.epmacro"] is not None
-        ), f"a macro model is input, but epmacro executable is not configured: {_config}."
+            "exec.epmacro" in _config
+        ), f"a macro model is input, but the epmacro executable is not configured: {_config}."
 
     if any(isinstance(output, RVICollector) for output in outputs):
         assert (
-            _config["exec.readvars"] is not None
-        ), f"an RVICollector is used, but readvars executable is not configured: {_config}."
+            "exec.readvars" in _config
+        ), f"an RVICollector is used, but the readvars executable is not configured: {_config}."
+
+    used_languages = set(
+        output._language for output in outputs if isinstance(output, ScriptCollector)
+    )
+    # TODO: revision after PEP 675/3.11
+    if "python" in used_languages:
+        assert (
+            "exec.python" in _config
+        ), f"an ScriptCollector of {'python'} is used, but the {'python'} executable is not configured: {_config}."
 
 
 def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:
@@ -64,6 +74,8 @@ def config_energyplus(
     epmacro_exec: AnyStrPath | None = None,
     readvars_exec: AnyStrPath | None = None,
 ) -> None:
+    global _config
+
     if version is not None:
         root = _default_energyplus_root(*version.split("."))
 
@@ -79,8 +91,10 @@ def config_energyplus(
             "One of version_parts, root, (schema, energyplus_exec) needs to be provided."
         )
 
-    _config["schema.energyplus"] = Path(schema).resolve(strict=True)
-    _config["exec.energyplus"] = Path(energyplus_exec).resolve(strict=True)
+    _config = {
+        "schema.energyplus": Path(schema).resolve(strict=True),
+        "exec.energyplus": Path(energyplus_exec).resolve(strict=True),
+    }
     if epmacro_exec is not None:
         _config["exec.epmacro"] = Path(epmacro_exec).resolve(strict=True)
     if readvars_exec is not None:
@@ -88,5 +102,8 @@ def config_energyplus(
 
 
 def config_script(python: AnyStrPath | None = None) -> None:
+    # TODO: **kwargs from PEP 692/3.12
+    global _config
+
     if python is not None:
-        _config[f"exec.python"] = Path(python).resolve(strict=True)
+        _config["exec.python"] = Path(python).resolve(strict=True)
