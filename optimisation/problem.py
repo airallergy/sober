@@ -1,5 +1,6 @@
 from io import StringIO
 from pathlib import Path
+from itertools import chain
 from collections.abc import Iterable
 
 import numpy as np
@@ -10,10 +11,10 @@ from pymoo.core.problem import Problem as _PymooProblem
 
 from . import config as cf
 from ._tools import AnyStrPath
-from .collector import _Collector
 from ._multiplier import _multiply
 from ._simulator import _split_model
 from ._evaluator import _pymoo_evaluate
+from .collector import RVICollector, _Collector
 from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
 
@@ -74,6 +75,9 @@ class Problem:
             else Path(outputs_directory)
         )
 
+        cf._config_directory = self._model_file.parent / f"{__package__}.config"
+        cf._config_directory.mkdir(exist_ok=True)
+
         self._model_type = self._model_file.suffix
         if self._model_type not in (".idf", ".imf"):
             raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
@@ -96,9 +100,15 @@ class Problem:
 
         self._tagged_model = macros + idf.idfstr()
 
+    def _touch_rvi(self) -> None:
+        for output in chain(self._objectives, self._constraints, self._extra_outputs):
+            if isinstance(output, RVICollector):
+                output._touch()
+
     def _prepare(self) -> None:
         self._tag_model()
         self._outputs_directory.mkdir(exist_ok=True)
+        self._touch_rvi()
 
     def _to_pymoo(self) -> PymooProblem:
         if self._objectives == ():

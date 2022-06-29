@@ -1,4 +1,5 @@
 from .problem import Problem
+from .collector import RVICollector
 from .config import config_energyplus
 from .parameters import (
     IndexTagger,
@@ -16,4 +17,5 @@ __all__ = (
     "WeatherParameter",
     "DiscreteParameter",
     "CategoricalParameter",
+    "RVICollector",
 )

@@ -113,6 +113,8 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
         _run_energyplus(task_idf_file, task_epw_file, task_directory, False)
 
         # collect outputs per task
+        for output in outputs:
+            output._collect(task_directory)
 
 
 def _pymoo_evaluate():
