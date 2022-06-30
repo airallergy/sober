@@ -47,10 +47,10 @@ class Problem:
     _parameters: tuple[AnyModelParameter, ...]
     _objectives: tuple[_Collector, ...]
     _constraints: tuple[_Collector, ...]
-    _extra_outputs: tuple[_Collector, ...]
+    _extra_results: tuple[_Collector, ...]
     _callback: Callback | None
     _model_directory: Path
-    _outputs_directory: Path
+    _results_directory: Path
     _config_directory: Path
     _model_type: cf.AnyModelType
     _tagged_model: str
@@ -62,9 +62,9 @@ class Problem:
         parameters: Iterable[AnyModelParameter],
         objectives: Iterable[_Collector] = (),
         constraints: Iterable[_Collector] = (),
-        extra_outputs: Iterable[_Collector] = (),
+        extra_results: Iterable[_Collector] = (),
         callback: Callback | None = None,
-        outputs_directory: AnyStrPath | None = None,
+        results_directory: AnyStrPath | None = None,
         python_exec: AnyStrPath | None = None,
     ) -> None:
         self._model_file = Path(model_file).resolve(strict=True)
@@ -72,15 +72,15 @@ class Problem:
         self._parameters = tuple(parameters)
         self._objectives = tuple(objectives)
         self._constraints = tuple(constraints)
-        self._extra_outputs = tuple(extra_outputs)
+        self._extra_results = tuple(extra_results)
         self._callback = callback
         self._model_directory = self._model_file.parent
-        self._outputs_directory = (
-            self._model_directory / "outputs"
-            if outputs_directory is None
-            else Path(outputs_directory)
+        self._results_directory = (
+            self._model_directory / "results"
+            if results_directory is None
+            else Path(results_directory)
         )
-        self._config_directory = self._model_directory / f"{__package__}.config"
+        self._config_directory = self._model_directory / f".{__package__}"
 
         suffix = self._model_file.suffix
         if suffix not in ModelTypes:
@@ -91,7 +91,7 @@ class Problem:
         self._prepare(python_exec)
 
     def _mkdir(self) -> None:
-        self._outputs_directory.mkdir(exist_ok=True)
+        self._results_directory.mkdir(exist_ok=True)
         self._config_directory.mkdir(exist_ok=True)
 
     def _tag_model(self) -> None:
@@ -115,20 +115,20 @@ class Problem:
         self._tagged_model = macros + idf.idfstr()
 
     def _touch_rvi(self) -> None:
-        for output in chain(self._objectives, self._constraints, self._extra_outputs):
-            if isinstance(output, RVICollector):
-                output._touch(self._config_directory)
+        for result in chain(self._objectives, self._constraints, self._extra_results):
+            if isinstance(result, RVICollector):
+                result._touch(self._config_directory)
 
     def _check_config(self) -> None:
-        outputs_iter = chain(self._objectives, self._constraints, self._extra_outputs)
+        results_iter = chain(self._objectives, self._constraints, self._extra_results)
 
         cf._check_config(
             self._model_type,
-            any(isinstance(output, RVICollector) for output in outputs_iter),
+            any(isinstance(result, RVICollector) for result in results_iter),
             set(
-                output._language
-                for output in outputs_iter
-                if isinstance(output, ScriptCollector)
+                result._language
+                for result in results_iter
+                if isinstance(result, ScriptCollector)
             ),
         )
 
@@ -166,7 +166,7 @@ class Problem:
             self._tagged_model,
             self._weather,
             self._parameters,  # type: ignore[arg-type] # python/mypy/#7853
-            self._objectives + self._constraints + self._extra_outputs,
-            self._outputs_directory,
+            self._objectives + self._constraints + self._extra_results,
+            self._results_directory,
             self._model_type,
         )

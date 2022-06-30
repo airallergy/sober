@@ -18,8 +18,8 @@ MetaParams = TypedDict(
         "tagged_model": str,
         "weather": WeatherParameter,
         "parameters": tuple[AnyIntModelParameter, ...],
-        "outputs": tuple[_Collector, ...],
-        "outputs_directory": Path,
+        "results": tuple[_Collector, ...],
+        "results_directory": Path,
         "model_type": cf.AnyModelType,
     },
 )
@@ -31,8 +31,8 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
     model = _meta_params["tagged_model"]
     weather = _meta_params["weather"]
     parameters = _meta_params["parameters"]
-    outputs = _meta_params["outputs"]
-    outputs_directory = _meta_params["outputs_directory"]
+    results = _meta_params["results"]
+    results_directory = _meta_params["results_directory"]
     model_type = _meta_params["model_type"]
 
     weather_variation_idx = variation_idxs[0]
@@ -47,7 +47,7 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
     )
 
     # create job folder
-    job_directory = outputs_directory / job_uid
+    job_directory = results_directory / job_uid
     job_directory.mkdir(exist_ok=True)
 
     # handle uncertain parameters
@@ -112,9 +112,9 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
         # run energyplus
         _run_energyplus(task_idf_file, task_epw_file, task_directory, False)
 
-        # collect outputs per task
-        for output in outputs:
-            output._collect(task_directory)
+        # collect results per task
+        for result in results:
+            result._collect(task_directory)
 
 
 def _pymoo_evaluate():
