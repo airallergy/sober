@@ -1,5 +1,5 @@
 from .problem import Problem
-from .collector import RVICollector, ScriptCollector
+from .results import RVICollector, ScriptCollector
 from .config import config_script, config_energyplus
 from .parameters import (
     IndexTagger,

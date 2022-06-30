@@ -8,7 +8,7 @@ from collections.abc import Callable, Iterable
 from multiprocessing.context import BaseContext
 
 from . import config as cf
-from .collector import _Collector
+from .results import _Collector
 from ._simulator import _run_epmacro, _run_energyplus
 from .parameters import WeatherParameter, AnyIntModelParameter
 

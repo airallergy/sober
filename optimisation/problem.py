@@ -14,7 +14,7 @@ from ._tools import AnyStrPath
 from ._multiplier import _multiply
 from ._simulator import _split_model
 from ._evaluator import _pymoo_evaluate
-from .collector import RVICollector, ScriptCollector, _Collector
+from .results import RVICollector, ScriptCollector, _Collector
 from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
 ModelTypes: frozenset[cf.AnyModelType] = frozenset({".idf", ".imf"})

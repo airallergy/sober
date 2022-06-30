@@ -1,7 +1,7 @@
 from pathlib import Path
 from itertools import product
 
-from .collector import _Collector
+from .results import _Collector
 from ._evaluator import _product_evaluate, _parallel_evaluate
 from .parameters import WeatherParameter, AnyIntModelParameter
 
