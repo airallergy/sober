@@ -15,8 +15,8 @@ class _Collector(ABC):
     _level: AnyLevel
 
     @abstractmethod
-    def __init__(self, csv_filename: str, level: AnyLevel) -> None:
-        self._csv_filename = PurePath(csv_filename + ".csv")
+    def __init__(self, csv_name: str, level: AnyLevel) -> None:
+        self._csv_filename = PurePath(csv_name + ".csv")
         self._level = level
 
     @abstractmethod
@@ -38,7 +38,7 @@ class RVICollector(_Collector):
         self,
         output_name: str,
         output_type: AnyOutputType,
-        csv_filename: str,
+        csv_name: str,
         keys: Iterable[str] = (),
         frequency: str = "",
     ) -> None:
@@ -47,7 +47,7 @@ class RVICollector(_Collector):
         self._keys = tuple(keys)
         self._frequency = frequency
 
-        super().__init__(csv_filename, "task")
+        super().__init__(csv_name, "task")
 
     def _touch(self, config_directory: Path) -> None:
         self._rvi_file = (
