@@ -5,6 +5,7 @@ from typing import Literal, Iterable, TypeAlias
 from ._simulator import _run_readvars
 
 AnyLevel: TypeAlias = Literal["task", "job", "model"]
+AnyOutputType: TypeAlias = Literal["variable", "meter"]
 
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
@@ -28,7 +29,7 @@ class _Collector(ABC):
 #############################################################################
 class RVICollector(_Collector):
     _output_name: str
-    _output_type: str
+    _output_type: AnyOutputType
     _rvi_file: Path
     _keys: tuple[str, ...]
     _frequency: str
@@ -36,13 +37,13 @@ class RVICollector(_Collector):
     def __init__(
         self,
         output_name: str,
-        output_type: str,
+        output_type: AnyOutputType,
         csv_filename: str,
         keys: Iterable[str] = (),
         frequency: str = "",
     ) -> None:
         self._output_name = output_name
-        self._output_type = output_type.lower()
+        self._output_type = output_type
         self._keys = tuple(keys)
         self._frequency = frequency
 
