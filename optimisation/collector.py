@@ -2,7 +2,11 @@ from pathlib import Path, PurePath
 from abc import ABC, abstractmethod
 from typing import Literal, Iterable, TypeAlias
 
+from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
+
+from . import config as cf
 from ._simulator import _run_readvars
+from ._tools import AnyCli, AnyStrPath, _run
 
 AnyLevel: TypeAlias = Literal["task", "job", "model"]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
@@ -70,3 +74,33 @@ class RVICollector(_Collector):
 
     def _collect(self, cwd: Path) -> None:
         _run_readvars(self._rvi_file, cwd, self._frequency)
+
+
+class ScriptCollector(_Collector):
+    _script_file: Path
+    _language: cf.AnyLanguage
+    _script_args: AnyCli
+
+    def __init__(
+        self,
+        script_file: AnyStrPath,
+        language: cf.AnyLanguage,
+        csv_name: str,
+        level: AnyLevel,
+        *script_args: Unpack[AnyCli],  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
+    ) -> None:
+        self._script_file = Path(script_file)
+        self._language = language
+        self._script_args = script_args
+        super().__init__(csv_name, level)
+
+    def _collect(self, cwd: Path) -> None:
+        commands: AnyCli = (
+            cf._config["exec.python"],
+            self._script_file,
+            cwd,
+            self._csv_filename,
+            *self._script_args,
+        )
+
+        _run(commands, cwd)
