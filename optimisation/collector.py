@@ -1,6 +1,6 @@
 from pathlib import Path, PurePath
 from abc import ABC, abstractmethod
-from typing import Literal, TypeAlias
+from typing import Literal, Iterable, TypeAlias
 
 from ._simulator import _run_readvars
 
@@ -30,6 +30,7 @@ class RVICollector(_Collector):
     _output_name: str
     _output_type: str
     _rvi_file: Path
+    _keys: tuple[str, ...]
     _frequency: str
 
     def __init__(
@@ -37,10 +38,12 @@ class RVICollector(_Collector):
         output_name: str,
         output_type: str,
         csv_filename: str,
+        keys: Iterable[str] = (),
         frequency: str = "",
     ) -> None:
         self._output_name = output_name
         self._output_type = output_type.lower()
+        self._keys = tuple(keys)
         self._frequency = frequency
 
         super().__init__(csv_filename, "task")
@@ -49,11 +52,20 @@ class RVICollector(_Collector):
         self._rvi_file = (
             config_directory / f"{self._output_name.replace(' ', '_').lower()}.rvi"
         )
+
         suffixes = {"variable": "eso", "meter": "mtr"}
+        rvi_lines = f"eplusout.{suffixes[self._output_type]}\n{self._csv_filename}\n"
+        match self._keys:
+            case ():
+                rvi_lines += self._output_name
+            case _:
+                rvi_lines += "\n".join(
+                    f"{key},{self._output_name}" for key in self._keys
+                )
+        rvi_lines += "\n0\n"
+
         with self._rvi_file.open("wt") as fp:
-            fp.write(
-                f"eplusout.{suffixes[self._output_type]}\n{self._csv_filename}\n{self._output_name}\n0\n"
-            )
+            fp.write(rvi_lines)
 
     def _collect(self, cwd: Path) -> None:
         _run_readvars(self._rvi_file, cwd, self._frequency)
