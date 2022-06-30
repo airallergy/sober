@@ -65,6 +65,7 @@ class Problem:
         extra_outputs: Iterable[_Collector] = (),
         callback: Callback | None = None,
         outputs_directory: AnyStrPath | None = None,
+        python_exec: AnyStrPath | None = None,
     ) -> None:
         self._model_file = Path(model_file).resolve(strict=True)
         self._weather = weather
@@ -86,6 +87,8 @@ class Problem:
             raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
 
         self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
+
+        self._prepare(python_exec)
 
     def _mkdir(self) -> None:
         self._outputs_directory.mkdir(exist_ok=True)
@@ -129,9 +132,10 @@ class Problem:
             ),
         )
 
-    def _prepare(self) -> None:
+    def _prepare(self, python_exec: AnyStrPath | None = None) -> None:
         self._mkdir()
         self._tag_model()
+        cf.config_script(python_exec)
         self._touch_rvi()
         self._check_config()
 
@@ -157,8 +161,6 @@ class Problem:
             isinstance(parameter, AnyIntModelParameter) for parameter in self._parameters  # type: ignore[misc, arg-type] # python/mypy#11673
         ):
             raise ValueError("With continous parameters cannot run parametric.")
-
-        self._prepare()
 
         _multiply(
             self._tagged_model,

@@ -98,12 +98,12 @@ def config_energyplus(
         _config["exec.readvars"] = Path(readvars_exec).resolve(strict=True)
 
 
-def config_script(python: AnyStrPath | None = None) -> None:
+def config_script(python_exec: AnyStrPath | None = None) -> None:
     # TODO: **kwargs from PEP 692/3.12
     global _config
 
     if "_config" not in globals():
         raise NameError("configure energyplus first.")
 
-    if python is not None:
-        _config["exec.python"] = Path(python).resolve(strict=True)
+    if python_exec is not None:
+        _config["exec.python"] = Path(python_exec).resolve(strict=True)
