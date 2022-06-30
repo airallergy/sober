@@ -1,10 +1,9 @@
 from os.path import relpath
 from pathlib import Path, PurePath
 from collections.abc import Iterable
-from subprocess import PIPE, STDOUT, run
 
 from . import config as cf
-from ._tools import AnyCli, AnyStrPath
+from ._tools import AnyCli, AnyStrPath, _run
 
 
 def _run_epmacro(imf_file: Path) -> Path:
@@ -12,7 +11,7 @@ def _run_epmacro(imf_file: Path) -> Path:
         (imf_file.parent / "in.imf").symlink_to(imf_file)
 
     commands: AnyCli = (cf._config["exec.epmacro"],)
-    run(commands, stdout=PIPE, stderr=STDOUT, cwd=imf_file.parent, text=True)
+    _run(commands, imf_file.parent)
 
     if imf_file.stem != "in":
         (imf_file.parent / "in.imf").unlink()
@@ -26,24 +25,15 @@ def _run_energyplus(
     commands: AnyCli = (cf._config["exec.energyplus"],)
     if has_templates:
         commands += ("-x",)
-    commands += (
-        "-w",
-        relpath(epw_file, cwd),
-        relpath(idf_file, cwd),
-    )
-    run(commands, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
+    commands += ("-w", epw_file, idf_file)
+    _run(commands, cwd)
 
 
 def _run_readvars(rvi_file: Path, cwd: Path, frequency: str = "") -> None:
-    commands: AnyCli = (
-        cf._config["exec.readvars"],
-        relpath(rvi_file, cwd),
-        "Unlimited",
-        "FixHeader",
-    )
+    commands: AnyCli = (cf._config["exec.readvars"], rvi_file, "Unlimited", "FixHeader")
     if frequency:
         commands += (frequency,)
-    run(commands, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
+    _run(commands, cwd)
 
 
 def _resolved_path(path: AnyStrPath, default_parent: Path) -> Path:
