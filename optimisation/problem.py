@@ -17,7 +17,7 @@ from ._evaluator import _pymoo_evaluate
 from .collector import RVICollector, ScriptCollector, _Collector
 from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
-ModelTypes: set[cf.AnyModelType] = {".idf", ".imf"}
+ModelTypes: frozenset[cf.AnyModelType] = frozenset({".idf", ".imf"})
 
 
 class PymooProblem(_PymooProblem):
