@@ -1,19 +1,22 @@
+from pathlib import Path, PurePath
+from abc import ABC, abstractmethod
+from typing import Literal, TypeAlias
+
+from ._simulator import _run_readvars
+
+AnyLevel: TypeAlias = Literal["task", "job", "model"]
+
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
-from pathlib import Path, PurePath
-from abc import ABC, abstractmethod
-
-from . import config as cf
-from ._simulator import _run_readvars
-
-
 class _Collector(ABC):
     _csv_filename: PurePath
+    _level: AnyLevel
 
     @abstractmethod
-    def __init__(self, csv_filename: str) -> None:
+    def __init__(self, csv_filename: str, level: AnyLevel) -> None:
         self._csv_filename = PurePath(csv_filename + ".csv")
+        self._level = level
 
     @abstractmethod
     def _collect(self, cwd: Path) -> None:
@@ -40,7 +43,7 @@ class RVICollector(_Collector):
         self._output_type = output_type.lower()
         self._frequency = frequency
 
-        super().__init__(csv_filename)
+        super().__init__(csv_filename, "task")
 
     def _touch(self, config_directory: Path) -> None:
         self._rvi_file = (
