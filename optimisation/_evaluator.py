@@ -27,7 +27,7 @@ MetaParams = TypedDict(
 _meta_params: MetaParams
 
 
-def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
+def _product_evaluate(variation_idxs: tuple[int, ...]) -> tuple[str, tuple[str, ...]]:
     model = _meta_params["tagged_model"]
     weather = _meta_params["weather"]
     parameters = _meta_params["parameters"]
@@ -51,6 +51,7 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
     job_directory.mkdir(exist_ok=True)
 
     # handle uncertain parameters
+    task_uids = []
     for uncertainty_idxs in product(
         range(weather._ns_uncertainty[weather_variation_idx]),
         *map(
@@ -79,6 +80,7 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
                 ),
             )
         )
+        task_uids.append(task_uid)
 
         # create task folder
         task_directory = job_directory / task_uid
@@ -112,9 +114,11 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
         # run energyplus
         _run_energyplus(task_idf_file, task_epw_file, task_directory, False)
 
-        # collect results per task
-        for result in results_manager._task_collectors:
-            result._collect(task_directory)
+    return job_uid, tuple(task_uids)
+
+    # # collect results per task
+    # for result in results_manager._task_collectors:
+    #     result._collect(task_directory)
 
 
 def _pymoo_evaluate():
@@ -141,7 +145,7 @@ def _parallel_evaluate(
     func: Callable,
     params: Iterable[Iterable[Any]],
     processess: int | None = None,
-    **meta_params,
+    **meta_params,  # **MetaParams from PEP 692/3.12
 ) -> None:
     ctx = _multiprocessing_context()
     with ctx.Manager() as manager:
@@ -149,4 +153,4 @@ def _parallel_evaluate(
         with ctx.Pool(
             processess, initializer=_initialise, initargs=(cf._config, _meta_params)
         ) as pool:
-            pool.map(func, params)
+            job_uids = tuple(pool.map(func, params))
