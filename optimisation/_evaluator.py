@@ -27,7 +27,7 @@ MetaParams = TypedDict(
 _meta_params: MetaParams
 
 
-def _product_evaluate(variation_idxs: tuple[int, ...]) -> tuple[str, tuple[str, ...]]:
+def _product_evaluate(variation_idxs: tuple[int, ...]) -> cf.AnyUIDsPair:
     model = _meta_params["tagged_model"]
     weather = _meta_params["weather"]
     parameters = _meta_params["parameters"]
@@ -142,10 +142,10 @@ def _initialise(config: cf.Config, meta_params: MetaParams) -> None:
 
 
 def _parallel_evaluate(
-    func: Callable,
+    func: Callable[..., cf.AnyUIDsPair],
     params: Iterable[Iterable[Any]],
     processess: int | None = None,
-    **meta_params,  # **MetaParams from PEP 692/3.12
+    **meta_params,  # TODO: **MetaParams after PEP 692/3.12
 ) -> None:
     ctx = _multiprocessing_context()
     with ctx.Manager() as manager:

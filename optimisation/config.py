@@ -8,6 +8,8 @@ from ._tools import AnyStrPath
 
 AnyModelType: TypeAlias = Literal[".idf", ".imf"]
 AnyLanguage: TypeAlias = Literal["python"]
+AnyUIDsPair: TypeAlias = tuple[str, tuple[str, ...]]
+
 Config = TypedDict(
     "Config",
     {
