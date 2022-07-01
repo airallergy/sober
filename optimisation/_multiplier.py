@@ -11,7 +11,7 @@ def _multiply(
     weather: WeatherParameter,
     parameters: tuple[AnyIntModelParameter, ...],
     results_manager: _ResultsManager,
-    results_directory: Path,
+    evaluation_directory: Path,
     model_type: str,
 ) -> None:
     variation_idxs_iter = product(
@@ -26,6 +26,6 @@ def _multiply(
         weather=weather,
         parameters=parameters,
         results_manager=results_manager,
-        results_directory=results_directory,
+        evaluation_directory=evaluation_directory,
         model_type=model_type,
     )

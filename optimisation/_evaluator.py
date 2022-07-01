@@ -19,7 +19,7 @@ MetaParams = TypedDict(
         "weather": WeatherParameter,
         "parameters": tuple[AnyIntModelParameter, ...],
         "results_manager": _ResultsManager,
-        "results_directory": Path,
+        "evaluation_directory": Path,
         "model_type": cf.AnyModelType,
     },
 )
@@ -32,7 +32,7 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> tuple[str, tuple[str, 
     weather = _meta_params["weather"]
     parameters = _meta_params["parameters"]
     results_manager = _meta_params["results_manager"]
-    results_directory = _meta_params["results_directory"]
+    evaluation_directory = _meta_params["evaluation_directory"]
     model_type = _meta_params["model_type"]
 
     weather_variation_idx = variation_idxs[0]
@@ -47,7 +47,7 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> tuple[str, tuple[str, 
     )
 
     # create job folder
-    job_directory = results_directory / job_uid
+    job_directory = evaluation_directory / job_uid
     job_directory.mkdir(exist_ok=True)
 
     # handle uncertain parameters

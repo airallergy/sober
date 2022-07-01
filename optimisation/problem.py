@@ -47,7 +47,7 @@ class Problem:
     _results_manager: _ResultsManager
     _callback: Callback | None
     _model_directory: Path
-    _results_directory: Path
+    _evaluation_directory: Path
     _config_directory: Path
     _model_type: cf.AnyModelType
     _tagged_model: str
@@ -59,7 +59,7 @@ class Problem:
         parameters: Iterable[AnyModelParameter],
         results: Iterable[_Collector] = (),
         callback: Callback | None = None,
-        results_directory: AnyStrPath | None = None,
+        evaluation_directory: AnyStrPath | None = None,
         python_exec: AnyStrPath | None = None,
     ) -> None:
         self._model_file = Path(model_file).resolve(strict=True)
@@ -68,10 +68,10 @@ class Problem:
         self._results_manager = _ResultsManager(results)
         self._callback = callback
         self._model_directory = self._model_file.parent
-        self._results_directory = (
-            self._model_directory / "results"
-            if results_directory is None
-            else Path(results_directory)
+        self._evaluation_directory = (
+            self._model_directory / "evaluation"
+            if evaluation_directory is None
+            else Path(evaluation_directory)
         )
         self._config_directory = self._model_directory / f".{__package__}"
 
@@ -84,7 +84,7 @@ class Problem:
         self._prepare(python_exec)
 
     def _mkdir(self) -> None:
-        self._results_directory.mkdir(exist_ok=True)
+        self._evaluation_directory.mkdir(exist_ok=True)
         self._config_directory.mkdir(exist_ok=True)
 
     def _tag_model(self) -> None:
@@ -158,6 +158,6 @@ class Problem:
             self._weather,
             self._parameters,  # type: ignore[arg-type] # python/mypy/#7853
             self._results_manager,
-            self._results_directory,
+            self._evaluation_directory,
             self._model_type,
         )

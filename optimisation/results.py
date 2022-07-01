@@ -10,8 +10,8 @@ from . import config as cf
 from ._simulator import _run_readvars
 from ._tools import AnyCli, AnyStrPath, _run
 
-AnyResultLevel: TypeAlias = Literal["task", "job", "batch"]
-AnyResultKind: TypeAlias = Literal["objective", "constraint", "extra"]
+AnyLevel: TypeAlias = Literal["task", "job", "batch"]
+AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
 
 #############################################################################
@@ -19,13 +19,11 @@ AnyOutputType: TypeAlias = Literal["variable", "meter"]
 #############################################################################
 class _Collector(ABC):
     _csv_filename: PurePath
-    _level: AnyResultLevel
-    _kind: AnyResultKind
+    _level: AnyLevel
+    _kind: AnyKind
 
     @abstractmethod
-    def __init__(
-        self, csv_name: str, level: AnyResultLevel, kind: AnyResultKind
-    ) -> None:
+    def __init__(self, csv_name: str, level: AnyLevel, kind: AnyKind) -> None:
         self._csv_filename = PurePath(csv_name + ".csv")
         self._level = level
         self._kind = kind
@@ -50,7 +48,7 @@ class RVICollector(_Collector):
         output_name: str,
         output_type: AnyOutputType,
         csv_name: str,
-        kind: AnyResultKind,
+        kind: AnyKind,
         keys: Iterable[str] = (),
         frequency: str = "",
     ) -> None:
@@ -94,8 +92,8 @@ class ScriptCollector(_Collector):
         script_file: AnyStrPath,
         language: cf.AnyLanguage,
         csv_name: str,
-        level: AnyResultLevel,
-        kind: AnyResultKind,
+        level: AnyLevel,
+        kind: AnyKind,
         *script_args: Unpack[AnyCli],  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
     ) -> None:
         self._script_file = Path(script_file)
