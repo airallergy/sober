@@ -14,10 +14,6 @@ AnyResultLevel: TypeAlias = Literal["task", "job", "batch"]
 AnyResultKind: TypeAlias = Literal["objective", "constraint", "extra"]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
 
-RESULTS_KINDS: frozenset[AnyResultKind] = frozenset(
-    {"objective", "constraint", "extra"}
-)
-
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
@@ -148,7 +144,8 @@ class _ResultsManager:
             yield collector
 
     def __getattr__(self, name: str) -> tuple[_Collector, ...]:
-        if name.removesuffix("s") not in RESULTS_KINDS:
+        # TODO: python/mypy#8203
+        if name not in frozenset({"_objectives", "_constraints", "_extras"}):
             raise AttributeError
 
         return tuple(collector for collector in self if collector._kind == name)
