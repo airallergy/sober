@@ -117,27 +117,27 @@ class ScriptCollector(_Collector):
 #######                    RESULTS MANAGER CLASSES                    #######
 #############################################################################
 class _ResultsManager:
-    _task_collectors: tuple[_Collector, ...]
-    _job_collectors: tuple[_Collector, ...]
-    _batch_collectors: tuple[_Collector, ...]
+    _task_results: tuple[_Collector, ...]
+    _job_results: tuple[_Collector, ...]
+    _batch_results: tuple[_Collector, ...]
     _objectives: tuple[_Collector, ...]
     _constraints: tuple[_Collector, ...]
     _extras: tuple[_Collector, ...]
 
     def __init__(self, results: Iterable[_Collector]) -> None:
-        self._task_collectors = tuple(
+        self._task_results = tuple(
             result for result in results if result._level == "task"
         )
-        self._job_collectors = tuple(
+        self._job_results = tuple(
             result for result in results if result._level == "job"
         )
-        self._batch_collectors = tuple(
+        self._batch_results = tuple(
             result for result in results if result._level == "batch"
         )
 
     def __iter__(self) -> Iterator[_Collector]:
         for collector in chain(
-            self._task_collectors, self._job_collectors, self._batch_collectors
+            self._task_results, self._job_results, self._batch_results
         ):
             yield collector
 
