@@ -1,14 +1,12 @@
 from pathlib import Path
-from platform import system
 from shutil import copyfile
 from typing import Any, TypedDict
 from itertools import chain, product
-from multiprocessing import get_context
 from collections.abc import Callable, Iterable
-from multiprocessing.context import BaseContext
 
 from . import config as cf
 from .results import _ResultsManager
+from ._tools import _multiprocessing_context
 from ._simulator import _run_epmacro, _run_energyplus
 from .parameters import WeatherParameter, AnyIntModelParameter
 
@@ -123,16 +121,6 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> cf.AnyUIDsPair:
 
 def _pymoo_evaluate():
     ...
-
-
-def _multiprocessing_context() -> BaseContext:
-    match system():
-        case "Linux" | "Darwin":
-            return get_context("forkserver")
-        case "Windows":
-            return get_context("spawn")
-        case _ as system_name:
-            raise NotImplementedError(f"unsupported system: '{system_name}'.")
 
 
 def _initialise(config: cf.Config, meta_params: MetaParams) -> None:
