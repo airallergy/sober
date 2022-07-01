@@ -8,7 +8,7 @@ from collections.abc import Callable, Iterable
 from multiprocessing.context import BaseContext
 
 from . import config as cf
-from .results import _Collector
+from .results import _ResultsManager
 from ._simulator import _run_epmacro, _run_energyplus
 from .parameters import WeatherParameter, AnyIntModelParameter
 
@@ -18,7 +18,7 @@ MetaParams = TypedDict(
         "tagged_model": str,
         "weather": WeatherParameter,
         "parameters": tuple[AnyIntModelParameter, ...],
-        "results": tuple[_Collector, ...],
+        "results_manager": _ResultsManager,
         "results_directory": Path,
         "model_type": cf.AnyModelType,
     },
@@ -31,7 +31,7 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
     model = _meta_params["tagged_model"]
     weather = _meta_params["weather"]
     parameters = _meta_params["parameters"]
-    results = _meta_params["results"]
+    results_manager = _meta_params["results_manager"]
     results_directory = _meta_params["results_directory"]
     model_type = _meta_params["model_type"]
 
@@ -113,7 +113,7 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> None:
         _run_energyplus(task_idf_file, task_epw_file, task_directory, False)
 
         # collect results per task
-        for result in results:
+        for result in results_manager._task_collectors:
             result._collect(task_directory)
 
 

@@ -1,6 +1,5 @@
 from io import StringIO
 from pathlib import Path
-from itertools import chain
 from collections.abc import Iterable
 
 import numpy as np
@@ -14,10 +13,10 @@ from ._tools import AnyStrPath
 from ._multiplier import _multiply
 from ._simulator import _split_model
 from ._evaluator import _pymoo_evaluate
-from .results import RVICollector, ScriptCollector, _Collector
+from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
-ModelTypes: frozenset[cf.AnyModelType] = frozenset({".idf", ".imf"})
+MODEL_TYPES: frozenset[cf.AnyModelType] = frozenset({".idf", ".imf"})
 
 
 class PymooProblem(_PymooProblem):
@@ -45,9 +44,7 @@ class Problem:
     _model_file: Path
     _weather: WeatherParameter
     _parameters: tuple[AnyModelParameter, ...]
-    _objectives: tuple[_Collector, ...]
-    _constraints: tuple[_Collector, ...]
-    _extra_results: tuple[_Collector, ...]
+    _results_manager: _ResultsManager
     _callback: Callback | None
     _model_directory: Path
     _results_directory: Path
@@ -60,9 +57,7 @@ class Problem:
         model_file: AnyStrPath,
         weather: WeatherParameter,
         parameters: Iterable[AnyModelParameter],
-        objectives: Iterable[_Collector] = (),
-        constraints: Iterable[_Collector] = (),
-        extra_results: Iterable[_Collector] = (),
+        results: Iterable[_Collector] = (),
         callback: Callback | None = None,
         results_directory: AnyStrPath | None = None,
         python_exec: AnyStrPath | None = None,
@@ -70,9 +65,7 @@ class Problem:
         self._model_file = Path(model_file).resolve(strict=True)
         self._weather = weather
         self._parameters = tuple(parameters)
-        self._objectives = tuple(objectives)
-        self._constraints = tuple(constraints)
-        self._extra_results = tuple(extra_results)
+        self._results_manager = _ResultsManager(results)
         self._callback = callback
         self._model_directory = self._model_file.parent
         self._results_directory = (
@@ -83,7 +76,7 @@ class Problem:
         self._config_directory = self._model_directory / f".{__package__}"
 
         suffix = self._model_file.suffix
-        if suffix not in ModelTypes:
+        if suffix not in MODEL_TYPES:
             raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
 
         self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
@@ -115,19 +108,17 @@ class Problem:
         self._tagged_model = macros + idf.idfstr()
 
     def _touch_rvi(self) -> None:
-        for result in chain(self._objectives, self._constraints, self._extra_results):
+        for result in self._results_manager:
             if isinstance(result, RVICollector):
                 result._touch(self._config_directory)
 
     def _check_config(self) -> None:
-        results_iter = chain(self._objectives, self._constraints, self._extra_results)
-
         cf._check_config(
             self._model_type,
-            any(isinstance(result, RVICollector) for result in results_iter),
+            any(isinstance(result, RVICollector) for result in self._results_manager),
             set(
                 result._language
-                for result in results_iter
+                for result in self._results_manager
                 if isinstance(result, ScriptCollector)
             ),
         )
@@ -140,13 +131,13 @@ class Problem:
         self._check_config()
 
     def _to_pymoo(self) -> PymooProblem:
-        if self._objectives == ():
+        if len(self._results_manager._objectives) == 0:
             raise ValueError("Optimisation needs at least one objective")
 
         return PymooProblem(
             len(self._parameters),
-            len(self._objectives),
-            len(self._constraints),
+            len(self._results_manager._objectives),
+            len(self._results_manager._constraints),
             np.fromiter(
                 (parameter._low for parameter in self._parameters), dtype=np.float_
             ),
@@ -166,7 +157,7 @@ class Problem:
             self._tagged_model,
             self._weather,
             self._parameters,  # type: ignore[arg-type] # python/mypy/#7853
-            self._objectives + self._constraints + self._extra_results,
+            self._results_manager,
             self._results_directory,
             self._model_type,
         )
