@@ -132,13 +132,14 @@ def _initialise(config: cf.Config, meta_params: MetaParams) -> None:
 def _parallel_evaluate(
     func: Callable[..., cf.AnyUIDsPair],
     params: Iterable[Iterable[Any]],
-    processess: int | None = None,
     **meta_params,  # TODO: **MetaParams after PEP 692/3.12
 ) -> None:
     ctx = _multiprocessing_context()
     with ctx.Manager() as manager:
         _meta_params = manager.dict(meta_params)
         with ctx.Pool(
-            processess, initializer=_initialise, initargs=(cf._config, _meta_params)
+            cf._config["n.processes"],
+            initializer=_initialise,
+            initargs=(cf._config, _meta_params),
         ) as pool:
             job_uids = tuple(pool.map(func, params))

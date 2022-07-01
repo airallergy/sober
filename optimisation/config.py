@@ -1,5 +1,6 @@
 from pathlib import Path
 from platform import system
+from multiprocessing import cpu_count
 from typing import Literal, TypeAlias
 
 from typing_extensions import Required, TypedDict  # TODO: from typing after 3.11
@@ -18,6 +19,7 @@ Config = TypedDict(
         "exec.epmacro": Path,
         "exec.readvars": Path,
         "exec.python": Path,
+        "n.processes": int,
     },
     total=False,
 )
@@ -100,12 +102,22 @@ def config_energyplus(
         _config["exec.readvars"] = Path(readvars_exec).resolve(strict=True)
 
 
-def config_script(python_exec: AnyStrPath | None = None) -> None:
-    # TODO: **kwargs from PEP 692/3.12
-    global _config
-
+def check_config_init() -> None:
     if "_config" not in globals():
         raise NameError("configure energyplus first.")
 
+
+def config_script(python_exec: AnyStrPath | None = None) -> None:
+    # TODO: **kwargs from PEP 692/3.12
+    global _config
+    check_config_init()
+
     if python_exec is not None:
         _config["exec.python"] = Path(python_exec).resolve(strict=True)
+
+
+def config_multiprocessing(processes: int | None = None) -> None:
+    global _config
+    check_config_init()
+
+    _config["n.processes"] = cpu_count() if processes is None else processes
