@@ -8,7 +8,8 @@ from . import config as cf
 from ._simulator import _run_readvars
 from ._tools import AnyCli, AnyStrPath, _run
 
-AnyLevel: TypeAlias = Literal["task", "job", "model"]
+AnyResultLevel: TypeAlias = Literal["task", "job", "batch"]
+AnyResultKind: TypeAlias = Literal["objective", "constraint", "extra"]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
 
 #############################################################################
@@ -16,12 +17,16 @@ AnyOutputType: TypeAlias = Literal["variable", "meter"]
 #############################################################################
 class _Collector(ABC):
     _csv_filename: PurePath
-    _level: AnyLevel
+    _level: AnyResultLevel
+    _kind: AnyResultKind
 
     @abstractmethod
-    def __init__(self, csv_name: str, level: AnyLevel) -> None:
+    def __init__(
+        self, csv_name: str, level: AnyResultLevel, kind: AnyResultKind
+    ) -> None:
         self._csv_filename = PurePath(csv_name + ".csv")
         self._level = level
+        self._kind = kind
 
     @abstractmethod
     def _collect(self, cwd: Path) -> None:
@@ -43,6 +48,7 @@ class RVICollector(_Collector):
         output_name: str,
         output_type: AnyOutputType,
         csv_name: str,
+        kind: AnyResultKind,
         keys: Iterable[str] = (),
         frequency: str = "",
     ) -> None:
@@ -51,7 +57,7 @@ class RVICollector(_Collector):
         self._keys = tuple(keys)
         self._frequency = frequency
 
-        super().__init__(csv_name, "task")
+        super().__init__(csv_name, "task", kind)
 
     def _touch(self, config_directory: Path) -> None:
         self._rvi_file = (
@@ -86,13 +92,14 @@ class ScriptCollector(_Collector):
         script_file: AnyStrPath,
         language: cf.AnyLanguage,
         csv_name: str,
-        level: AnyLevel,
+        level: AnyResultLevel,
+        kind: AnyResultKind,
         *script_args: Unpack[AnyCli],  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
     ) -> None:
         self._script_file = Path(script_file)
         self._language = language
         self._script_args = script_args
-        super().__init__(csv_name, level)
+        super().__init__(csv_name, level, kind)
 
     def _collect(self, cwd: Path) -> None:
         commands: AnyCli = (
