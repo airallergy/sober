@@ -1,6 +1,8 @@
+from itertools import chain
 from pathlib import Path, PurePath
 from abc import ABC, abstractmethod
-from typing import Literal, Iterable, TypeAlias
+from typing import Literal, TypeAlias
+from collections.abc import Iterable, Iterator
 
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
@@ -11,6 +13,10 @@ from ._tools import AnyCli, AnyStrPath, _run
 AnyResultLevel: TypeAlias = Literal["task", "job", "batch"]
 AnyResultKind: TypeAlias = Literal["objective", "constraint", "extra"]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
+
+RESULTS_KINDS: frozenset[AnyResultKind] = frozenset(
+    {"objective", "constraint", "extra"}
+)
 
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
@@ -111,3 +117,38 @@ class ScriptCollector(_Collector):
         )
 
         _run(commands, cwd)
+
+
+#############################################################################
+#######                    RESULTS MANAGER CLASSES                    #######
+#############################################################################
+class _ResultsManager:
+    _task_collectors: tuple[_Collector, ...]
+    _job_collectors: tuple[_Collector, ...]
+    _batch_collectors: tuple[_Collector, ...]
+    _objectives: tuple[_Collector, ...]
+    _constraints: tuple[_Collector, ...]
+    _extras: tuple[_Collector, ...]
+
+    def __init__(self, results: Iterable[_Collector]) -> None:
+        self._task_collectors = tuple(
+            result for result in results if result._level == "task"
+        )
+        self._job_collectors = tuple(
+            result for result in results if result._level == "job"
+        )
+        self._batch_collectors = tuple(
+            result for result in results if result._level == "batch"
+        )
+
+    def __iter__(self) -> Iterator[_Collector]:
+        for collector in chain(
+            self._task_collectors, self._job_collectors, self._batch_collectors
+        ):
+            yield collector
+
+    def __getattr__(self, name: str) -> tuple[_Collector, ...]:
+        if name.removesuffix("s") not in RESULTS_KINDS:
+            raise AttributeError
+
+        return tuple(collector for collector in self if collector._kind == name)
