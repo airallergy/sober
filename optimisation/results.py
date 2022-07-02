@@ -21,12 +21,16 @@ class _Collector(ABC):
     _csv_filename: PurePath
     _level: AnyLevel
     _kind: AnyKind
+    _is_final: bool
 
     @abstractmethod
-    def __init__(self, csv_name: str, level: AnyLevel, kind: AnyKind) -> None:
+    def __init__(
+        self, csv_name: str, level: AnyLevel, kind: AnyKind, is_final: bool
+    ) -> None:
         self._csv_filename = PurePath(csv_name + ".csv")
         self._level = level
         self._kind = kind
+        self._is_final = is_final
 
     @abstractmethod
     def _collect(self, cwd: Path) -> None:
@@ -49,6 +53,7 @@ class RVICollector(_Collector):
         output_type: AnyOutputType,
         csv_name: str,
         kind: AnyKind,
+        is_final: bool = True,
         keys: Iterable[str] = (),
         frequency: str = "",
     ) -> None:
@@ -57,7 +62,7 @@ class RVICollector(_Collector):
         self._keys = tuple(keys)
         self._frequency = frequency
 
-        super().__init__(csv_name, "task", kind)
+        super().__init__(csv_name, "task", kind, is_final)
 
     def _touch(self, config_directory: Path) -> None:
         self._rvi_file = (
@@ -94,12 +99,13 @@ class ScriptCollector(_Collector):
         csv_name: str,
         level: AnyLevel,
         kind: AnyKind,
+        is_final: bool = True,
         *script_args: Unpack[AnyCli],  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
     ) -> None:
         self._script_file = Path(script_file)
         self._language = language
         self._script_args = script_args
-        super().__init__(csv_name, level, kind)
+        super().__init__(csv_name, level, kind, is_final)
 
     def _collect(self, cwd: Path) -> None:
         commands: AnyCli = (
