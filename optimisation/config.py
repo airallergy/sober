@@ -9,7 +9,8 @@ from ._tools import AnyStrPath
 
 AnyModelType: TypeAlias = Literal[".idf", ".imf"]
 AnyLanguage: TypeAlias = Literal["python"]
-AnyUIDsPair: TypeAlias = tuple[str, tuple[str, ...]]
+AnyUIDs: TypeAlias = tuple[str, ...]
+AnyUIDsPair: TypeAlias = tuple[str, AnyUIDs]
 
 Config = TypedDict(
     "Config",

@@ -8,7 +8,7 @@ from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import config as cf
 from ._simulator import _run_readvars
-from ._tools import AnyCli, AnyStrPath, _run
+from ._tools import AnyCli, AnyStrPath, _run, _multiprocessing_context
 
 AnyLevel: TypeAlias = Literal["task", "job", "batch"]
 AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]
@@ -147,3 +147,31 @@ class _ResultsManager:
             raise AttributeError
 
         return tuple(collector for collector in self if collector._kind == name)
+
+    def _task_collect(self, task_directory: Path) -> None:
+        for result in self._task_results:
+            result._collect(task_directory)
+
+    def _job_collect(self, job_directory: Path, task_uids: cf.AnyUIDs) -> None:
+        for task_uid in task_uids:
+            self._task_collect(job_directory / task_uid)
+
+        for result in self._job_results:
+            result._collect(job_directory)
+
+    def _batch_collect(
+        self, batch_directory: Path, jobs: Iterable[cf.AnyUIDsPair]
+    ) -> None:
+        ctx = _multiprocessing_context()
+        with ctx.Pool(
+            cf._config["n.processes"],
+            initializer=cf._update_config,
+            initargs=(cf._config,),
+        ) as pool:
+            pool.starmap(
+                self._job_collect,
+                ((batch_directory / job_uid, task_uids) for job_uid, task_uids in jobs),
+            )
+
+        for result in self._batch_results:
+            result._collect(batch_directory)

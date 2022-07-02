@@ -114,10 +114,6 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> cf.AnyUIDsPair:
 
     return job_uid, tuple(task_uids)
 
-    # # collect results per task
-    # for result in results_manager._task_collectors:
-    #     result._collect(task_directory)
-
 
 def _pymoo_evaluate():
     ...
@@ -142,4 +138,10 @@ def _parallel_evaluate(
             initializer=_initialise,
             initargs=(cf._config, _meta_params),
         ) as pool:
-            job_uids = tuple(pool.map(func, params))
+            jobs = tuple(pool.map(func, params))
+
+    # TODO: remove typing after PEP 692/3.12
+    results_manager: _ResultsManager = meta_params["results_manager"]
+    evaluation_directory: Path = meta_params["evaluation_directory"]
+
+    results_manager._batch_collect(evaluation_directory, jobs)
