@@ -144,4 +144,4 @@ def _parallel_evaluate(
     results_manager: _ResultsManager = meta_params["results_manager"]
     evaluation_directory: Path = meta_params["evaluation_directory"]
 
-    results_manager._batch_collect(evaluation_directory, jobs)
+    results_manager._collect_batch(evaluation_directory, jobs)

@@ -154,18 +154,18 @@ class _ResultsManager:
 
         return tuple(collector for collector in self if collector._kind == name)
 
-    def _task_collect(self, task_directory: Path) -> None:
+    def _collect_task(self, task_directory: Path) -> None:
         for result in self._task_results:
             result._collect(task_directory)
 
-    def _job_collect(self, job_directory: Path, task_uids: cf.AnyUIDs) -> None:
+    def _collect_job(self, job_directory: Path, task_uids: cf.AnyUIDs) -> None:
         for task_uid in task_uids:
-            self._task_collect(job_directory / task_uid)
+            self._collect_task(job_directory / task_uid)
 
         for result in self._job_results:
             result._collect(job_directory)
 
-    def _batch_collect(
+    def _collect_batch(
         self, batch_directory: Path, jobs: Iterable[cf.AnyUIDsPair]
     ) -> None:
         ctx = _multiprocessing_context()
@@ -175,7 +175,7 @@ class _ResultsManager:
             initargs=(cf._config,),
         ) as pool:
             pool.starmap(
-                self._job_collect,
+                self._collect_job,
                 ((batch_directory / job_uid, task_uids) for job_uid, task_uids in jobs),
             )
 
