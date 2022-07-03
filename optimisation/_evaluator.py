@@ -16,7 +16,6 @@ MetaParams = TypedDict(
         "tagged_model": str,
         "weather": WeatherParameter,
         "parameters": tuple[AnyIntModelParameter, ...],
-        "results_manager": _ResultsManager,
         "evaluation_directory": Path,
         "model_type": cf.AnyModelType,
     },
@@ -29,7 +28,6 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> cf.AnyUIDsPair:
     model = _meta_params["tagged_model"]
     weather = _meta_params["weather"]
     parameters = _meta_params["parameters"]
-    results_manager = _meta_params["results_manager"]
     evaluation_directory = _meta_params["evaluation_directory"]
     model_type = _meta_params["model_type"]
 
@@ -128,6 +126,7 @@ def _initialise(config: cf.Config, meta_params: MetaParams) -> None:
 def _parallel_evaluate(
     func: Callable[..., cf.AnyUIDsPair],
     params: Iterable[Iterable[Any]],
+    results_manager: _ResultsManager,
     **meta_params,  # TODO: **MetaParams after PEP 692/3.12
 ) -> None:
     ctx = _multiprocessing_context()
@@ -141,7 +140,6 @@ def _parallel_evaluate(
             jobs = tuple(pool.map(func, params))
 
     # TODO: remove typing after PEP 692/3.12
-    results_manager: _ResultsManager = meta_params["results_manager"]
     evaluation_directory: Path = meta_params["evaluation_directory"]
 
     results_manager._collect_batch(evaluation_directory, jobs)
