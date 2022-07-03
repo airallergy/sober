@@ -130,6 +130,7 @@ class _ResultsManager:
     _objectives: tuple[_Collector, ...]
     _constraints: tuple[_Collector, ...]
     _extras: tuple[_Collector, ...]
+    _task_final_header: str
 
     def __init__(self, results: Sequence[_Collector]) -> None:
         self._task_results = tuple(
@@ -203,6 +204,13 @@ class _ResultsManager:
     def _collect_job(self, job_directory: Path, task_uids: cf.AnyUIDs) -> None:
         for task_uid in task_uids:
             self._collect_task(job_directory / task_uid)
+
+        self._record_final(
+            (result._csv_filename for result in self._task_results if result._is_final),
+            task_uids,
+            job_directory,
+            "task",
+        )
 
         for result in self._job_results:
             result._collect(job_directory)
