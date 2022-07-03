@@ -165,20 +165,21 @@ class _ResultsManager:
     ) -> None:
         csv_filenames = tuple(sorted(csv_filenames))
         result_line = ""
+        header_attr_name = f"_{level}_final_header"
 
         for idx, uid in enumerate(uids):
-            if hasattr(self, f"_{level}_final_header"):
+            if hasattr(self, header_attr_name):
                 has_header = True
             else:
-                setattr(self, f"_{level}_final_header", f"#,{level.capitalize()}UID")
                 has_header = False
+                header = f"#,{level.capitalize()}UID"
 
             result_line += f"{idx},{uid}"
             for filename in csv_filenames:
                 with (cwd / uid / filename).open("rt") as fp:
                     line = next(fp)
                     if not has_header:
-                        self._task_final_header += "," + line.rstrip().split(",", 1)[-1]
+                        header += "," + line.rstrip().split(",", 1)[-1]
 
                     line = next(fp)
                     result_line += "," + line.rstrip().split(",", 1)[-1]
@@ -192,10 +193,13 @@ class _ResultsManager:
                             warn(
                                 f"multiple result lines found in '{filename}', only the first collected."
                             )
+
+            if not has_header:
+                setattr(self, header_attr_name, header)
             result_line += "\n"
 
         with (cwd / "result_records.csv").open("wt") as fp:
-            fp.write(self._task_final_header + "\n" + result_line)
+            fp.write(getattr(self, header_attr_name) + "\n" + result_line)
 
     def _collect_task(self, task_directory: Path) -> None:
         for result in self._task_results:
