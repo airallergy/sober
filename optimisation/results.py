@@ -2,7 +2,7 @@ from itertools import chain
 from pathlib import Path, PurePath
 from abc import ABC, abstractmethod
 from typing import Literal, TypeAlias
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
@@ -18,7 +18,7 @@ AnyOutputType: TypeAlias = Literal["variable", "meter"]
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Collector(ABC):
-    _csv_filename: PurePath
+    _csv_filename: str
     _level: AnyLevel
     _kind: AnyKind
     _is_final: bool
@@ -27,7 +27,7 @@ class _Collector(ABC):
     def __init__(
         self, csv_name: str, level: AnyLevel, kind: AnyKind, is_final: bool
     ) -> None:
-        self._csv_filename = PurePath(csv_name + ".csv")
+        self._csv_filename = csv_name + ".csv"
         self._level = level
         self._kind = kind
         self._is_final = is_final
@@ -130,7 +130,7 @@ class _ResultsManager:
     _constraints: tuple[_Collector, ...]
     _extras: tuple[_Collector, ...]
 
-    def __init__(self, results: Iterable[_Collector]) -> None:
+    def __init__(self, results: Sequence[_Collector]) -> None:
         self._task_results = tuple(
             result for result in results if result._level == "task"
         )
