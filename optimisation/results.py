@@ -1,5 +1,6 @@
+from pathlib import Path
+from warnings import warn
 from itertools import chain
-from pathlib import Path, PurePath
 from abc import ABC, abstractmethod
 from typing import Literal, TypeAlias
 from collections.abc import Iterable, Iterator, Sequence
@@ -153,6 +154,47 @@ class _ResultsManager:
             raise AttributeError
 
         return tuple(collector for collector in self if collector._kind == name)
+
+    def _record_final(
+        self,
+        csv_filenames: Iterable[str],
+        uids: Iterable[str],
+        cwd: Path,
+        level: AnyLevel,
+    ) -> None:
+        csv_filenames = tuple(sorted(csv_filenames))
+        result_line = ""
+
+        for idx, uid in enumerate(uids):
+            if hasattr(self, f"_{level}_final_header"):
+                has_header = True
+            else:
+                setattr(self, f"_{level}_final_header", f"#,{level.capitalize()}UID")
+                has_header = False
+
+            result_line += f"{idx},{uid}"
+            for filename in csv_filenames:
+                with (cwd / uid / filename).open("rt") as fp:
+                    line = next(fp)
+                    if not has_header:
+                        self._task_final_header += "," + line.rstrip().split(",", 1)[-1]
+
+                    line = next(fp)
+                    result_line += "," + line.rstrip().split(",", 1)[-1]
+
+                    if __debug__:
+                        try:
+                            next(fp)
+                        except StopIteration:
+                            pass
+                        else:
+                            warn(
+                                f"multiple result lines found in '{filename}', only the first collected."
+                            )
+            result_line += "\n"
+
+        with (cwd / "result_records.csv").open("wt") as fp:
+            fp.write(self._task_final_header + "\n" + result_line)
 
     def _collect_task(self, task_directory: Path) -> None:
         for result in self._task_results:
