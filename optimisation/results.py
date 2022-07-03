@@ -131,6 +131,7 @@ class _ResultsManager:
     _constraints: tuple[_Collector, ...]
     _extras: tuple[_Collector, ...]
     _task_final_header: str
+    _job_final_header: str
 
     def __init__(self, results: Sequence[_Collector]) -> None:
         self._task_results = tuple(
@@ -220,7 +221,7 @@ class _ResultsManager:
             result._collect(job_directory)
 
     def _collect_batch(
-        self, batch_directory: Path, jobs: Iterable[cf.AnyUIDsPair]
+        self, batch_directory: Path, jobs: Sequence[cf.AnyUIDsPair]
     ) -> None:
         ctx = _multiprocessing_context()
         with ctx.Pool(
@@ -232,6 +233,13 @@ class _ResultsManager:
                 self._collect_job,
                 ((batch_directory / job_uid, task_uids) for job_uid, task_uids in jobs),
             )
+
+        self._record_final(
+            (result._csv_filename for result in self._job_results if result._is_final),
+            (item[0] for item in jobs),
+            batch_directory,
+            "job",
+        )
 
         for result in self._batch_results:
             result._collect(batch_directory)
