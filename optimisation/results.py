@@ -199,7 +199,7 @@ class _ResultsManager:
                 setattr(self, header_attr_name, header)
             result_line += "\n"
 
-        with (cwd / "result_records.csv").open("wt") as fp:
+        with (cwd / f"{level}_records.csv").open("wt") as fp:
             fp.write(getattr(self, header_attr_name) + "\n" + result_line)
 
     def _collect_task(self, task_directory: Path) -> None:
