@@ -133,7 +133,8 @@ class _ResultsManager:
     _task_final_header: str
     _job_final_header: str
 
-    def __init__(self, results: Sequence[_Collector]) -> None:
+    def __init__(self, results: Iterable[_Collector]) -> None:
+        results = tuple(results)
         self._task_results = tuple(
             result for result in results if result._level == "task"
         )
