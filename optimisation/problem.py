@@ -13,8 +13,8 @@ from ._tools import AnyStrPath
 from ._multiplier import _multiply
 from ._simulator import _split_model
 from ._evaluator import _pymoo_evaluate
+from .parameters import AnyParameter, AnyIntParameter, WeatherParameter
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
-from .parameters import WeatherParameter, AnyModelParameter, AnyIntModelParameter
 
 MODEL_TYPES: frozenset[cf.AnyModelType] = frozenset({".idf", ".imf"})
 
@@ -56,7 +56,7 @@ class Problem:
         self,
         model_file: AnyStrPath,
         weather: WeatherParameter,
-        parameters: Iterable[AnyModelParameter],
+        parameters: Iterable[AnyParameter],
         results: Iterable[_Collector] = (),
         callback: Callback | None = None,
         evaluation_directory: AnyStrPath | None = None,
@@ -151,7 +151,7 @@ class Problem:
 
     def run_parametric(self) -> None:
         if not all(
-            isinstance(parameter, AnyIntModelParameter) for parameter in self._parameters  # type: ignore[misc, arg-type] # python/mypy#11673
+            isinstance(parameter, AnyIntParameter) for parameter in self._parameters  # type: ignore[misc, arg-type] # python/mypy#11673
         ):
             raise ValueError("With continous parameters cannot run parametric.")
 

@@ -245,8 +245,8 @@ class WeatherParameter(_IntParameter[Path | str, Path]):
             )
 
 
-AnyIntModelParameter: TypeAlias = DiscreteParameter | CategoricalParameter
-AnyModelParameter: TypeAlias = ContinuousParameter | AnyIntModelParameter
+AnyIntParameter: TypeAlias = DiscreteParameter | CategoricalParameter
+AnyParameter: TypeAlias = ContinuousParameter | AnyIntParameter
 
 
 #############################################################################
@@ -254,10 +254,10 @@ AnyModelParameter: TypeAlias = ContinuousParameter | AnyIntModelParameter
 #############################################################################
 class _ParametersManager:
     _weather: WeatherParameter
-    _parameters: tuple[AnyModelParameter, ...]
+    _parameters: tuple[AnyParameter, ...]
 
     def __init__(
-        self, weather: WeatherParameter, parameters: Iterable[AnyModelParameter]
+        self, weather: WeatherParameter, parameters: Iterable[AnyParameter]
     ) -> None:
         self._weather = weather
         self._parameters = tuple(parameters)
