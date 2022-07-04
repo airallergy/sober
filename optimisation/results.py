@@ -158,6 +158,11 @@ class _ResultsManager:
 
         return tuple(collector for collector in self if collector._kind == name)
 
+    def _touch_rvi(self, config_directory: Path) -> None:
+        for result in self._task_results:
+            if isinstance(result, RVICollector):
+                result._touch(config_directory)
+
     def _record_final(
         self,
         csv_filenames: Iterable[str],

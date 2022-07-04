@@ -111,11 +111,6 @@ class Problem:
 
         self._tagged_model = macros + idf.idfstr()
 
-    def _touch_rvi(self) -> None:
-        for result in self._results_manager:
-            if isinstance(result, RVICollector):
-                result._touch(self._config_directory)
-
     def _check_config(self) -> None:
         cf._check_config(
             self._model_type,
@@ -132,7 +127,7 @@ class Problem:
         self._tag_model()
         cf.config_multiprocessing(processes)
         cf.config_script(python_exec)
-        self._touch_rvi()
+        self._results_manager._touch_rvi(self._config_directory)
         self._check_config()
 
     def _to_pymoo(self) -> PymooProblem:
