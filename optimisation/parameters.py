@@ -247,25 +247,22 @@ class WeatherParameter(_IntParameter[Path | str, Path]):
 
 AnyIntParameter: TypeAlias = DiscreteParameter | CategoricalParameter
 AnyParameter: TypeAlias = ContinuousParameter | AnyIntParameter
-
+Parameter = TypeVar("Parameter", AnyParameter, AnyIntParameter)
 
 #############################################################################
 #######                  PARAMETERS MANAGER CLASSES                   #######
 #############################################################################
-class _ParametersManager:
+class _ParametersManager(Generic[Parameter]):
     _weather: WeatherParameter
-    _parameters: tuple[AnyParameter, ...]
+    _parameters: tuple[Parameter, ...]
 
     def __init__(
-        self, weather: WeatherParameter, parameters: Iterable[AnyParameter]
+        self, weather: WeatherParameter, parameters: Iterable[Parameter]
     ) -> None:
         self._weather = weather
         self._parameters = tuple(parameters)
 
-    def _jobs(
-        self,
-        *variation_vecs: cf.AnyVariationVec,  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
-    ) -> Iterator[tuple[str, tuple[str, cf.AnyUncertaintyVec]]]:
+    def _jobs(self, *variation_vecs: cf.AnyVariationVec) -> Iterator[cf.AnyJob]:
         len_job_count = int(log10(len(variation_vecs))) + 1
         for job_idx, variation_vec in enumerate(variation_vecs):
             # TODO: remove typing after python/mypy#12280 / 3.11
@@ -288,7 +285,7 @@ class _ParametersManager:
                     ),
                 )
             )
-            uncertainty_vecs = cast(tuple[cf.AnyUncertaintyVec, ...], uncertainty_vecs)  # type: ignore[assignment] # might be resolved after python/mypy#12280
+            uncertainty_vecs = cast(tuple[cf.AnyUncertaintyVec, ...], uncertainty_vecs)
 
             len_task_count = int(log10(len(uncertainty_vecs))) + 1
             tasks = tuple(
@@ -298,4 +295,5 @@ class _ParametersManager:
                 )
                 for task_idx, uncertainty_vec in enumerate(uncertainty_vecs)
             )
-            yield job_uid, tasks  # type: ignore[misc] # might be resolved after python/mypy#12280
+            tasks = cast(tuple[tuple[str, cf.AnyVUMat], ...], tasks)
+            yield job_uid, tasks
