@@ -13,8 +13,13 @@ from ._tools import AnyStrPath
 from ._multiplier import _multiply
 from ._simulator import _split_model
 from ._evaluator import _pymoo_evaluate
-from .parameters import AnyParameter, AnyIntParameter, WeatherParameter
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
+from .parameters import (
+    AnyParameter,
+    WeatherParameter,
+    _ParametersManager,
+    _all_int_parameters,
+)
 
 MODEL_TYPES: frozenset[cf.AnyModelType] = frozenset({".idf", ".imf"})
 
@@ -42,8 +47,7 @@ class PymooProblem(_PymooProblem):
 #############################################################################
 class Problem:
     _model_file: Path
-    _weather: WeatherParameter
-    _parameters: tuple[AnyModelParameter, ...]
+    _parameters_manager: _ParametersManager[AnyParameter]
     _results_manager: _ResultsManager
     _callback: Callback | None
     _model_directory: Path
@@ -64,8 +68,7 @@ class Problem:
         python_exec: AnyStrPath | None = None,
     ) -> None:
         self._model_file = Path(model_file).resolve(strict=True)
-        self._weather = weather
-        self._parameters = tuple(parameters)
+        self._parameters_manager = _ParametersManager(weather, parameters)
         self._results_manager = _ResultsManager(results)
         self._callback = callback
         self._model_directory = self._model_file.parent
@@ -98,7 +101,7 @@ class Problem:
                 version=idf.idfobjects["Version"][0]["Version_Identifier"]
             )
 
-        for parameter in self._parameters:
+        for parameter in self._parameters_manager._parameters:
             tagger = parameter._tagger
             match tagger._LOCATION:
                 case "regular":
@@ -137,29 +140,28 @@ class Problem:
             raise ValueError("Optimisation needs at least one objective")
 
         return PymooProblem(
-            len(self._parameters),
+            len(self._parameters_manager._parameters),
             len(self._results_manager._objectives),
             len(self._results_manager._constraints),
             np.fromiter(
-                (parameter._low for parameter in self._parameters), dtype=np.float_
+                (parameter._low for parameter in self._parameters_manager._parameters),
+                dtype=np.float_,
             ),
             np.fromiter(
-                (parameter._high for parameter in self._parameters), dtype=np.float_
+                (parameter._high for parameter in self._parameters_manager._parameters),
+                dtype=np.float_,
             ),
             self._callback,
         )
 
     def run_parametric(self) -> None:
-        if not all(
-            isinstance(parameter, AnyIntParameter) for parameter in self._parameters  # type: ignore[misc, arg-type] # python/mypy#11673
-        ):
+        if _all_int_parameters(self._parameters_manager):
+            _multiply(
+                self._tagged_model,
+                self._parameters_manager,
+                self._results_manager,
+                self._evaluation_directory,
+                self._model_type,
+            )
+        else:
             raise ValueError("With continous parameters cannot run parametric.")
-
-        _multiply(
-            self._tagged_model,
-            self._weather,
-            self._parameters,  # type: ignore[arg-type] # python/mypy/#7853
-            self._results_manager,
-            self._evaluation_directory,
-            self._model_type,
-        )
