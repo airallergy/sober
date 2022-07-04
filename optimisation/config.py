@@ -3,12 +3,15 @@ from platform import system
 from multiprocessing import cpu_count
 from typing import Literal, TypeAlias
 
-from typing_extensions import Required, TypedDict  # TODO: from typing after 3.11
+from typing_extensions import Required, TypedDict
+from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from ._tools import AnyStrPath
 
 AnyModelType: TypeAlias = Literal[".idf", ".imf"]
 AnyLanguage: TypeAlias = Literal["python"]
+AnyVariationVec: TypeAlias = tuple[int, Unpack[tuple[str, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
+AnyUncertaintyVec: TypeAlias = tuple[int, Unpack[tuple[str, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
 AnyUIDs: TypeAlias = tuple[str, ...]
 AnyUIDsPair: TypeAlias = tuple[str, AnyUIDs]
 

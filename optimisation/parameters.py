@@ -1,7 +1,9 @@
+from math import log10
 from pathlib import Path
+from itertools import product
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
 from uuid import NAMESPACE_X500, uuid5
+from collections.abc import Iterable, Iterator
 from typing import (
     Generic,
     Literal,
@@ -9,12 +11,14 @@ from typing import (
     ClassVar,
     TypeAlias,
     SupportsIndex,
+    cast,
     overload,
 )
 
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 
+from . import config as cf
 from ._tools import AnyStrPath
 
 _M = TypeVar("_M")  # AnyModel
@@ -243,3 +247,52 @@ class WeatherParameter(_IntParameter[Path | str, Path]):
 
 AnyIntModelParameter: TypeAlias = DiscreteParameter | CategoricalParameter
 AnyModelParameter: TypeAlias = ContinuousParameter | AnyIntModelParameter
+
+
+#############################################################################
+#######                  PARAMETERS MANAGER CLASSES                   #######
+#############################################################################
+class _ParametersManager:
+    _weather: WeatherParameter
+    _parameters: tuple[AnyModelParameter, ...]
+
+    def __init__(
+        self, weather: WeatherParameter, parameters: Iterable[AnyModelParameter]
+    ) -> None:
+        self._weather = weather
+        self._parameters = tuple(parameters)
+
+    def _jobs(
+        self,
+        *variation_vecs: cf.AnyVariationVec,  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
+    ) -> Iterator[tuple[str, tuple[str, cf.AnyUncertaintyVec]]]:
+        len_job_count = int(log10(len(variation_vecs))) + 1
+        for job_idx, variation_vec in enumerate(variation_vecs):
+            # TODO: remove typing after python/mypy#12280 / 3.11
+            weather_variation_idx: int = variation_vec[0]
+            parameter_variation_vals = variation_vec[1:]
+            job_uid = f"J{job_idx:0{len_job_count}}"
+
+            # TODO: mypy infers uncertainty_vecs incorrectly, might be resolved after python/mypy#12280
+            # NOTE: there may be a better way than cast()
+            uncertainty_vecs = tuple(
+                product(
+                    range(self._weather._ns_uncertainty[weather_variation_idx]),
+                    *(
+                        (cast(float, val),)
+                        if isinstance(parameter, ContinuousParameter)
+                        else range(parameter._ns_uncertainty[cast(int, val)])
+                        for val, parameter in zip(
+                            parameter_variation_vals, self._parameters
+                        )
+                    ),
+                )
+            )
+            uncertainty_vecs = cast(tuple[cf.AnyUncertaintyVec, ...], uncertainty_vecs)  # type: ignore[assignment] # might be resolved after python/mypy#12280
+
+            len_task_count = int(log10(len(uncertainty_vecs))) + 1
+            tasks = tuple(
+                (f"T{task_idx:0{len_task_count}}", uncertainty_vec)
+                for task_idx, uncertainty_vec in enumerate(uncertainty_vecs)
+            )
+            yield job_uid, tasks  # type: ignore[misc] # might be resolved after python/mypy#12280
