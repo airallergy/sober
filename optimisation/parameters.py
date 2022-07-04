@@ -292,7 +292,10 @@ class _ParametersManager:
 
             len_task_count = int(log10(len(uncertainty_vecs))) + 1
             tasks = tuple(
-                (f"T{task_idx:0{len_task_count}}", uncertainty_vec)
+                (
+                    f"T{task_idx:0{len_task_count}}",
+                    tuple(zip(variation_vec, uncertainty_vec)),
+                )
                 for task_idx, uncertainty_vec in enumerate(uncertainty_vecs)
             )
             yield job_uid, tasks  # type: ignore[misc] # might be resolved after python/mypy#12280
