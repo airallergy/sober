@@ -154,7 +154,7 @@ class Problem:
             self._callback,
         )
 
-    def run_parametric(self) -> None:
+    def run_brute_force(self) -> None:
         if _all_int_parameters(self._parameters_manager):
             _multiply(
                 self._tagged_model,
