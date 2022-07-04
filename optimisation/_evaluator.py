@@ -8,18 +8,28 @@ from . import config as cf
 from .results import _ResultsManager
 from ._tools import _multiprocessing_context
 from ._simulator import _run_epmacro, _run_energyplus
-from .parameters import WeatherParameter, AnyIntModelParameter
+from .parameters import AnyParameter, AnyIntParameter, _ParametersManager
 
 MetaParams = TypedDict(
     "MetaParams",
     {
         "tagged_model": str,
-        "weather": WeatherParameter,
-        "parameters": tuple[AnyIntModelParameter, ...],
+        "parameters_manager": _ParametersManager[AnyParameter],
         "evaluation_directory": Path,
         "model_type": cf.AnyModelType,
     },
 )
+## TODO: the following may be generalised after 3.11 | python/mypy#3863 ##
+MetaIntParams = TypedDict(
+    "MetaIntParams",
+    {
+        "tagged_model": str,
+        "parameters_manager": _ParametersManager[AnyIntParameter],
+        "evaluation_directory": Path,
+        "model_type": cf.AnyModelType,
+    },
+)
+##########################################################################
 
 _meta_params: MetaParams
 
