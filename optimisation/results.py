@@ -3,7 +3,7 @@ from warnings import warn
 from itertools import chain
 from abc import ABC, abstractmethod
 from typing import Literal, TypeAlias
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator
 
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
@@ -222,8 +222,10 @@ class _ResultsManager:
             result._collect(job_directory)
 
     def _collect_batch(
-        self, batch_directory: Path, jobs: Sequence[cf.AnyUIDsPair]
+        self, batch_directory: Path, job_task_uids_pairs: Iterable[cf.AnyUIDsPair]
     ) -> None:
+        job_task_uids_pairs = tuple(job_task_uids_pairs)
+
         ctx = _multiprocessing_context()
         with ctx.Pool(
             cf._config["n.processes"],
@@ -232,12 +234,15 @@ class _ResultsManager:
         ) as pool:
             pool.starmap(
                 self._collect_job,
-                ((batch_directory / job_uid, task_uids) for job_uid, task_uids in jobs),
+                (
+                    (batch_directory / job_uid, task_uids)
+                    for job_uid, task_uids in job_task_uids_pairs
+                ),
             )
 
         self._record_final(
             (result._csv_filename for result in self._job_results if result._is_final),
-            (item[0] for item in jobs),
+            (job_uid for job_uid, _ in job_task_uids_pairs),
             batch_directory,
             "job",
         )
