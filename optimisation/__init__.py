@@ -6,6 +6,7 @@ from .parameters import (
     StringTagger,
     WeatherParameter,
     DiscreteParameter,
+    ContinuousParameter,
     CategoricalParameter,
 )
 
@@ -19,5 +20,6 @@ __all__ = (
     "StringTagger",
     "WeatherParameter",
     "DiscreteParameter",
+    "ContinuousParameter",
     "CategoricalParameter",
 )
