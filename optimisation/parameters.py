@@ -10,6 +10,7 @@ from typing import (
     TypeVar,
     ClassVar,
     TypeAlias,
+    TypeGuard,
     SupportsIndex,
     cast,
     overload,
@@ -297,3 +298,12 @@ class _ParametersManager(Generic[Parameter]):
             )
             tasks = cast(tuple[tuple[str, cf.AnyVUMat], ...], tasks)
             yield job_uid, tasks
+
+
+def _all_int_parameters(
+    parameters_manager: _ParametersManager[AnyParameter],
+) -> TypeGuard[_ParametersManager[AnyIntParameter]]:
+    return not any(
+        isinstance(parameter, ContinuousParameter)
+        for parameter in parameters_manager._parameters
+    )
