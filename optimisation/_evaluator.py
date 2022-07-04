@@ -1,8 +1,7 @@
 from pathlib import Path
 from shutil import copyfile
-from typing import Any, TypedDict
-from itertools import chain, product
-from collections.abc import Callable, Iterable
+from typing import TypedDict, cast
+from collections.abc import Callable
 
 from . import config as cf
 from .results import _ResultsManager
@@ -34,59 +33,23 @@ MetaIntParams = TypedDict(
 _meta_params: MetaParams
 
 
-def _product_evaluate(variation_idxs: tuple[int, ...]) -> cf.AnyUIDsPair:
+def _product_evaluate(job: cf.AnyIntJob) -> None:
     model = _meta_params["tagged_model"]
-    weather = _meta_params["weather"]
-    parameters = _meta_params["parameters"]
+    parameters_manager = _meta_params["parameters_manager"]
     evaluation_directory = _meta_params["evaluation_directory"]
     model_type = _meta_params["model_type"]
 
-    weather_variation_idx = variation_idxs[0]
-    parameter_variation_idxs = variation_idxs[1:]
-
-    # generate job uid
-    job_uid = f"V_W-{weather_variation_idx}_" + "_".join(
-        (
-            f"P{idx}-{variation_idx}"
-            for idx, variation_idx in enumerate(parameter_variation_idxs)
-        )
-    )
+    job_uid, tasks = job
 
     # create job folder
     job_directory = evaluation_directory / job_uid
     job_directory.mkdir(exist_ok=True)
 
-    # handle uncertain parameters
-    task_uids = []
-    for uncertainty_idxs in product(
-        range(weather._ns_uncertainty[weather_variation_idx]),
-        *map(
-            range,
-            (
-                parameter._ns_uncertainty[variation_idx]
-                for variation_idx, parameter in zip(
-                    parameter_variation_idxs, parameters
-                )
-            ),
-        ),
-    ):
-        weather_uncertainty_idx = uncertainty_idxs[0]
-        parameter_uncertainty_idxs = uncertainty_idxs[1:]
-
-        # generate task uid
-        task_uid = "_".join(
-            chain(
-                ("U", f"W-{weather_uncertainty_idx}")
-                if weather._is_uncertain
-                else ("U",),
-                (
-                    f"P{idx}-{uncertainty_idx}"
-                    for idx, uncertainty_idx in enumerate(parameter_uncertainty_idxs)
-                    if parameters[idx]._is_uncertain
-                ),
-            )
-        )
-        task_uids.append(task_uid)
+    # uncertainty
+    for task_uid, vu_mat in tasks:
+        # TODO: some may better go to parameters manager
+        weather_vu_row = vu_mat[0]
+        parameter_vu_rows = vu_mat[1:]
 
         # create task folder
         task_directory = job_directory / task_uid
@@ -94,14 +57,15 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> cf.AnyUIDsPair:
 
         # copy task weather files
         task_epw_file = task_directory / "in.epw"
-        copyfile(weather[weather_variation_idx, weather_uncertainty_idx], task_epw_file)
+        copyfile(parameters_manager._weather[weather_vu_row], task_epw_file)
 
         # insert parameter value
-        for variation_idx, uncertainty_idx, parameter in zip(
-            parameter_variation_idxs, parameter_uncertainty_idxs, parameters
+        for parameter_vu_row, parameter in zip(
+            parameter_vu_rows, parameters_manager._parameters
         ):
             model = model.replace(
-                parameter._tagger._tag, str(parameter[variation_idx, uncertainty_idx])
+                parameter._tagger._tag,
+                str(parameter[parameter_vu_row]),  # TODO: need refactor of this module
             )
 
         # write task model file
@@ -120,8 +84,6 @@ def _product_evaluate(variation_idxs: tuple[int, ...]) -> cf.AnyUIDsPair:
         # run energyplus
         _run_energyplus(task_idf_file, task_epw_file, task_directory, False)
 
-    return job_uid, tuple(task_uids)
-
 
 def _pymoo_evaluate():
     ...
@@ -134,8 +96,8 @@ def _initialise(config: cf.Config, meta_params: MetaParams) -> None:
 
 
 def _parallel_evaluate(
-    func: Callable[..., cf.AnyUIDsPair],
-    params: Iterable[Iterable[Any]],
+    func: Callable,
+    jobs: tuple[cf.AnyJob, ...],
     results_manager: _ResultsManager,
     **meta_params,  # TODO: **MetaParams after PEP 692/3.12
 ) -> None:
@@ -147,9 +109,15 @@ def _parallel_evaluate(
             initializer=_initialise,
             initargs=(cf._config, _meta_params),
         ) as pool:
-            jobs = tuple(pool.map(func, params))
+            pool.map(func, jobs)
 
     # TODO: remove typing after PEP 692/3.12
     evaluation_directory: Path = meta_params["evaluation_directory"]
 
-    results_manager._collect_batch(evaluation_directory, jobs)
+    results_manager._collect_batch(
+        evaluation_directory,
+        (
+            (job_uid, tuple(task_uid for task_uid, _ in tasks))
+            for job_uid, tasks in jobs
+        ),
+    )
