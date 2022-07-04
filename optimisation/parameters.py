@@ -53,8 +53,9 @@ class _ModelParameterMixin(ABC, Generic[_M]):
 
     @abstractmethod
     def __init__(self, tagger: _Tagger[_M], *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)  # NOTE: to _FloatParameter/_IntParameter
         self._tagger = tagger
+
+        super().__init__(*args, **kwargs)  # NOTE: to _FloatParameter/_IntParameter
 
 
 class _FloatParameter(_Parameter):
@@ -186,7 +187,8 @@ class StringTagger(_Tagger[str]):
 #######                       PARAMETER CLASSES                       #######
 #############################################################################
 class ContinuousParameter(_ModelParameterMixin[_M], _FloatParameter):
-    ...
+    def __init__(self, tagger: _Tagger[_M], low: float, high: float) -> None:
+        super().__init__(tagger, low, high)
 
 
 class DiscreteParameter(_ModelParameterMixin[_M], _IntParameter[float, float]):
