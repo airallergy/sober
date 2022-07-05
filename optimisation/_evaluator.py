@@ -34,7 +34,7 @@ _meta_params: MetaParams
 
 
 def _product_evaluate(job: cf.AnyIntJob) -> None:
-    model = _meta_params["tagged_model"]
+    tagged_model = _meta_params["tagged_model"]
     parameters_manager = _meta_params["parameters_manager"]
     evaluation_directory = _meta_params["evaluation_directory"]
     model_type = _meta_params["model_type"]
@@ -59,14 +59,8 @@ def _product_evaluate(job: cf.AnyIntJob) -> None:
         task_epw_file = task_directory / "in.epw"
         copyfile(parameters_manager._weather[weather_vu_row], task_epw_file)
 
-        # insert parameter value
-        for parameter_vu_row, parameter in zip(
-            parameter_vu_rows, parameters_manager._parameters
-        ):
-            model = model.replace(
-                parameter._tagger._tag,
-                str(parameter[parameter_vu_row]),  # TODO: need refactor of this module
-            )
+        # detag model with parameter values
+        model = parameters_manager._detagged_model(tagged_model, parameter_vu_rows)
 
         # write task model file
         task_model_file = task_directory / ("in" + model_type)

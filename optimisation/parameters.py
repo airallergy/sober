@@ -328,6 +328,20 @@ class _ParametersManager(Generic[Parameter]):
             tasks = cast(tuple[tuple[str, cf.AnyVUMat], ...], tasks)
             yield job_uid, tasks
 
+    def _detagged_model(
+        self, tagged_model: str, parameter_vu_rows: tuple[cf.AnyVURow, ...]
+    ) -> str:
+        for parameter_vu_row, parameter in zip(parameter_vu_rows, self._parameters):
+            tagged_model = tagged_model.replace(
+                parameter._tagger._tag,
+                str(
+                    cast(cf.AnyFloatVURow, parameter_vu_row)[0]  # NOTE: cast
+                    if isinstance(parameter, ContinuousParameter)
+                    else parameter[cast(cf.AnyIntVURow, parameter_vu_row)]  # NOTE: cast
+                ),
+            )
+        return tagged_model
+
 
 def _all_int_parameters(
     parameters_manager: _ParametersManager[AnyParameter],
