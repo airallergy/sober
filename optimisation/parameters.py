@@ -1,14 +1,14 @@
 from math import log10
+from io import StringIO
 from pathlib import Path
 from itertools import product
 from abc import ABC, abstractmethod
 from uuid import NAMESPACE_X500, uuid5
 from collections.abc import Iterable, Iterator
 from typing import (
+    Any,
     Generic,
-    Literal,
     TypeVar,
-    ClassVar,
     TypeAlias,
     TypeGuard,
     SupportsIndex,
@@ -16,23 +16,22 @@ from typing import (
     overload,
 )
 
+from eppy import openidf
 from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
 from ._tools import AnyStrPath
+from ._simulator import _split_model
 
-_M = TypeVar("_M")  # AnyModel
 _V = TypeVar("_V")  # AnyVariation
 _U = TypeVar("_U")  # AnyUncertaintyVar
 
-AnyLocation: TypeAlias = Literal["macro", "regular"]
 
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
-class _Tagger(ABC, Generic[_M]):
-    _LOCATION: ClassVar[AnyLocation]
+class _Tagger(ABC):
     _tag: str
 
     @abstractmethod
@@ -44,7 +43,19 @@ class _Tagger(ABC, Generic[_M]):
         return str(uuid5(NAMESPACE_X500, cls.__name__ + "-".join(descriptions)))
 
     @abstractmethod
-    def _tagged(self, model: _M) -> _M:
+    def _tagged(self, model: Any) -> Any:
+        ...
+
+
+class _RegularTagger(_Tagger):
+    @abstractmethod
+    def _tagged(self, model: IDF) -> IDF:
+        ...
+
+
+class _MacroTagger(_Tagger):
+    @abstractmethod
+    def _tagged(self, model: str) -> str:
         ...
 
 
@@ -53,11 +64,11 @@ class _Parameter(ABC):
     _high: float
 
 
-class _ModelParameterMixin(ABC, Generic[_M]):
-    _tagger: _Tagger[_M]
+class _ModelParameterMixin(ABC):
+    _tagger: _Tagger
 
     @abstractmethod
-    def __init__(self, tagger: _Tagger[_M], *args, **kwargs) -> None:
+    def __init__(self, tagger: _Tagger, *args, **kwargs) -> None:
         self._tagger = tagger
 
         super().__init__(*args, **kwargs)  # NOTE: to _FloatParameter/_IntParameter
@@ -137,13 +148,12 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
 #############################################################################
 #######                        TAGGER CLASSES                         #######
 #############################################################################
-class IndexTagger(_Tagger[IDF]):
+class IndexTagger(_RegularTagger):
     """Tagger for regular commands by indexing.
 
     No support for nested regular commands.
     """
 
-    _LOCATION = "regular"  # type: ignore[assignment] # python/mypy#12554
     _class_name: str
     _object_name: str
     _field_name: str
@@ -163,13 +173,12 @@ class IndexTagger(_Tagger[IDF]):
         return model
 
 
-class StringTagger(_Tagger[str]):
+class StringTagger(_MacroTagger):
     """Tagger for macro commands by string replacement.
 
     No support for nested macro commands.
     """
 
-    _LOCATION = "macro"  # type: ignore[assignment] # python/mypy#12554
     _string: str
     _prefix: str
     _suffix: str
@@ -191,31 +200,31 @@ class StringTagger(_Tagger[str]):
 #############################################################################
 #######                       PARAMETER CLASSES                       #######
 #############################################################################
-class ContinuousParameter(_ModelParameterMixin[_M], _FloatParameter):
-    def __init__(self, tagger: _Tagger[_M], low: float, high: float) -> None:
+class ContinuousParameter(_ModelParameterMixin, _FloatParameter):
+    def __init__(self, tagger: _Tagger, low: float, high: float) -> None:
         super().__init__(tagger, low, high)
 
 
-class DiscreteParameter(_ModelParameterMixin[_M], _IntParameter[float, float]):
+class DiscreteParameter(_ModelParameterMixin, _IntParameter[float, float]):
     _variations: tuple[float, ...]
     _uncertainties: tuple[tuple[float, ...], ...]
 
     def __init__(
         self,
-        tagger: _Tagger[_M],
+        tagger: _Tagger,
         variations: Iterable[float],
         *uncertainties: Iterable[float],
     ) -> None:
         super().__init__(tagger, variations, *uncertainties)
 
 
-class CategoricalParameter(_ModelParameterMixin[_M], _IntParameter[str, str]):
+class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
     _variations: tuple[str, ...]
     _uncertainties: tuple[tuple[str, ...], ...]
 
     def __init__(
         self,
-        tagger: _Tagger[_M],
+        tagger: _Tagger,
         variations: Iterable[str],
         *uncertainties: Iterable[str],
     ) -> None:
@@ -262,6 +271,26 @@ class _ParametersManager(Generic[Parameter]):
     ) -> None:
         self._weather = weather
         self._parameters = tuple(parameters)
+
+    def _tagged_model(self, model_file: Path) -> str:
+        macros, regulars = _split_model(model_file)
+        if hasattr(cf, "_config"):
+            idf = openidf(StringIO(regulars), cf._config["schema.energyplus"])
+        else:
+            idf = openidf(StringIO(regulars))
+            cf.config_energyplus(
+                version=idf.idfobjects["Version"][0]["Version_Identifier"]
+            )
+
+        for parameter in self._parameters:
+            tagger = parameter._tagger
+            # NOTE: match-case crashes mypy here
+            if isinstance(tagger, _RegularTagger):
+                idf = tagger._tagged(idf)
+            elif isinstance(tagger, _MacroTagger):
+                macros = tagger._tagged(macros)
+
+        return macros + idf.idfstr()
 
     def _jobs(self, *variation_vecs: cf.AnyVariationVec) -> Iterator[cf.AnyJob]:
         len_job_count = int(log10(len(variation_vecs))) + 1

@@ -1,9 +1,7 @@
-from io import StringIO
 from pathlib import Path
 from collections.abc import Iterable
 
 import numpy as np
-from eppy import openidf
 from numpy.typing import NDArray
 from pymoo.core.callback import Callback
 from pymoo.core.problem import Problem as _PymooProblem
@@ -11,7 +9,6 @@ from pymoo.core.problem import Problem as _PymooProblem
 from . import config as cf
 from ._tools import AnyStrPath
 from ._multiplier import _multiply
-from ._simulator import _split_model
 from ._evaluator import _pymoo_evaluate
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
@@ -91,26 +88,6 @@ class Problem:
         self._evaluation_directory.mkdir(exist_ok=True)
         self._config_directory.mkdir(exist_ok=True)
 
-    def _tag_model(self) -> None:
-        macros, regulars = _split_model(self._model_file)
-        if hasattr(cf, "_config"):
-            idf = openidf(StringIO(regulars), cf._config["schema.energyplus"])
-        else:
-            idf = openidf(StringIO(regulars))
-            cf.config_energyplus(
-                version=idf.idfobjects["Version"][0]["Version_Identifier"]
-            )
-
-        for parameter in self._parameters_manager._parameters:
-            tagger = parameter._tagger
-            match tagger._LOCATION:
-                case "regular":
-                    idf = tagger._tagged(idf)
-                case "macro":
-                    macros = tagger._tagged(macros)
-
-        self._tagged_model = macros + idf.idfstr()
-
     def _check_config(self) -> None:
         cf._check_config(
             self._model_type,
@@ -124,7 +101,7 @@ class Problem:
 
     def _prepare(self, processes: int | None, python_exec: AnyStrPath | None) -> None:
         self._mkdir()
-        self._tag_model()
+        self._tagged_model = self._parameters_manager._tagged_model(self._model_file)
         cf.config_multiprocessing(processes)
         cf.config_script(python_exec)
         self._results_manager._touch_rvi(self._config_directory)
