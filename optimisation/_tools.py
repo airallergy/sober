@@ -1,10 +1,10 @@
+import sys
 from os import PathLike
 from pathlib import Path
-from platform import system
 from typing import TypeAlias
 from multiprocessing import get_context
 from subprocess import PIPE, STDOUT, run
-from multiprocessing.context import BaseContext
+from multiprocessing.context import SpawnContext, ForkServerContext
 
 AnyStrPath: TypeAlias = str | PathLike[str]
 AnyCli: TypeAlias = tuple[AnyStrPath, ...]
@@ -21,11 +21,13 @@ def _run(commands: AnyCli, cwd: Path) -> None:
     run(commands, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
 
 
-def _multiprocessing_context() -> BaseContext:
-    match system():
-        case "Linux" | "Darwin":
-            return get_context("forkserver")
-        case "Windows":
-            return get_context("spawn")
-        case _ as system_name:
-            raise NotImplementedError(f"unsupported system: '{system_name}'.")
+# this bit is purely to make mypy happy :(
+if sys.platform == "win32":
+
+    def _multiprocessing_context() -> SpawnContext:
+        return get_context("spawn")
+
+else:
+
+    def _multiprocessing_context() -> ForkServerContext:
+        return get_context("forkserver")
