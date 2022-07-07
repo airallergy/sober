@@ -9,35 +9,12 @@ from ._tools import _multiprocessing_context
 from ._simulator import _run_epmacro, _run_energyplus
 from .parameters import AnyParameter, AnyIntParameter, _ParametersManager
 
-MetaParams = TypedDict(
-    "MetaParams",
-    {
-        "tagged_model": str,
-        "parameters_manager": _ParametersManager[AnyParameter],
-        "evaluation_directory": Path,
-        "model_type": cf.AnyModelType,
-    },
-)
-## TODO: the following may be generalised after 3.11 | python/mypy#3863 ##
-MetaIntParams = TypedDict(
-    "MetaIntParams",
-    {
-        "tagged_model": str,
-        "parameters_manager": _ParametersManager[AnyIntParameter],
-        "evaluation_directory": Path,
-        "model_type": cf.AnyModelType,
-    },
-)
-##########################################################################
-
-_meta_params: MetaParams
+_evaluation_directory: Path
 
 
 def _product_evaluate(job_uid: str, tasks: Iterable[cf.AnyIntTask]) -> None:
-    evaluation_directory = _meta_params["evaluation_directory"]
-
     # create job folder
-    job_directory = evaluation_directory / job_uid
+    job_directory = _evaluation_directory / job_uid
 
     # uncertainty
     for task_uid, _ in tasks:
@@ -57,10 +34,10 @@ def _pymoo_evaluate():
     ...
 
 
-def _initialise(config: cf.Config, meta_params: MetaParams) -> None:
+def _initialise(config: cf.Config, evaluation_directory: Path) -> None:
     cf._update_config(config)
-    global _meta_params
-    _meta_params = meta_params
+    global _evaluation_directory
+    _evaluation_directory = evaluation_directory
 
 
 def _parallel_evaluate(
@@ -68,21 +45,18 @@ def _parallel_evaluate(
     jobs: tuple[cf.AnyJob, ...],
     parameters_manager: _ParametersManager,
     results_manager: _ResultsManager,
-    evaluation_directory,
-    **meta_params,  # TODO: **MetaParams after PEP 692/3.12
+    evaluation_directory: Path,
 ) -> None:
     # TODO: remove typing after PEP 692/3.12
-    parameters_manager._make_batch(evaluation_directory, jobs, meta_params)
+    parameters_manager._make_batch(evaluation_directory, jobs)
 
     ctx = _multiprocessing_context()
-    with ctx.Manager() as manager:
-        _meta_params = manager.dict(meta_params)
-        with ctx.Pool(
-            cf._config["n.processes"],
-            initializer=_initialise,
-            initargs=(cf._config, _meta_params),
-        ) as pool:
-            pool.starmap(func, jobs)
+    with ctx.Pool(
+        cf._config["n.processes"],
+        initializer=_initialise,
+        initargs=(cf._config, evaluation_directory),
+    ) as pool:
+        pool.starmap(func, jobs)
 
     results_manager._collect_batch(
         evaluation_directory,

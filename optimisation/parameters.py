@@ -264,17 +264,33 @@ Parameter = TypeVar("Parameter", AnyParameter, AnyIntParameter)
 #############################################################################
 #######                  PARAMETERS MANAGER CLASSES                   #######
 #############################################################################
+MODEL_TYPES: frozenset[cf.AnyModelType] = frozenset({".idf", ".imf"})
+
+
 class _ParametersManager(Generic[Parameter]):
     _weather: WeatherParameter
     _parameters: tuple[Parameter, ...]
+    _model_type: cf.AnyModelType
+    _tagged_model: str
 
     def __init__(
-        self, weather: WeatherParameter, parameters: Iterable[Parameter]
+        self,
+        weather: WeatherParameter,
+        parameters: Iterable[Parameter],
+        model_file: Path,
     ) -> None:
         self._weather = weather
         self._parameters = tuple(parameters)
 
-    def _tagged_model(self, model_file: Path) -> str:
+        suffix = model_file.suffix
+        if suffix not in MODEL_TYPES:
+            raise NotImplementedError(f"a '{suffix}' model is not supported.")
+
+        self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
+
+        self._tagged_model = self._tagged(model_file)
+
+    def _tagged(self, model_file: Path) -> str:
         macros, regulars = _split_model(model_file)
         if hasattr(cf, "_config"):
             idf = openidf(StringIO(regulars), cf._config["schema.energyplus"])
@@ -330,7 +346,7 @@ class _ParametersManager(Generic[Parameter]):
             tasks = cast(tuple[tuple[str, cf.AnyVUMat], ...], tasks)
             yield job_uid, tasks
 
-    def _detagged_model(
+    def _detagged(
         self, tagged_model: str, parameter_vu_rows: tuple[cf.AnyVURow, ...]
     ) -> str:
         for parameter_vu_row, parameter in zip(parameter_vu_rows, self._parameters):
@@ -345,8 +361,8 @@ class _ParametersManager(Generic[Parameter]):
         return tagged_model
 
     def _make_task(self, task_directory, vu_mat) -> None:
-        tagged_model = _meta_params["tagged_model"]
-        model_type = _meta_params["model_type"]
+        # tagged_model = _meta_params["tagged_model"]
+        # model_type = _meta_params["model_type"]
 
         weather_vu_row = vu_mat[0]
         parameter_vu_rows = vu_mat[1:]
@@ -359,17 +375,17 @@ class _ParametersManager(Generic[Parameter]):
         copyfile(self._weather[weather_vu_row], task_epw_file)
 
         # detag model with parameter values
-        model = self._detagged_model(tagged_model, parameter_vu_rows)
+        model = self._detagged(self._tagged_model, parameter_vu_rows)
 
         # write task model file
-        task_model_file = task_directory / ("in" + model_type)
+        task_model_file = task_directory / ("in" + self._model_type)
         with open(task_model_file, "wt") as f:
             f.write(model)
 
         # run epmacro if needed
-        if model_type == ".imf":
+        if self._model_type == ".imf":
             task_idf_file = _run_epmacro(task_model_file)
-        elif model_type == ".idf":
+        elif self._model_type == ".idf":
             task_idf_file = task_model_file
         else:
             raise
@@ -382,38 +398,19 @@ class _ParametersManager(Generic[Parameter]):
             task_directory = job_directory / task_uid
             self._make_task(task_directory, vu_mat)
 
-    def _make_batch(
-        self,
-        batch_directory,
-        jobs: tuple[cf.AnyJob, ...],
-        meta_params,
-    ) -> None:
+    def _make_batch(self, batch_directory, jobs: tuple[cf.AnyJob, ...]) -> None:
         ctx = _multiprocessing_context()
         with ctx.Manager() as manager:
-            _meta_params = manager.dict(meta_params)
+            config = manager.dict(cf._config)
             with ctx.Pool(
                 cf._config["n.processes"],
-                initializer=_initialise,
-                initargs=(cf._config, _meta_params),
+                initializer=cf._update_config,
+                initargs=(config,),
             ) as pool:
                 pool.starmap(
                     self._make_job,
                     ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
                 )
-
-
-MetaParams = TypedDict(
-    "MetaParams",
-    {"tagged_model": str, "model_type": cf.AnyModelType},
-)
-
-_meta_params: MetaParams
-
-
-def _initialise(config: cf.Config, meta_params: MetaParams) -> None:
-    cf._update_config(config)
-    global _meta_params
-    _meta_params = meta_params
 
 
 def _all_int_parameters(

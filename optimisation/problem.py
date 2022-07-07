@@ -18,8 +18,6 @@ from .parameters import (
     _all_int_parameters,
 )
 
-MODEL_TYPES: frozenset[cf.AnyModelType] = frozenset({".idf", ".imf"})
-
 
 class PymooProblem(_PymooProblem):
     def __init__(
@@ -50,8 +48,6 @@ class Problem:
     _model_directory: Path
     _evaluation_directory: Path
     _config_directory: Path
-    _model_type: cf.AnyModelType
-    _tagged_model: str
 
     def __init__(
         self,
@@ -65,7 +61,9 @@ class Problem:
         python_exec: AnyStrPath | None = None,
     ) -> None:
         self._model_file = Path(model_file).resolve(strict=True)
-        self._parameters_manager = _ParametersManager(weather, parameters)
+        self._parameters_manager = _ParametersManager(
+            weather, parameters, self._model_file
+        )
         self._results_manager = _ResultsManager(results)
         self._callback = callback
         self._model_directory = self._model_file.parent
@@ -76,12 +74,6 @@ class Problem:
         )
         self._config_directory = self._model_directory / f".{__package__}"
 
-        suffix = self._model_file.suffix
-        if suffix not in MODEL_TYPES:
-            raise NotImplementedError(f"a '{self._model_type}' model is not supported.")
-
-        self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
-
         self._prepare(processes, python_exec)
 
     def _mkdir(self) -> None:
@@ -90,7 +82,7 @@ class Problem:
 
     def _check_config(self) -> None:
         cf._check_config(
-            self._model_type,
+            self._parameters_manager._model_type,
             any(isinstance(result, RVICollector) for result in self._results_manager),
             set(
                 result._language
@@ -101,7 +93,6 @@ class Problem:
 
     def _prepare(self, processes: int | None, python_exec: AnyStrPath | None) -> None:
         self._mkdir()
-        self._tagged_model = self._parameters_manager._tagged_model(self._model_file)
         cf.config_multiprocessing(processes)
         cf.config_script(python_exec)
         self._results_manager._touch_rvi(self._config_directory)
@@ -129,11 +120,9 @@ class Problem:
     def run_brute_force(self) -> None:
         if _all_int_parameters(self._parameters_manager):
             _multiply(
-                self._tagged_model,
                 self._parameters_manager,
                 self._results_manager,
                 self._evaluation_directory,
-                self._model_type,
             )
         else:
-            raise ValueError("With continous parameters cannot run parametric.")
+            raise ValueError("With continous parameters cannot run brute force.")
