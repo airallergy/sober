@@ -25,9 +25,9 @@ def _multiply(
     _parallel_evaluate(
         _product_evaluate,
         jobs,
+        parameters_manager,
         results_manager,
+        evaluation_directory,
         tagged_model=tagged_model,
-        parameters_manager=parameters_manager,
-        evaluation_directory=evaluation_directory,
         model_type=model_type,
     )

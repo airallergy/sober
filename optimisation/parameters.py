@@ -1,6 +1,7 @@
 from math import log10
 from io import StringIO
 from pathlib import Path
+from shutil import copyfile
 from itertools import product
 from abc import ABC, abstractmethod
 from uuid import NAMESPACE_X500, uuid5
@@ -10,6 +11,7 @@ from typing import (
     Generic,
     TypeVar,
     TypeAlias,
+    TypedDict,
     TypeGuard,
     SupportsIndex,
     cast,
@@ -21,8 +23,8 @@ from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
-from ._tools import AnyStrPath
-from ._simulator import _split_model
+from ._simulator import _run_epmacro, _split_model
+from ._tools import AnyStrPath, _multiprocessing_context
 
 _V = TypeVar("_V")  # AnyVariation
 _U = TypeVar("_U")  # AnyUncertaintyVar
@@ -341,6 +343,77 @@ class _ParametersManager(Generic[Parameter]):
                 ),
             )
         return tagged_model
+
+    def _make_task(self, task_directory, vu_mat) -> None:
+        tagged_model = _meta_params["tagged_model"]
+        model_type = _meta_params["model_type"]
+
+        weather_vu_row = vu_mat[0]
+        parameter_vu_rows = vu_mat[1:]
+
+        # create task folder
+        task_directory.mkdir(exist_ok=True)
+
+        # copy task weather files
+        task_epw_file = task_directory / "in.epw"
+        copyfile(self._weather[weather_vu_row], task_epw_file)
+
+        # detag model with parameter values
+        model = self._detagged_model(tagged_model, parameter_vu_rows)
+
+        # write task model file
+        task_model_file = task_directory / ("in" + model_type)
+        with open(task_model_file, "wt") as f:
+            f.write(model)
+
+        # run epmacro if needed
+        if model_type == ".imf":
+            task_idf_file = _run_epmacro(task_model_file)
+        elif model_type == ".idf":
+            task_idf_file = task_model_file
+        else:
+            raise
+
+    def _make_job(self, job_directory, tasks) -> None:
+        # create job folder
+        job_directory.mkdir(exist_ok=True)
+
+        for task_uid, vu_mat in tasks:
+            task_directory = job_directory / task_uid
+            self._make_task(task_directory, vu_mat)
+
+    def _make_batch(
+        self,
+        batch_directory,
+        jobs: tuple[cf.AnyJob, ...],
+        meta_params,
+    ) -> None:
+        ctx = _multiprocessing_context()
+        with ctx.Manager() as manager:
+            _meta_params = manager.dict(meta_params)
+            with ctx.Pool(
+                cf._config["n.processes"],
+                initializer=_initialise,
+                initargs=(cf._config, _meta_params),
+            ) as pool:
+                pool.starmap(
+                    self._make_job,
+                    ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
+                )
+
+
+MetaParams = TypedDict(
+    "MetaParams",
+    {"tagged_model": str, "model_type": cf.AnyModelType},
+)
+
+_meta_params: MetaParams
+
+
+def _initialise(config: cf.Config, meta_params: MetaParams) -> None:
+    cf._update_config(config)
+    global _meta_params
+    _meta_params = meta_params
 
 
 def _all_int_parameters(

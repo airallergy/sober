@@ -34,44 +34,20 @@ _meta_params: MetaParams
 
 
 def _product_evaluate(job_uid: str, tasks: Iterable[cf.AnyIntTask]) -> None:
-    tagged_model = _meta_params["tagged_model"]
-    parameters_manager = _meta_params["parameters_manager"]
     evaluation_directory = _meta_params["evaluation_directory"]
-    model_type = _meta_params["model_type"]
 
     # create job folder
     job_directory = evaluation_directory / job_uid
-    job_directory.mkdir(exist_ok=True)
 
     # uncertainty
-    for task_uid, vu_mat in tasks:
-        # TODO: some may better go to parameters manager
-        weather_vu_row = vu_mat[0]
-        parameter_vu_rows = vu_mat[1:]
-
+    for task_uid, _ in tasks:
         # create task folder
         task_directory = job_directory / task_uid
-        task_directory.mkdir(exist_ok=True)
 
         # copy task weather files
         task_epw_file = task_directory / "in.epw"
-        copyfile(parameters_manager._weather[weather_vu_row], task_epw_file)
 
-        # detag model with parameter values
-        model = parameters_manager._detagged_model(tagged_model, parameter_vu_rows)
-
-        # write task model file
-        task_model_file = task_directory / ("in" + model_type)
-        with open(task_model_file, "wt") as f:
-            f.write(model)
-
-        # run epmacro if needed
-        if model_type == ".imf":
-            task_idf_file = _run_epmacro(task_model_file)
-        elif model_type == ".idf":
-            task_idf_file = task_model_file
-        else:
-            raise
+        task_idf_file = task_directory / "in.idf"
 
         # run energyplus
         _run_energyplus(task_idf_file, task_epw_file, task_directory, False)
@@ -90,9 +66,14 @@ def _initialise(config: cf.Config, meta_params: MetaParams) -> None:
 def _parallel_evaluate(
     func: Callable,
     jobs: tuple[cf.AnyJob, ...],
+    parameters_manager: _ParametersManager,
     results_manager: _ResultsManager,
+    evaluation_directory,
     **meta_params,  # TODO: **MetaParams after PEP 692/3.12
 ) -> None:
+    # TODO: remove typing after PEP 692/3.12
+    parameters_manager._make_batch(evaluation_directory, jobs, meta_params)
+
     ctx = _multiprocessing_context()
     with ctx.Manager() as manager:
         _meta_params = manager.dict(meta_params)
@@ -102,9 +83,6 @@ def _parallel_evaluate(
             initargs=(cf._config, _meta_params),
         ) as pool:
             pool.starmap(func, jobs)
-
-    # TODO: remove typing after PEP 692/3.12
-    evaluation_directory: Path = meta_params["evaluation_directory"]
 
     results_manager._collect_batch(
         evaluation_directory,
