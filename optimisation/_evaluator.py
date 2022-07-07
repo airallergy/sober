@@ -1,7 +1,7 @@
 from pathlib import Path
 from shutil import copyfile
-from typing import TypedDict, cast
-from collections.abc import Callable
+from typing import TypedDict
+from collections.abc import Callable, Iterable
 
 from . import config as cf
 from .results import _ResultsManager
@@ -33,13 +33,11 @@ MetaIntParams = TypedDict(
 _meta_params: MetaParams
 
 
-def _product_evaluate(job: cf.AnyIntJob) -> None:
+def _product_evaluate(job_uid: str, tasks: Iterable[cf.AnyIntTask]) -> None:
     tagged_model = _meta_params["tagged_model"]
     parameters_manager = _meta_params["parameters_manager"]
     evaluation_directory = _meta_params["evaluation_directory"]
     model_type = _meta_params["model_type"]
-
-    job_uid, tasks = job
 
     # create job folder
     job_directory = evaluation_directory / job_uid
@@ -103,7 +101,7 @@ def _parallel_evaluate(
             initializer=_initialise,
             initargs=(cf._config, _meta_params),
         ) as pool:
-            pool.map(func, jobs)
+            pool.starmap(func, jobs)
 
     # TODO: remove typing after PEP 692/3.12
     evaluation_directory: Path = meta_params["evaluation_directory"]
