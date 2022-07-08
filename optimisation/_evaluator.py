@@ -17,7 +17,7 @@ def _product_evaluate(
     results_manager: _ResultsManager,
     evaluation_directory: Path,
 ) -> None:
-    task_directories = parameters_manager._make_batch(evaluation_directory, jobs)
+    parameters_manager._make_batch(evaluation_directory, jobs)
 
     with _multiprocessing_context().Pool(
         cf._config["n.processes"],
@@ -26,8 +26,12 @@ def _product_evaluate(
     ) as pool:
         pool.map(
             _run_energyplus,
-            task_directories,
-            chunksize=_chunk_size(len(task_directories), cf._config["n.processes"]),
+            x := tuple(
+                evaluation_directory / job_uid / task_uid
+                for job_uid, tasks in jobs
+                for task_uid, _ in tasks
+            ),
+            chunksize=_chunk_size(len(x), cf._config["n.processes"]),
         )
 
     results_manager._collect_batch(evaluation_directory, jobs)

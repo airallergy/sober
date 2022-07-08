@@ -382,15 +382,7 @@ class _ParametersManager(Generic[Parameter]):
         if self._model_type == ".imf":
             _run_epmacro(task_model_file)
 
-    def _make_batch(
-        self, batch_directory: Path, jobs: tuple[cf.AnyJob, ...]
-    ) -> tuple[Path, ...]:
-        task_directories = tuple(
-            batch_directory / job_uid / task_uid
-            for job_uid, tasks in jobs
-            for task_uid, _ in tasks
-        )
-
+    def _make_batch(self, batch_directory: Path, jobs: tuple[cf.AnyJob, ...]) -> None:
         with _multiprocessing_context().Pool(
             cf._config["n.processes"],
             initializer=cf._update_config,
@@ -398,14 +390,13 @@ class _ParametersManager(Generic[Parameter]):
         ) as pool:
             pool.starmap(
                 self._make_task,
-                zip(
-                    task_directories,
-                    (vu_mat for _, tasks in jobs for _, vu_mat in tasks),
+                x := tuple(
+                    (batch_directory / job_uid / task_uid, vu_mat)
+                    for job_uid, tasks in jobs
+                    for task_uid, vu_mat in tasks
                 ),
-                chunksize=_chunk_size(len(task_directories), cf._config["n.processes"]),
+                chunksize=_chunk_size(len(x), cf._config["n.processes"]),
             )
-
-        return task_directories
 
 
 def _all_int_parameters(

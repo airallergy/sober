@@ -223,11 +223,6 @@ class _ResultsManager:
     def _collect_batch(
         self, batch_directory: Path, jobs: tuple[cf.AnyJob, ...]
     ) -> None:
-        job_task_uids_pairs = tuple(
-            (job_uid, tuple(task_uid for task_uid, _ in tasks))
-            for job_uid, tasks in jobs
-        )
-
         with _multiprocessing_context().Pool(
             cf._config["n.processes"],
             initializer=cf._update_config,
@@ -235,18 +230,19 @@ class _ResultsManager:
         ) as pool:
             pool.starmap(
                 self._collect_job,
-                (
-                    (batch_directory / job_uid, task_uids)
-                    for job_uid, task_uids in job_task_uids_pairs
+                x := tuple(
+                    (
+                        batch_directory / job_uid,
+                        tuple(task_uid for task_uid, _ in tasks),
+                    )
+                    for job_uid, tasks in jobs
                 ),
-                chunksize=_chunk_size(
-                    len(job_task_uids_pairs), cf._config["n.processes"]
-                ),
+                chunksize=_chunk_size(len(x), cf._config["n.processes"]),
             )
 
         self._record_final(
             (result._csv_filename for result in self._job_results if result._is_final),
-            (job_uid for job_uid, _ in job_task_uids_pairs),
+            (job_uid for job_uid, _ in jobs),
             batch_directory,
             "job",
         )
