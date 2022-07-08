@@ -7,39 +7,12 @@ from ._simulator import _run_energyplus
 from .parameters import _ParametersManager
 from ._tools import _multiprocessing_context
 
-_evaluation_directory: Path
-
-
-def _product_evaluate(job_uid: str, tasks: Iterable[cf.AnyIntTask]) -> None:
-    # create job folder
-    job_directory = _evaluation_directory / job_uid
-
-    # uncertainty
-    for task_uid, _ in tasks:
-        # create task folder
-        task_directory = job_directory / task_uid
-
-        # copy task weather files
-        task_epw_file = task_directory / "in.epw"
-
-        task_idf_file = task_directory / "in.idf"
-
-        # run energyplus
-        _run_energyplus(task_idf_file, task_epw_file, task_directory, False)
-
 
 def _pymoo_evaluate() -> None:
     ...
 
 
-def _initialise(config: cf.Config, evaluation_directory: Path) -> None:
-    cf._update_config(config)
-    global _evaluation_directory
-    _evaluation_directory = evaluation_directory
-
-
-def _parallel_evaluate(
-    func: Callable,
+def _product_evaluate(
     jobs: tuple[cf.AnyJob, ...],
     parameters_manager: _ParametersManager,
     results_manager: _ResultsManager,
@@ -51,10 +24,20 @@ def _parallel_evaluate(
     ctx = _multiprocessing_context()
     with ctx.Pool(
         cf._config["n.processes"],
-        initializer=_initialise,
-        initargs=(cf._config, evaluation_directory),
+        initializer=cf._update_config,
+        initargs=(cf._config,),
     ) as pool:
-        pool.starmap(func, jobs)
+        pool.starmap(
+            _run_energyplus,
+            (
+                (task_directory / "in.idf", task_directory / "in.epw", task_directory)
+                for task_directory in (
+                    evaluation_directory / job_uid / task_uid
+                    for job_uid, tasks in jobs
+                    for task_uid, _ in tasks
+                )
+            ),
+        )
 
     results_manager._collect_batch(
         evaluation_directory,
