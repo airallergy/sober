@@ -11,7 +11,7 @@ from . import config as cf
 from ._simulator import _run_readvars
 from ._tools import AnyCli, AnyStrPath, _run, _chunk_size, _multiprocessing_context
 
-AnyLevel: TypeAlias = Literal["task", "job", "batch"]
+AnyLevel: TypeAlias = Literal["task", "job"]
 AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
 
@@ -126,7 +126,6 @@ class ScriptCollector(_Collector):
 class _ResultsManager:
     _task_results: tuple[_Collector, ...]
     _job_results: tuple[_Collector, ...]
-    _batch_results: tuple[_Collector, ...]
     _objectives: tuple[_Collector, ...]
     _constraints: tuple[_Collector, ...]
     _extras: tuple[_Collector, ...]
@@ -141,14 +140,9 @@ class _ResultsManager:
         self._job_results = tuple(
             result for result in results if result._level == "job"
         )
-        self._batch_results = tuple(
-            result for result in results if result._level == "batch"
-        )
 
     def __iter__(self) -> Iterator[_Collector]:
-        for collector in chain(
-            self._task_results, self._job_results, self._batch_results
-        ):
+        for collector in chain(self._task_results, self._job_results):
             yield collector
 
     def __getattr__(self, name: str) -> tuple[_Collector, ...]:
@@ -256,6 +250,3 @@ class _ResultsManager:
             batch_directory,
             "job",
         )
-
-        for result in self._batch_results:
-            result._collect(batch_directory)
