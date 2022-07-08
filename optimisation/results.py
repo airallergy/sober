@@ -227,12 +227,14 @@ class _ResultsManager:
             result._collect(job_directory)
 
     def _collect_batch(
-        self, batch_directory: Path, job_task_uids_pairs: Iterable[cf.AnyUIDsPair]
+        self, batch_directory: Path, jobs: tuple[cf.AnyJob, ...]
     ) -> None:
-        job_task_uids_pairs = tuple(job_task_uids_pairs)
+        job_task_uids_pairs = tuple(
+            (job_uid, tuple(task_uid for task_uid, _ in tasks))
+            for job_uid, tasks in jobs
+        )
 
-        ctx = _multiprocessing_context()
-        with ctx.Pool(
+        with _multiprocessing_context().Pool(
             cf._config["n.processes"],
             initializer=cf._update_config,
             initargs=(cf._config,),

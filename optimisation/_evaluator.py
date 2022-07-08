@@ -1,5 +1,4 @@
 from pathlib import Path
-from collections.abc import Callable, Iterable
 
 from . import config as cf
 from .results import _ResultsManager
@@ -18,11 +17,9 @@ def _product_evaluate(
     results_manager: _ResultsManager,
     evaluation_directory: Path,
 ) -> None:
-    # TODO: remove typing after PEP 692/3.12
-    parameters_manager._make_batch(evaluation_directory, jobs)
+    task_directories = parameters_manager._make_batch(evaluation_directory, jobs)
 
-    ctx = _multiprocessing_context()
-    with ctx.Pool(
+    with _multiprocessing_context().Pool(
         cf._config["n.processes"],
         initializer=cf._update_config,
         initargs=(cf._config,),
@@ -31,18 +28,8 @@ def _product_evaluate(
             _run_energyplus,
             (
                 (task_directory / "in.idf", task_directory / "in.epw", task_directory)
-                for task_directory in (
-                    evaluation_directory / job_uid / task_uid
-                    for job_uid, tasks in jobs
-                    for task_uid, _ in tasks
-                )
+                for task_directory in task_directories
             ),
         )
 
-    results_manager._collect_batch(
-        evaluation_directory,
-        (
-            (job_uid, tuple(task_uid for task_uid, _ in tasks))
-            for job_uid, tasks in jobs
-        ),
-    )
+    results_manager._collect_batch(evaluation_directory, jobs)

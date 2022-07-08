@@ -2,8 +2,8 @@ from math import log10
 from io import StringIO
 from pathlib import Path
 from shutil import copyfile
-from itertools import product
 from abc import ABC, abstractmethod
+from itertools import chain, product
 from uuid import NAMESPACE_X500, uuid5
 from collections.abc import Iterable, Iterator
 from typing import (
@@ -11,7 +11,6 @@ from typing import (
     Generic,
     TypeVar,
     TypeAlias,
-    TypedDict,
     TypeGuard,
     SupportsIndex,
     cast,
@@ -365,7 +364,7 @@ class _ParametersManager(Generic[Parameter]):
         parameter_vu_rows = vu_mat[1:]
 
         # create task folder
-        task_directory.mkdir(exist_ok=True)
+        task_directory.mkdir(parents=True, exist_ok=True)
 
         # copy task weather files
         task_epw_file = task_directory / "in.epw"
@@ -381,30 +380,31 @@ class _ParametersManager(Generic[Parameter]):
 
         # run epmacro if needed
         if self._model_type == ".imf":
-            task_idf_file = _run_epmacro(task_model_file)
-        elif self._model_type == ".idf":
-            task_idf_file = task_model_file
-        else:
-            raise
+            _run_epmacro(task_model_file)
 
-    def _make_job(self, job_directory: Path, tasks: cf.AnyTask) -> None:
-        # create job folder
-        job_directory.mkdir(exist_ok=True)
+    def _make_batch(
+        self, batch_directory: Path, jobs: tuple[cf.AnyJob, ...]
+    ) -> tuple[Path, ...]:
+        task_directories = tuple(
+            batch_directory / job_uid / task_uid
+            for job_uid, tasks in jobs
+            for task_uid, _ in tasks
+        )
 
-        for task_uid, vu_mat in tasks:
-            self._make_task(job_directory / task_uid, vu_mat)
-
-    def _make_batch(self, batch_directory: Path, jobs: tuple[cf.AnyJob, ...]) -> None:
-        ctx = _multiprocessing_context()
-        with ctx.Pool(
+        with _multiprocessing_context().Pool(
             cf._config["n.processes"],
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as pool:
             pool.starmap(
-                self._make_job,
-                ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
+                self._make_task,
+                zip(
+                    task_directories,
+                    (vu_mat for _, tasks in jobs for _, vu_mat in tasks),
+                ),
             )
+
+        return task_directories
 
 
 def _all_int_parameters(
