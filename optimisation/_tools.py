@@ -9,7 +9,8 @@ from subprocess import PIPE, STDOUT, run
 from contextlib import AbstractContextManager
 from typing import Any, Type, Generic, TypeVar, Callable, TypeAlias
 
-from typing_extensions import Self, Unpack, TypeVarTuple  # NOTE: from typing after 3.11
+from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
+from typing_extensions import TypeVarTuple  # NOTE: from typing after 3.11
 
 AnyStrPath: TypeAlias = str | PathLike[str]
 AnyCli: TypeAlias = tuple[AnyStrPath, ...]
@@ -87,7 +88,7 @@ class _Parallel(AbstractContextManager, Generic[Unpack[InitArgs]]):  # type: ign
         else:
             return tuple(starmap(func, iterable))
 
-    def __enter__(self) -> Self:  # type: ignore[valid-type] # python/mypy#11666
+    def __enter__(self) -> "_Parallel":  # TODO: use typing.Self after 3.11
         return self
 
     def __exit__(

@@ -57,7 +57,7 @@ class Problem:
         results: Iterable[_Collector] = (),
         callback: Callback | None = None,
         evaluation_directory: AnyStrPath | None = None,
-        processes: int | None = None,
+        n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
     ) -> None:
         self._model_file = Path(model_file).resolve(strict=True)
@@ -74,7 +74,7 @@ class Problem:
         )
         self._config_directory = self._model_directory / f".{__package__}"
 
-        self._prepare(processes, python_exec)
+        self._prepare(n_processes, python_exec)
 
     def _mkdir(self) -> None:
         self._evaluation_directory.mkdir(exist_ok=True)
@@ -91,9 +91,9 @@ class Problem:
             ),
         )
 
-    def _prepare(self, processes: int | None, python_exec: AnyStrPath | None) -> None:
+    def _prepare(self, n_processes: int | None, python_exec: AnyStrPath | None) -> None:
         self._mkdir()
-        cf.config_multiprocessing(processes)
+        cf.config_multiprocessing(n_processes)
         cf.config_script(python_exec)
         self._results_manager._touch_rvi(self._config_directory)
         self._check_config()

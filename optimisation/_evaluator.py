@@ -1,10 +1,10 @@
 from pathlib import Path
 
 from . import config as cf
+from ._tools import _Parallel
 from .results import _ResultsManager
 from ._simulator import _run_energyplus
 from .parameters import _ParametersManager
-from ._tools import _chunk_size, _multiprocessing_context
 
 
 def _pymoo_evaluate() -> None:
@@ -19,19 +19,18 @@ def _product_evaluate(
 ) -> None:
     parameters_manager._make_batch(evaluation_directory, jobs)
 
-    with _multiprocessing_context().Pool(
+    with _Parallel(
         cf._config["n.processes"],
         initializer=cf._update_config,
         initargs=(cf._config,),
-    ) as pool:
-        pool.map(
+    ) as parallel:
+        parallel.map(
             _run_energyplus,
-            x := tuple(
+            (
                 evaluation_directory / job_uid / task_uid
                 for job_uid, tasks in jobs
                 for task_uid, _ in tasks
             ),
-            chunksize=_chunk_size(len(x), cf._config["n.processes"]),
         )
 
     results_manager._collect_batch(evaluation_directory, jobs)

@@ -2,8 +2,8 @@ from math import log10
 from io import StringIO
 from pathlib import Path
 from shutil import copyfile
+from itertools import product
 from abc import ABC, abstractmethod
-from itertools import chain, product
 from uuid import NAMESPACE_X500, uuid5
 from collections.abc import Iterable, Iterator
 from typing import (
@@ -22,8 +22,8 @@ from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
+from ._tools import AnyStrPath, _Parallel
 from ._simulator import _run_epmacro, _split_model
-from ._tools import AnyStrPath, _chunk_size, _multiprocessing_context
 
 _V = TypeVar("_V")  # AnyVariation
 _U = TypeVar("_U")  # AnyUncertaintyVar
@@ -383,19 +383,18 @@ class _ParametersManager(Generic[Parameter]):
             _run_epmacro(task_model_file)
 
     def _make_batch(self, batch_directory: Path, jobs: tuple[cf.AnyJob, ...]) -> None:
-        with _multiprocessing_context().Pool(
+        with _Parallel(
             cf._config["n.processes"],
             initializer=cf._update_config,
             initargs=(cf._config,),
-        ) as pool:
-            pool.starmap(
+        ) as parallel:
+            parallel.starmap(
                 self._make_task,
-                x := tuple(
+                (
                     (batch_directory / job_uid / task_uid, vu_mat)
                     for job_uid, tasks in jobs
                     for task_uid, vu_mat in tasks
                 ),
-                chunksize=_chunk_size(len(x), cf._config["n.processes"]),
             )
 
 

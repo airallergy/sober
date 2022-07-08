@@ -9,7 +9,7 @@ from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import config as cf
 from ._simulator import _run_readvars
-from ._tools import AnyCli, AnyStrPath, _run, _chunk_size, _multiprocessing_context
+from ._tools import AnyCli, AnyStrPath, _run, _Parallel
 
 AnyLevel: TypeAlias = Literal["task", "job"]
 AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]
@@ -223,21 +223,20 @@ class _ResultsManager:
     def _collect_batch(
         self, batch_directory: Path, jobs: tuple[cf.AnyJob, ...]
     ) -> None:
-        with _multiprocessing_context().Pool(
+        with _Parallel(
             cf._config["n.processes"],
             initializer=cf._update_config,
             initargs=(cf._config,),
-        ) as pool:
-            pool.starmap(
+        ) as parallel:
+            parallel.starmap(
                 self._collect_job,
-                x := tuple(
+                (
                     (
                         batch_directory / job_uid,
                         tuple(task_uid for task_uid, _ in tasks),
                     )
                     for job_uid, tasks in jobs
                 ),
-                chunksize=_chunk_size(len(x), cf._config["n.processes"]),
             )
 
         self._record_final(
