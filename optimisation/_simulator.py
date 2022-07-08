@@ -1,4 +1,3 @@
-from os.path import relpath
 from pathlib import Path, PurePath
 from collections.abc import Iterable
 

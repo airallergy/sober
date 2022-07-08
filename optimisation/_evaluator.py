@@ -1,13 +1,11 @@
 from pathlib import Path
-from shutil import copyfile
-from typing import TypedDict
 from collections.abc import Callable, Iterable
 
 from . import config as cf
 from .results import _ResultsManager
+from ._simulator import _run_energyplus
+from .parameters import _ParametersManager
 from ._tools import _multiprocessing_context
-from ._simulator import _run_epmacro, _run_energyplus
-from .parameters import AnyParameter, AnyIntParameter, _ParametersManager
 
 _evaluation_directory: Path
 
@@ -30,7 +28,7 @@ def _product_evaluate(job_uid: str, tasks: Iterable[cf.AnyIntTask]) -> None:
         _run_energyplus(task_idf_file, task_epw_file, task_directory, False)
 
 
-def _pymoo_evaluate():
+def _pymoo_evaluate() -> None:
     ...
 
 

@@ -360,10 +360,7 @@ class _ParametersManager(Generic[Parameter]):
             )
         return tagged_model
 
-    def _make_task(self, task_directory, vu_mat) -> None:
-        # tagged_model = _meta_params["tagged_model"]
-        # model_type = _meta_params["model_type"]
-
+    def _make_task(self, task_directory: Path, vu_mat: cf.AnyVUMat) -> None:
         weather_vu_row = vu_mat[0]
         parameter_vu_rows = vu_mat[1:]
 
@@ -390,27 +387,24 @@ class _ParametersManager(Generic[Parameter]):
         else:
             raise
 
-    def _make_job(self, job_directory, tasks) -> None:
+    def _make_job(self, job_directory: Path, tasks: cf.AnyTask) -> None:
         # create job folder
         job_directory.mkdir(exist_ok=True)
 
         for task_uid, vu_mat in tasks:
-            task_directory = job_directory / task_uid
-            self._make_task(task_directory, vu_mat)
+            self._make_task(job_directory / task_uid, vu_mat)
 
-    def _make_batch(self, batch_directory, jobs: tuple[cf.AnyJob, ...]) -> None:
+    def _make_batch(self, batch_directory: Path, jobs: tuple[cf.AnyJob, ...]) -> None:
         ctx = _multiprocessing_context()
-        with ctx.Manager() as manager:
-            config = manager.dict(cf._config)
-            with ctx.Pool(
-                cf._config["n.processes"],
-                initializer=cf._update_config,
-                initargs=(config,),
-            ) as pool:
-                pool.starmap(
-                    self._make_job,
-                    ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
-                )
+        with ctx.Pool(
+            cf._config["n.processes"],
+            initializer=cf._update_config,
+            initargs=(cf._config,),
+        ) as pool:
+            pool.starmap(
+                self._make_job,
+                ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
+            )
 
 
 def _all_int_parameters(
