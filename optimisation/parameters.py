@@ -23,7 +23,7 @@ from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
 from ._simulator import _run_epmacro, _split_model
-from ._tools import AnyStrPath, _multiprocessing_context
+from ._tools import AnyStrPath, _chunk_size, _multiprocessing_context
 
 _V = TypeVar("_V")  # AnyVariation
 _U = TypeVar("_U")  # AnyUncertaintyVar
@@ -402,6 +402,7 @@ class _ParametersManager(Generic[Parameter]):
                     task_directories,
                     (vu_mat for _, tasks in jobs for _, vu_mat in tasks),
                 ),
+                chunksize=_chunk_size(len(task_directories), cf._config["n.processes"]),
             )
 
         return task_directories

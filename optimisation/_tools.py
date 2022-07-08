@@ -31,3 +31,7 @@ else:
 
     def _multiprocessing_context() -> ForkServerContext:
         return get_context("forkserver")
+
+
+def _chunk_size(n_tasks: int, n_processes: int) -> int:
+    return max(n_tasks // n_processes, 1)

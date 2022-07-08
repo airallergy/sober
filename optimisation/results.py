@@ -9,7 +9,7 @@ from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import config as cf
 from ._simulator import _run_readvars
-from ._tools import AnyCli, AnyStrPath, _run, _multiprocessing_context
+from ._tools import AnyCli, AnyStrPath, _run, _chunk_size, _multiprocessing_context
 
 AnyLevel: TypeAlias = Literal["task", "job", "batch"]
 AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]
@@ -244,6 +244,9 @@ class _ResultsManager:
                 (
                     (batch_directory / job_uid, task_uids)
                     for job_uid, task_uids in job_task_uids_pairs
+                ),
+                chunksize=_chunk_size(
+                    len(job_task_uids_pairs), cf._config["n.processes"]
                 ),
             )
 
