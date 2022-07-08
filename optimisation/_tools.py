@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import TypeAlias
 from multiprocessing import get_context
 from subprocess import PIPE, STDOUT, run
-from multiprocessing.context import SpawnContext, ForkServerContext
 
 AnyStrPath: TypeAlias = str | PathLike[str]
 AnyCli: TypeAlias = tuple[AnyStrPath, ...]
@@ -23,11 +22,13 @@ def _run(commands: AnyCli, cwd: Path) -> None:
 
 # this bit is purely to make mypy happy :(
 if sys.platform == "win32":
+    from multiprocessing.context import SpawnContext
 
     def _multiprocessing_context() -> SpawnContext:
         return get_context("spawn")
 
 else:
+    from multiprocessing.context import ForkServerContext
 
     def _multiprocessing_context() -> ForkServerContext:
         return get_context("forkserver")
