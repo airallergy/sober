@@ -11,13 +11,15 @@ def _multiply(
     results_manager: _ResultsManager,
     evaluation_directory: Path,
 ) -> None:
-    variation_idxs_iter = product(
-        range(parameters_manager._weather._n_variations),
-        *(
-            range(parameter._n_variations)
-            for parameter in parameters_manager._parameters
+    _product_evaluate(
+        *product(
+            range(parameters_manager._weather._n_variations),
+            *(
+                range(parameter._n_variations)
+                for parameter in parameters_manager._parameters
+            ),
         ),
+        parameters_manager=parameters_manager,
+        results_manager=results_manager,
+        evaluation_directory=evaluation_directory,
     )
-    jobs = tuple(parameters_manager._jobs(*variation_idxs_iter))  # type: ignore[arg-type] # might be resolved after python/mypy#12280
-
-    _product_evaluate(jobs, parameters_manager, results_manager, evaluation_directory)
