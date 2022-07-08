@@ -24,12 +24,9 @@ def _product_evaluate(
         initializer=cf._update_config,
         initargs=(cf._config,),
     ) as pool:
-        pool.starmap(
+        pool.map(
             _run_energyplus,
-            (
-                (task_directory / "in.idf", task_directory / "in.epw", task_directory)
-                for task_directory in task_directories
-            ),
+            task_directories,
         )
 
     results_manager._collect_batch(evaluation_directory, jobs)

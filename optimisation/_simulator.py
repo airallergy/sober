@@ -18,13 +18,11 @@ def _run_epmacro(imf_file: Path) -> None:
     imf_file.with_name("out.idf").rename(imf_file.with_name("in.idf"))
 
 
-def _run_energyplus(
-    idf_file: Path, epw_file: Path, cwd: Path, has_templates: bool = False
-) -> None:
+def _run_energyplus(cwd: Path, has_templates: bool = False) -> None:
     commands: AnyCli = (cf._config["exec.energyplus"],)
     if has_templates:
         commands += ("-x",)
-    commands += ("-w", epw_file, idf_file)
+    commands += ("-w", "in.epw", "in.idf")
     _run(commands, cwd)
 
 
