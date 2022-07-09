@@ -103,15 +103,15 @@ class Problem:
             raise ValueError("Optimisation needs at least one objective")
 
         return PymooProblem(
-            len(self._parameters_manager._parameters),
+            len(self._parameters_manager),
             len(self._results_manager._objectives),
             len(self._results_manager._constraints),
             np.fromiter(
-                (parameter._low for parameter in self._parameters_manager._parameters),
+                (parameter._low for parameter in self._parameters_manager),
                 dtype=np.float_,
             ),
             np.fromiter(
-                (parameter._high for parameter in self._parameters_manager._parameters),
+                (parameter._high for parameter in self._parameters_manager),
                 dtype=np.float_,
             ),
             self._callback,

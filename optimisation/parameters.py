@@ -2,8 +2,8 @@ from math import log10
 from io import StringIO
 from pathlib import Path
 from shutil import copyfile
-from itertools import product
 from abc import ABC, abstractmethod
+from itertools import chain, product
 from uuid import NAMESPACE_X500, uuid5
 from collections.abc import Iterable, Iterator
 from typing import (
@@ -288,6 +288,13 @@ class _ParametersManager(Generic[Parameter]):
         self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
 
         self._tagged_model = self._tagged(model_file)
+
+    def __iter__(self) -> Iterator[WeatherParameter | Parameter]:
+        for parameter in chain((self._weather,), self._parameters):
+            yield parameter
+
+    def __len__(self) -> int:
+        return 1 + len(self._parameters)
 
     def _tagged(self, model_file: Path) -> str:
         macros, regulars = _split_model(model_file)
