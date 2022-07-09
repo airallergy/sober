@@ -3,12 +3,11 @@ from collections.abc import Iterable
 
 import numpy as np
 from numpy.typing import NDArray
-from pymoo.core.callback import Callback
-from pymoo.core.problem import Problem as _PymooProblem
 
 from . import config as cf
 from ._tools import AnyStrPath
 from ._multiplier import _multiply
+from . import _pymoo_namespace as pm
 from ._evaluator import _pymoo_evaluate
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
@@ -19,7 +18,7 @@ from .parameters import (
 )
 
 
-class PymooProblem(_PymooProblem):
+class PymooProblem(pm.Problem):
     def __init__(
         self,
         n_var: int,
@@ -27,7 +26,7 @@ class PymooProblem(_PymooProblem):
         n_constr: int,
         xl: NDArray[np.float_],
         xu: NDArray[np.float_],
-        callback: Callback | None,
+        callback: pm.Callback | None,
     ) -> None:
         super().__init__(
             n_var=n_var, n_obj=n_obj, n_constr=n_constr, xl=xl, xu=xu, callback=callback
@@ -44,7 +43,7 @@ class Problem:
     _model_file: Path
     _parameters_manager: _ParametersManager[AnyParameter]
     _results_manager: _ResultsManager
-    _callback: Callback | None
+    _callback: pm.Callback | None
     _model_directory: Path
     _evaluation_directory: Path
     _config_directory: Path
@@ -55,7 +54,7 @@ class Problem:
         weather: WeatherParameter,
         parameters: Iterable[AnyParameter],
         results: Iterable[_Collector] = (),
-        callback: Callback | None = None,
+        callback: pm.Callback | None = None,
         evaluation_directory: AnyStrPath | None = None,
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
