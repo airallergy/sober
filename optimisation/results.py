@@ -33,6 +33,17 @@ class _Collector(ABC):
         self._kind = kind
         self._is_final = is_final
 
+        self._check_args()
+
+    def _check_args(self) -> None:
+        if self._kind in ("objective", "constraint"):
+            assert (
+                self._level == "job"
+            ), f"an '{self._kind}' result needs to be at the 'job' level."
+            assert (
+                self._is_final == True
+            ), f"an '{self._kind}' result needs to be final."
+
     @abstractmethod
     def _collect(self, cwd: Path) -> None:
         ...
