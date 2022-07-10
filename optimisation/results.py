@@ -176,7 +176,7 @@ class _ResultsManager:
         level: AnyLevel,
     ) -> None:
         csv_filenames = tuple(sorted(csv_filenames))
-        result_line = ""
+        val_line = ""
         header_attr_name = f"_{level}_final_header"
 
         for idx, uid in enumerate(uids):
@@ -184,17 +184,17 @@ class _ResultsManager:
                 has_header = True
             else:
                 has_header = False
-                header = f"#,{level.capitalize()}UID"
+                header_line = f"#,{level.capitalize()}UID"
 
-            result_line += f"{idx},{uid}"
+            val_line += f"{idx},{uid}"
             for filename in csv_filenames:
                 with (cwd / uid / filename).open("rt") as fp:
                     line = next(fp)
                     if not has_header:
-                        header += "," + line.rstrip().split(",", 1)[-1]
+                        header_line += "," + line.rstrip().split(",", 1)[-1]
 
                     line = next(fp)
-                    result_line += "," + line.rstrip().split(",", 1)[-1]
+                    val_line += "," + line.rstrip().split(",", 1)[-1]
 
                     if __debug__:
                         try:
@@ -207,11 +207,11 @@ class _ResultsManager:
                             )
 
             if not has_header:
-                setattr(self, header_attr_name, header)
-            result_line += "\n"
+                setattr(self, header_attr_name, header_line)
+            val_line += "\n"
 
         with (cwd / f"{level}_records.csv").open("wt") as fp:
-            fp.write(getattr(self, header_attr_name) + "\n" + result_line)
+            fp.write(getattr(self, header_attr_name) + "\n" + val_line)
 
     def _collect_task(self, task_directory: Path) -> None:
         for result in self._task_results:
