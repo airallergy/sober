@@ -168,14 +168,16 @@ class _ResultsManager:
             if isinstance(result, RVICollector):
                 result._touch(config_directory)
 
-    def _record_final(
-        self,
-        csv_filenames: Iterable[str],
-        uids: Iterable[str],
-        cwd: Path,
-        level: AnyLevel,
-    ) -> None:
-        csv_filenames = tuple(sorted(csv_filenames))
+    def _record_final(self, level: AnyLevel, cwd: Path, uids: Iterable[str]) -> None:
+        csv_filenames = tuple(
+            sorted(
+                (
+                    result._csv_filename
+                    for result in getattr(self, f"_{level}_results")
+                    if result._is_final
+                )
+            )
+        )
         val_line = ""
         header_attr_name = f"_{level}_final_header"
 
@@ -221,12 +223,7 @@ class _ResultsManager:
         for task_uid in task_uids:
             self._collect_task(job_directory / task_uid)
 
-        self._record_final(
-            (result._csv_filename for result in self._task_results if result._is_final),
-            task_uids,
-            job_directory,
-            "task",
-        )
+        self._record_final("task", job_directory, task_uids)
 
         for result in self._job_results:
             result._collect(job_directory)
@@ -250,9 +247,4 @@ class _ResultsManager:
                 ),
             )
 
-        self._record_final(
-            (result._csv_filename for result in self._job_results if result._is_final),
-            (job_uid for job_uid, _ in jobs),
-            batch_directory,
-            "job",
-        )
+        self._record_final("job", batch_directory, (job_uid for job_uid, _ in jobs))
