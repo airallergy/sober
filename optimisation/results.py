@@ -161,7 +161,7 @@ class _ResultsManager:
         if name not in frozenset({"_objectives", "_constraints", "_extras"}):
             raise AttributeError
 
-        return tuple(collector for collector in self if collector._kind == name)
+        return tuple(collector for collector in self if collector._kind == name[1:-1])
 
     def _touch_rvi(self, config_directory: Path) -> None:
         for result in self._task_results:
