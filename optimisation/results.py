@@ -140,8 +140,6 @@ class _ResultsManager:
     _objectives: tuple[_Collector, ...]
     _constraints: tuple[_Collector, ...]
     _extras: tuple[_Collector, ...]
-    _task_final_header: str
-    _job_final_header: str
 
     def __init__(self, results: Iterable[_Collector]) -> None:
         results = tuple(results)
@@ -168,7 +166,7 @@ class _ResultsManager:
             if isinstance(result, RVICollector):
                 result._touch(config_directory)
 
-    def _record_final(self, level: AnyLevel, cwd: Path, uids: Iterable[str]) -> None:
+    def _record_final(self, level: AnyLevel, cwd: Path, uids: tuple[str, ...]) -> None:
         csv_filenames = tuple(
             sorted(
                 (
@@ -178,25 +176,20 @@ class _ResultsManager:
                 )
             )
         )
-        val_line = ""
-        header_attr_name = f"_{level}_final_header"
 
+        header_line = f"#,{level.capitalize()}UID"
+
+        joined_val_lines = ""
         for idx, uid in enumerate(uids):
-            if hasattr(self, header_attr_name):
-                has_header = True
-            else:
-                has_header = False
-                header_line = f"#,{level.capitalize()}UID"
-
-            val_line += f"{idx},{uid}"
+            joined_val_lines += f"{idx},{uid}"
             for filename in csv_filenames:
                 with (cwd / uid / filename).open("rt") as fp:
                     line = next(fp)
-                    if not has_header:
+                    if idx == 0:
                         header_line += "," + line.rstrip().split(",", 1)[-1]
 
                     line = next(fp)
-                    val_line += "," + line.rstrip().split(",", 1)[-1]
+                    joined_val_lines += "," + line.rstrip().split(",", 1)[-1]
 
                     if __debug__:
                         try:
@@ -207,13 +200,10 @@ class _ResultsManager:
                             warn(
                                 f"multiple result lines found in '{filename}', only the first collected."
                             )
-
-            if not has_header:
-                setattr(self, header_attr_name, header_line)
-            val_line += "\n"
+            joined_val_lines += "\n"
 
         with (cwd / f"{level}_records.csv").open("wt") as fp:
-            fp.write(getattr(self, header_attr_name) + "\n" + val_line)
+            fp.write(header_line + "\n" + joined_val_lines)
 
     def _collect_task(self, task_directory: Path) -> None:
         for result in self._task_results:
@@ -247,4 +237,6 @@ class _ResultsManager:
                 ),
             )
 
-        self._record_final("job", batch_directory, (job_uid for job_uid, _ in jobs))
+        self._record_final(
+            "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
+        )
