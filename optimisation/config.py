@@ -31,6 +31,7 @@ AnyIntJob: TypeAlias = tuple[str, tuple[AnyIntTask, ...]]
 
 AnyUIDs: TypeAlias = tuple[str, ...]
 AnyUIDsPair: TypeAlias = tuple[str, AnyUIDs]
+AnyBatchResults: TypeAlias = tuple[tuple[float, ...], ...]
 
 Config = TypedDict(
     "Config",

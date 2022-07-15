@@ -262,23 +262,19 @@ class _ResultsManager:
         )
 
     @cache
-    def _recorded_batch(self, batch_directory: Path) -> tuple[tuple[float, ...], ...]:
+    def _recorded_batch(self, batch_directory: Path) -> cf.AnyBatchResults:
         with (batch_directory / self._JOB_RECORD_FILENAME).open("rt") as fp:
             next(fp)
             val_lines = fp.read().splitlines()
         return tuple(tuple(map(float, line.split(",")[2:])) for line in val_lines)
 
-    def _recorded_objectives(
-        self, batch_directory: Path
-    ) -> tuple[tuple[float, ...], ...]:
+    def _recorded_objectives(self, batch_directory: Path) -> cf.AnyBatchResults:
         return tuple(
             tuple(job_vals[idx] for idx in self._objective_idxs)
             for job_vals in self._recorded_batch(batch_directory)
         )
 
-    def _recorded_constraints(
-        self, batch_directory: Path
-    ) -> tuple[tuple[float, ...], ...]:
+    def _recorded_constraints(self, batch_directory: Path) -> cf.AnyBatchResults:
         return tuple(
             tuple(job_vals[idx] for idx in self._constraint_idxs)
             for job_vals in self._recorded_batch(batch_directory)
