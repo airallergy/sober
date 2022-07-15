@@ -40,7 +40,6 @@ class PymooProblem(pm.Problem):
 #######                        PROBLEM CLASSES                        #######
 #############################################################################
 class Problem:
-    _model_file: Path
     _parameters_manager: _ParametersManager[AnyParameter]
     _results_manager: _ResultsManager
     _callback: pm.Callback | None
@@ -59,13 +58,11 @@ class Problem:
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
     ) -> None:
-        self._model_file = Path(model_file).resolve(strict=True)
-        self._parameters_manager = _ParametersManager(
-            weather, parameters, self._model_file
-        )
+        model_file = Path(model_file).resolve(strict=True)
+        self._parameters_manager = _ParametersManager(weather, parameters, model_file)
         self._results_manager = _ResultsManager(results)
         self._callback = callback
-        self._model_directory = self._model_file.parent
+        self._model_directory = model_file.parent
         self._evaluation_directory = (
             self._model_directory / "evaluation"
             if evaluation_directory is None
