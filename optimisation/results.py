@@ -15,24 +15,35 @@ from ._tools import AnyCli, AnyStrPath, _run, _Parallel
 
 AnyLevel: TypeAlias = Literal["task", "job"]
 AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]
+AnyDirection: TypeAlias = Literal["minimise", "maximise"]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
 
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Collector(ABC):
+    _MINIMISE: ClassVar[int] = 1
+    _MAXIMISE: ClassVar[int] = -1
+
     _csv_filename: str
     _level: AnyLevel
     _kind: AnyKind
+    _direction: Literal[1, -1]
     _is_final: bool
 
     @abstractmethod
     def __init__(
-        self, csv_name: str, level: AnyLevel, kind: AnyKind, is_final: bool
+        self,
+        csv_name: str,
+        level: AnyLevel,
+        kind: AnyKind,
+        direction: AnyDirection,
+        is_final: bool,
     ) -> None:
         self._csv_filename = csv_name + ".csv"
         self._level = level
         self._kind = kind
+        self._direction = getattr(self, f"_{direction.upper()}")
         self._is_final = is_final
 
         self._check_args()
@@ -68,6 +79,7 @@ class RVICollector(_Collector):
         csv_name: str,
         level: AnyLevel,
         kind: AnyKind,
+        direction: AnyDirection = "minimise",
         is_final: bool = True,
         keys: Iterable[str] = (),
         frequency: str = "",
@@ -77,7 +89,7 @@ class RVICollector(_Collector):
         self._keys = tuple(keys)
         self._frequency = frequency
 
-        super().__init__(csv_name, level, kind, is_final)
+        super().__init__(csv_name, level, kind, direction, is_final)
 
     def _touch(self, config_directory: Path) -> None:
         self._rvi_file = (
@@ -116,13 +128,14 @@ class ScriptCollector(_Collector):
         csv_name: str,
         level: AnyLevel,
         kind: AnyKind,
+        direction: AnyDirection = "minimise",
         is_final: bool = True,
         *script_args: Unpack[AnyCli],  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
     ) -> None:
         self._script_file = Path(script_file)
         self._language = language
         self._script_args = script_args
-        super().__init__(csv_name, level, kind, is_final)
+        super().__init__(csv_name, level, kind, direction, is_final)
 
     def _collect(self, cwd: Path) -> None:
         commands: AnyCli = (
