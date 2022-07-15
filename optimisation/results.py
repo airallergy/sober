@@ -1,5 +1,6 @@
 from pathlib import Path
 from warnings import warn
+from functools import cache
 from itertools import chain
 from abc import ABC, abstractmethod
 from typing import Literal, TypeAlias
@@ -253,28 +254,25 @@ class _ResultsManager:
             "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
         )
 
-    def _recorded_objectives(
-        self, batch_directory: Path
-    ) -> tuple[tuple[float, ...], ...]:
+    @cache
+    def _recorded_batch(self, batch_directory: Path) -> tuple[tuple[float, ...], ...]:
         with (batch_directory / "job_records.csv").open("rt") as fp:
             next(fp)
             val_lines = fp.read().splitlines()
-        jobs_vals = tuple(tuple(map(float, line.split(",")[2:])) for line in val_lines)
+        return tuple(tuple(map(float, line.split(",")[2:])) for line in val_lines)
 
+    def _recorded_objectives(
+        self, batch_directory: Path
+    ) -> tuple[tuple[float, ...], ...]:
         return tuple(
             tuple(job_vals[idx] for idx in self._objective_idxs)
-            for job_vals in jobs_vals
+            for job_vals in self._recorded_batch(batch_directory)
         )
 
     def _recorded_constraints(
         self, batch_directory: Path
     ) -> tuple[tuple[float, ...], ...]:
-        with (batch_directory / "job_records.csv").open("rt") as fp:
-            next(fp)
-            val_lines = fp.read().splitlines()
-        jobs_vals = tuple(tuple(map(float, line.split(",")[2:])) for line in val_lines)
-
         return tuple(
             tuple(job_vals[idx] for idx in self._constraint_idxs)
-            for job_vals in jobs_vals
+            for job_vals in self._recorded_batch(batch_directory)
         )
