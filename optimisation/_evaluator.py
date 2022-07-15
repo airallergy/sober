@@ -7,10 +7,6 @@ from ._simulator import _run_energyplus
 from .parameters import _ParametersManager
 
 
-def _pymoo_evaluate() -> None:
-    ...
-
-
 def _evaluate(
     *variation_vecs: cf.AnyVariationVec,
     parameters_manager: _ParametersManager,
@@ -36,3 +32,22 @@ def _evaluate(
         )
 
     results_manager._collect_batch(batch_directory, jobs)
+
+
+def _pymoo_evaluate(
+    *variation_vecs: cf.AnyVariationVec,
+    parameters_manager: _ParametersManager,
+    results_manager: _ResultsManager,
+    batch_directory: Path,
+) -> tuple[cf.AnyBatchResults, cf.AnyBatchResults]:
+    _evaluate(
+        *variation_vecs,
+        parameters_manager=parameters_manager,
+        results_manager=results_manager,
+        batch_directory=batch_directory,
+    )
+
+    return (
+        results_manager._recorded_objectives(batch_directory),
+        results_manager._recorded_constraints(batch_directory),
+    )
