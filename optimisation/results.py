@@ -252,3 +252,29 @@ class _ResultsManager:
         self._record_final(
             "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
         )
+
+    def _recorded_objectives(
+        self, batch_directory: Path
+    ) -> tuple[tuple[float, ...], ...]:
+        with (batch_directory / "job_records.csv").open("rt") as fp:
+            next(fp)
+            val_lines = fp.read().splitlines()
+        jobs_vals = tuple(tuple(map(float, line.split(",")[2:])) for line in val_lines)
+
+        return tuple(
+            tuple(job_vals[idx] for idx in self._objective_idxs)
+            for job_vals in jobs_vals
+        )
+
+    def _recorded_constraints(
+        self, batch_directory: Path
+    ) -> tuple[tuple[float, ...], ...]:
+        with (batch_directory / "job_records.csv").open("rt") as fp:
+            next(fp)
+            val_lines = fp.read().splitlines()
+        jobs_vals = tuple(tuple(map(float, line.split(",")[2:])) for line in val_lines)
+
+        return tuple(
+            tuple(job_vals[idx] for idx in self._constraint_idxs)
+            for job_vals in jobs_vals
+        )
