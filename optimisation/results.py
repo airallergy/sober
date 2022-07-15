@@ -3,8 +3,8 @@ from warnings import warn
 from functools import cache
 from itertools import chain
 from abc import ABC, abstractmethod
-from typing import Literal, TypeAlias
 from collections.abc import Iterable, Iterator
+from typing import Literal, ClassVar, TypeAlias
 
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
@@ -139,6 +139,9 @@ class ScriptCollector(_Collector):
 #######                    RESULTS MANAGER CLASSES                    #######
 #############################################################################
 class _ResultsManager:
+    _TASK_RECORD_FILENAME: ClassVar[str] = "task_record.csv"
+    _JOB_RECORD_FILENAME: ClassVar[str] = "job_record.csv"
+
     _task_results: tuple[_Collector, ...]
     _job_results: tuple[_Collector, ...]
     _objectives: tuple[_Collector, ...]
@@ -172,7 +175,9 @@ class _ResultsManager:
             if isinstance(result, RVICollector):
                 result._touch(config_directory)
 
-    def _record_final(self, level: AnyLevel, cwd: Path, uids: tuple[str, ...]) -> None:
+    def _record_final(
+        self, level: AnyLevel, record_directory: Path, uids: tuple[str, ...]
+    ) -> None:
         header_line = f"#,{level.capitalize()}UID"
         joined_val_lines = ""
         if level == "job":
@@ -186,7 +191,7 @@ class _ResultsManager:
                 if not result._is_final:
                     continue
 
-                with (cwd / uid / result._csv_filename).open("rt") as fp:
+                with (record_directory / uid / result._csv_filename).open("rt") as fp:
                     line = next(fp)
                     if idx == 0:
                         header_line += "," + line.rstrip().split(",", 1)[-1]
@@ -215,7 +220,9 @@ class _ResultsManager:
                             )
             joined_val_lines += "\n"
 
-        with (cwd / f"{level}_records.csv").open("wt") as fp:
+        with (
+            record_directory / getattr(self, f"_{level.upper()}_RECORD_FILENAME")
+        ).open("wt") as fp:
             fp.write(header_line + "\n" + joined_val_lines)
 
     def _collect_task(self, task_directory: Path) -> None:
@@ -256,7 +263,7 @@ class _ResultsManager:
 
     @cache
     def _recorded_batch(self, batch_directory: Path) -> tuple[tuple[float, ...], ...]:
-        with (batch_directory / "job_records.csv").open("rt") as fp:
+        with (batch_directory / self._JOB_RECORD_FILENAME).open("rt") as fp:
             next(fp)
             val_lines = fp.read().splitlines()
         return tuple(tuple(map(float, line.split(",")[2:])) for line in val_lines)
