@@ -5,10 +5,11 @@ from ._tools import _Parallel
 from .results import _ResultsManager
 from ._simulator import _run_energyplus
 from .parameters import _ParametersManager
+from ._typing import AnyBatchResults, AnyVariationVec
 
 
 def _evaluate(
-    *variation_vecs: cf.AnyVariationVec,
+    *variation_vecs: AnyVariationVec,
     parameters_manager: _ParametersManager,
     results_manager: _ResultsManager,
     batch_directory: Path,
@@ -35,11 +36,11 @@ def _evaluate(
 
 
 def _pymoo_evaluate(
-    *variation_vecs: cf.AnyVariationVec,
+    *variation_vecs: AnyVariationVec,
     parameters_manager: _ParametersManager,
     results_manager: _ResultsManager,
     batch_directory: Path,
-) -> tuple[cf.AnyBatchResults, cf.AnyBatchResults]:
+) -> tuple[AnyBatchResults, AnyBatchResults]:
     _evaluate(
         *variation_vecs,
         parameters_manager=parameters_manager,

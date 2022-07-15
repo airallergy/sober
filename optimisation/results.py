@@ -10,6 +10,7 @@ from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import config as cf
 from ._simulator import _run_readvars
+from ._typing import AnyJob, AnyUIDs, AnyBatchResults
 from ._tools import AnyCli, AnyStrPath, _run, _Parallel
 
 AnyLevel: TypeAlias = Literal["task", "job"]
@@ -229,7 +230,7 @@ class _ResultsManager:
         for result in self._task_results:
             result._collect(task_directory)
 
-    def _collect_job(self, job_directory: Path, task_uids: cf.AnyUIDs) -> None:
+    def _collect_job(self, job_directory: Path, task_uids: AnyUIDs) -> None:
         for task_uid in task_uids:
             self._collect_task(job_directory / task_uid)
 
@@ -238,9 +239,7 @@ class _ResultsManager:
         for result in self._job_results:
             result._collect(job_directory)
 
-    def _collect_batch(
-        self, batch_directory: Path, jobs: tuple[cf.AnyJob, ...]
-    ) -> None:
+    def _collect_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],
             initializer=cf._update_config,
@@ -262,19 +261,19 @@ class _ResultsManager:
         )
 
     @cache
-    def _recorded_batch(self, batch_directory: Path) -> cf.AnyBatchResults:
+    def _recorded_batch(self, batch_directory: Path) -> AnyBatchResults:
         with (batch_directory / self._JOB_RECORD_FILENAME).open("rt") as fp:
             next(fp)
             val_lines = fp.read().splitlines()
         return tuple(tuple(map(float, line.split(",")[2:])) for line in val_lines)
 
-    def _recorded_objectives(self, batch_directory: Path) -> cf.AnyBatchResults:
+    def _recorded_objectives(self, batch_directory: Path) -> AnyBatchResults:
         return tuple(
             tuple(job_vals[idx] for idx in self._objective_idxs)
             for job_vals in self._recorded_batch(batch_directory)
         )
 
-    def _recorded_constraints(self, batch_directory: Path) -> cf.AnyBatchResults:
+    def _recorded_constraints(self, batch_directory: Path) -> AnyBatchResults:
         return tuple(
             tuple(job_vals[idx] for idx in self._constraint_idxs)
             for job_vals in self._recorded_batch(batch_directory)

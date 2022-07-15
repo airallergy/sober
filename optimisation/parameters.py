@@ -24,6 +24,16 @@ from eppy.bunchhelpers import makefieldname
 from . import config as cf
 from ._tools import AnyStrPath, _Parallel
 from ._simulator import _run_epmacro, _split_model
+from ._typing import (
+    AnyJob,
+    AnyVUMat,
+    AnyVURow,
+    AnyIntVURow,
+    AnyModelType,
+    AnyFloatVURow,
+    AnyVariationVec,
+    AnyUncertaintyVec,
+)
 
 _V = TypeVar("_V")  # AnyVariation
 _U = TypeVar("_U")  # AnyUncertaintyVar
@@ -263,13 +273,13 @@ Parameter = TypeVar("Parameter", AnyParameter, AnyIntParameter)
 #############################################################################
 #######                  PARAMETERS MANAGER CLASSES                   #######
 #############################################################################
-MODEL_TYPES: frozenset[cf.AnyModelType] = frozenset({".idf", ".imf"})
+MODEL_TYPES: frozenset[AnyModelType] = frozenset({".idf", ".imf"})
 
 
 class _ParametersManager(Generic[Parameter]):
     _weather: WeatherParameter
     _parameters: tuple[Parameter, ...]
-    _model_type: cf.AnyModelType
+    _model_type: AnyModelType
     _tagged_model: str
 
     def __init__(
@@ -316,7 +326,7 @@ class _ParametersManager(Generic[Parameter]):
 
         return macros + idf.idfstr()
 
-    def _jobs(self, *variation_vecs: cf.AnyVariationVec) -> Iterator[cf.AnyJob]:
+    def _jobs(self, *variation_vecs: AnyVariationVec) -> Iterator[AnyJob]:
         len_job_count = int(log10(len(variation_vecs))) + 1
         for job_idx, variation_vec in enumerate(variation_vecs):
             # TODO: remove typing after python/mypy#12280 / 3.11
@@ -339,7 +349,7 @@ class _ParametersManager(Generic[Parameter]):
                     ),
                 )
             )
-            uncertainty_vecs = cast(tuple[cf.AnyUncertaintyVec, ...], uncertainty_vecs)
+            uncertainty_vecs = cast(tuple[AnyUncertaintyVec, ...], uncertainty_vecs)
 
             len_task_count = int(log10(len(uncertainty_vecs))) + 1
             tasks = tuple(
@@ -349,24 +359,24 @@ class _ParametersManager(Generic[Parameter]):
                 )
                 for task_idx, uncertainty_vec in enumerate(uncertainty_vecs)
             )
-            tasks = cast(tuple[tuple[str, cf.AnyVUMat], ...], tasks)
+            tasks = cast(tuple[tuple[str, AnyVUMat], ...], tasks)
             yield job_uid, tasks
 
     def _detagged(
-        self, tagged_model: str, parameter_vu_rows: tuple[cf.AnyVURow, ...]
+        self, tagged_model: str, parameter_vu_rows: tuple[AnyVURow, ...]
     ) -> str:
         for parameter_vu_row, parameter in zip(parameter_vu_rows, self._parameters):
             tagged_model = tagged_model.replace(
                 parameter._tagger._tag,
                 str(
-                    cast(cf.AnyFloatVURow, parameter_vu_row)[0]  # NOTE: cast
+                    cast(AnyFloatVURow, parameter_vu_row)[0]  # NOTE: cast
                     if isinstance(parameter, ContinuousParameter)
-                    else parameter[cast(cf.AnyIntVURow, parameter_vu_row)]  # NOTE: cast
+                    else parameter[cast(AnyIntVURow, parameter_vu_row)]  # NOTE: cast
                 ),
             )
         return tagged_model
 
-    def _make_task(self, task_directory: Path, vu_mat: cf.AnyVUMat) -> None:
+    def _make_task(self, task_directory: Path, vu_mat: AnyVUMat) -> None:
         weather_vu_row = vu_mat[0]
         parameter_vu_rows = vu_mat[1:]
 
@@ -389,7 +399,7 @@ class _ParametersManager(Generic[Parameter]):
         if self._model_type == ".imf":
             _run_epmacro(task_model_file)
 
-    def _make_batch(self, batch_directory: Path, jobs: tuple[cf.AnyJob, ...]) -> None:
+    def _make_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],
             initializer=cf._update_config,
