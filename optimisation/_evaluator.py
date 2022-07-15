@@ -15,11 +15,11 @@ def _product_evaluate(
     *variation_vecs: cf.AnyIntVariationVec,
     parameters_manager: _ParametersManager,
     results_manager: _ResultsManager,
-    evaluation_directory: Path,
+    batch_directory: Path,
 ) -> None:
     jobs = tuple(parameters_manager._jobs(*variation_vecs))  # type: ignore[arg-type] # might be resolved after python/mypy#12280
 
-    parameters_manager._make_batch(evaluation_directory, jobs)
+    parameters_manager._make_batch(batch_directory, jobs)
 
     with _Parallel(
         cf._config["n.processes"],
@@ -29,10 +29,10 @@ def _product_evaluate(
         parallel.map(
             _run_energyplus,
             (
-                evaluation_directory / job_uid / task_uid
+                batch_directory / job_uid / task_uid
                 for job_uid, tasks in jobs
                 for task_uid, _ in tasks
             ),
         )
 
-    results_manager._collect_batch(evaluation_directory, jobs)
+    results_manager._collect_batch(batch_directory, jobs)

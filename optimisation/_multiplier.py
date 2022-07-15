@@ -21,5 +21,5 @@ def _multiply(
         ),
         parameters_manager=parameters_manager,
         results_manager=results_manager,
-        evaluation_directory=evaluation_directory,
+        batch_directory=evaluation_directory,
     )
