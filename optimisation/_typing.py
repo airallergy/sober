@@ -1,8 +1,10 @@
 from pathlib import Path
-from typing import Literal, TypeAlias
+from typing import Literal, Callable, TypeAlias
 
 from typing_extensions import Required, TypedDict
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
+
+from . import _pymoo_namespace as pm
 
 AnyModelType: TypeAlias = Literal[".idf", ".imf"]
 AnyLanguage: TypeAlias = Literal["python"]
@@ -41,3 +43,5 @@ Config = TypedDict(
     },
     total=False,
 )
+
+AnyCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None

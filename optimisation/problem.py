@@ -9,6 +9,7 @@ from ._tools import AnyStrPath
 from ._multiplier import _multiply
 from . import _pymoo_namespace as pm
 from ._evaluator import _pymoo_evaluate
+from ._typing import AnyCallback, AnyVariationVec
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
     AnyParameter,
@@ -26,7 +27,7 @@ class PymooProblem(pm.Problem):
         n_constr: int,
         xl: NDArray[np.float_],
         xu: NDArray[np.float_],
-        callback: pm.Callback | None,
+        callback: AnyCallback,
     ) -> None:
         super().__init__(
             n_var=n_var, n_obj=n_obj, n_constr=n_constr, xl=xl, xu=xu, callback=callback
@@ -42,7 +43,7 @@ class PymooProblem(pm.Problem):
 class Problem:
     _parameters_manager: _ParametersManager[AnyParameter]
     _results_manager: _ResultsManager
-    _callback: pm.Callback | None
+    _callback: AnyCallback
     _model_directory: Path
     _evaluation_directory: Path
     _config_directory: Path
@@ -53,7 +54,7 @@ class Problem:
         weather: WeatherParameter,
         parameters: Iterable[AnyParameter],
         results: Iterable[_Collector] = (),
-        callback: pm.Callback | None = None,
+        callback: AnyCallback = None,
         evaluation_directory: AnyStrPath | None = None,
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
