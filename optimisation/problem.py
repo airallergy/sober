@@ -20,6 +20,10 @@ from .parameters import (
 
 
 class PymooProblem(pm.Problem):
+    _parameters_manager: _ParametersManager
+    _results_manager: _ResultsManager
+    _evaluation_directory: Path
+
     def __init__(
         self,
         n_var: int,
@@ -28,13 +32,31 @@ class PymooProblem(pm.Problem):
         xl: NDArray[np.float_],
         xu: NDArray[np.float_],
         callback: AnyCallback,
+        parameters_manager: _ParametersManager,
+        results_manager: _ResultsManager,
+        evaluation_directory: Path,
     ) -> None:
         super().__init__(
             n_var=n_var, n_obj=n_obj, n_constr=n_constr, xl=xl, xu=xu, callback=callback
         )
+        self._parameters_manager = parameters_manager
+        self._results_manager = results_manager
+        self._evaluation_directory = evaluation_directory
 
-    def _evaluate(self, x, out, *args, **kwargs) -> None:
-        _pymoo_evaluate()
+    def _evaluate(
+        self,
+        x: tuple[AnyVariationVec, ...],
+        out,
+        *args,
+        algoritm: pm.Algorithm,
+        **kwargs,
+    ) -> None:
+        out["F"], out["G"] = _pymoo_evaluate(
+            *x,
+            parameters_manager=self._parameters_manager,
+            results_manager=self._results_manager,
+            batch_directory=self._evaluation_directory / ("B" + algoritm.n_gen),
+        )
 
 
 #############################################################################
@@ -112,6 +134,9 @@ class Problem:
                 dtype=np.float_,
             ),
             self._callback,
+            self._parameters_manager,
+            self._results_manager,
+            self._evaluation_directory,
         )
 
     def run_brute_force(self) -> None:
