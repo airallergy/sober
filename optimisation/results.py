@@ -143,6 +143,8 @@ class _ResultsManager:
     _objectives: tuple[_Collector, ...]
     _constraints: tuple[_Collector, ...]
     _extras: tuple[_Collector, ...]
+    _objective_idxs: tuple[int, ...]
+    _constraint_idxs: tuple[int, ...]
 
     def __init__(self, results: Iterable[_Collector]) -> None:
         results = tuple(results)
@@ -171,8 +173,12 @@ class _ResultsManager:
 
     def _record_final(self, level: AnyLevel, cwd: Path, uids: tuple[str, ...]) -> None:
         header_line = f"#,{level.capitalize()}UID"
-
         joined_val_lines = ""
+        if level == "job":
+            count = 0
+            self._objective_idxs = ()
+            self._constraint_idxs = ()
+
         for idx, uid in enumerate(uids):
             joined_val_lines += f"{idx},{uid}"
             for result in getattr(self, f"_{level}_results"):
@@ -183,6 +189,16 @@ class _ResultsManager:
                     line = next(fp)
                     if idx == 0:
                         header_line += "," + line.rstrip().split(",", 1)[-1]
+
+                        if level == "job":
+                            if result._kind == "objective":
+                                self._objective_idxs += tuple(
+                                    range(count, count := count + line.count(","))
+                                )
+                            elif result._kind == "constraint":
+                                self._constraint_idxs += tuple(
+                                    range(count, count := count + line.count(","))
+                                )
 
                     line = next(fp)
                     joined_val_lines += "," + line.rstrip().split(",", 1)[-1]
