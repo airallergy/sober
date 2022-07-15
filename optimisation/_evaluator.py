@@ -11,13 +11,13 @@ def _pymoo_evaluate() -> None:
     ...
 
 
-def _product_evaluate(
-    *variation_vecs: cf.AnyIntVariationVec,
+def _evaluate(
+    *variation_vecs: cf.AnyVariationVec,
     parameters_manager: _ParametersManager,
     results_manager: _ResultsManager,
     batch_directory: Path,
 ) -> None:
-    jobs = tuple(parameters_manager._jobs(*variation_vecs))  # type: ignore[arg-type] # might be resolved after python/mypy#12280
+    jobs = tuple(parameters_manager._jobs(*variation_vecs))
 
     parameters_manager._make_batch(batch_directory, jobs)
 

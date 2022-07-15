@@ -1,8 +1,8 @@
 from pathlib import Path
 from itertools import product
 
+from ._evaluator import _evaluate
 from .results import _ResultsManager
-from ._evaluator import _product_evaluate
 from .parameters import AnyIntParameter, _ParametersManager
 
 
@@ -11,8 +11,8 @@ def _multiply(
     results_manager: _ResultsManager,
     evaluation_directory: Path,
 ) -> None:
-    _product_evaluate(
-        *product(
+    _evaluate(
+        *product(  # type: ignore[arg-type] # might be resolved after python/mypy#12280
             range(parameters_manager._weather._n_variations),
             *(
                 range(parameter._n_variations)
