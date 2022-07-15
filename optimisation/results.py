@@ -83,18 +83,20 @@ class RVICollector(_Collector):
         )
 
         suffixes = {"variable": "eso", "meter": "mtr"}
-        rvi_lines = f"eplusout.{suffixes[self._output_type]}\n{self._csv_filename}\n"
+        joined_rvi_lines = (
+            f"eplusout.{suffixes[self._output_type]}\n{self._csv_filename}\n"
+        )
         match self._keys:
             case ():
-                rvi_lines += self._output_name
+                joined_rvi_lines += self._output_name
             case _:
-                rvi_lines += "\n".join(
+                joined_rvi_lines += "\n".join(
                     f"{key},{self._output_name}" for key in self._keys
                 )
-        rvi_lines += "\n0\n"
+        joined_rvi_lines += "\n0\n"
 
         with self._rvi_file.open("wt") as fp:
-            fp.write(rvi_lines)
+            fp.write(joined_rvi_lines)
 
     def _collect(self, cwd: Path) -> None:
         _run_readvars(self._rvi_file, cwd, self._frequency)
