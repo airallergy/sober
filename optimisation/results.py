@@ -167,23 +167,16 @@ class _ResultsManager:
                 result._touch(config_directory)
 
     def _record_final(self, level: AnyLevel, cwd: Path, uids: tuple[str, ...]) -> None:
-        csv_filenames = tuple(
-            sorted(
-                (
-                    result._csv_filename
-                    for result in getattr(self, f"_{level}_results")
-                    if result._is_final
-                )
-            )
-        )
-
         header_line = f"#,{level.capitalize()}UID"
 
         joined_val_lines = ""
         for idx, uid in enumerate(uids):
             joined_val_lines += f"{idx},{uid}"
-            for filename in csv_filenames:
-                with (cwd / uid / filename).open("rt") as fp:
+            for result in getattr(self, f"_{level}_results"):
+                if not result._is_final:
+                    continue
+
+                with (cwd / uid / result._csv_filename).open("rt") as fp:
                     line = next(fp)
                     if idx == 0:
                         header_line += "," + line.rstrip().split(",", 1)[-1]
@@ -198,7 +191,7 @@ class _ResultsManager:
                             pass
                         else:
                             warn(
-                                f"multiple result lines found in '{filename}', only the first collected."
+                                f"multiple result lines found in '{result._csv_filename}', only the first collected."
                             )
             joined_val_lines += "\n"
 
