@@ -64,6 +64,7 @@ class RVICollector(_Collector):
         output_name: str,
         output_type: AnyOutputType,
         csv_name: str,
+        level: AnyLevel,
         kind: AnyKind,
         is_final: bool = True,
         keys: Iterable[str] = (),
@@ -74,7 +75,7 @@ class RVICollector(_Collector):
         self._keys = tuple(keys)
         self._frequency = frequency
 
-        super().__init__(csv_name, "task", kind, is_final)
+        super().__init__(csv_name, level, kind, is_final)
 
     def _touch(self, config_directory: Path) -> None:
         self._rvi_file = (
