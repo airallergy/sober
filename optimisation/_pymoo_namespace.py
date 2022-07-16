@@ -1,4 +1,5 @@
 from pymoo.optimize import minimize
+from pymoo.core.result import Result
 from pymoo.core.problem import Problem
 from pymoo.core.callback import Callback
 from pymoo.core.algorithm import Algorithm
