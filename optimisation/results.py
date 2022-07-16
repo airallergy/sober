@@ -16,6 +16,7 @@ from ._tools import AnyCli, AnyStrPath, _run, _Parallel
 AnyLevel: TypeAlias = Literal["task", "job"]
 AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]
 AnyDirection: TypeAlias = Literal["minimise", "maximise"]
+AnyDirectionMultiplier: TypeAlias = Literal[1, -1]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
 
 #############################################################################
@@ -28,7 +29,7 @@ class _Collector(ABC):
     _csv_filename: str
     _level: AnyLevel
     _kind: AnyKind
-    _direction: Literal[1, -1]
+    _multiplier: AnyDirectionMultiplier
     _is_final: bool
 
     @abstractmethod
@@ -43,7 +44,7 @@ class _Collector(ABC):
         self._csv_filename = csv_name + ".csv"
         self._level = level
         self._kind = kind
-        self._direction = getattr(self, f"_{direction.upper()}")
+        self._multiplier = getattr(self, f"_{direction.upper()}")
         self._is_final = is_final
 
         self._check_args()
@@ -163,6 +164,7 @@ class _ResultsManager:
     _extras: tuple[_Collector, ...]
     _objective_idxs: tuple[int, ...]
     _constraint_idxs: tuple[int, ...]
+    _multipliers: tuple[AnyDirectionMultiplier, ...]
 
     def __init__(self, results: Iterable[_Collector]) -> None:
         results = tuple(results)
@@ -198,6 +200,7 @@ class _ResultsManager:
             count = 0
             self._objective_idxs = ()
             self._constraint_idxs = ()
+            self._multipliers = ()
 
         for idx, uid in enumerate(uids):
             joined_val_lines += f"{idx},{uid}"
@@ -212,9 +215,11 @@ class _ResultsManager:
 
                         if level == "job":
                             if result._kind == "objective":
+                                n_results = line.count(",")
                                 self._objective_idxs += tuple(
-                                    range(count, count := count + line.count(","))
+                                    range(count, count := count + n_results)
                                 )
+                                self._multipliers += (result._multiplier,) * n_results
                             elif result._kind == "constraint":
                                 self._constraint_idxs += tuple(
                                     range(count, count := count + line.count(","))
@@ -282,7 +287,10 @@ class _ResultsManager:
 
     def _recorded_objectives(self, batch_directory: Path) -> AnyBatchResults:
         return tuple(
-            tuple(job_vals[idx] for idx in self._objective_idxs)
+            tuple(
+                job_vals[idx] * multiplier
+                for idx, multiplier in zip(self._objective_idxs, self._multipliers)
+            )
             for job_vals in self._recorded_batch(batch_directory)
         )
 
