@@ -309,7 +309,7 @@ class _ParametersManager(Generic[Parameter]):
     def _tagged(self, model_file: Path) -> str:
         macros, regulars = _split_model(model_file)
         if hasattr(cf, "_config"):
-            idf = openidf(StringIO(regulars), cf._config["schema.energyplus"])
+            idf = openidf(StringIO(regulars), str(cf._config["schema.energyplus"]))
         else:
             idf = openidf(StringIO(regulars))
             cf.config_energyplus(
