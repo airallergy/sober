@@ -74,7 +74,7 @@ class Problem:
         self,
         model_file: AnyStrPath,
         weather: WeatherParameter,
-        parameters: Iterable[AnyParameter],
+        parameters: Iterable[AnyParameter] = (),
         results: Iterable[_Collector] = (),
         callback: AnyCallback = None,
         evaluation_directory: AnyStrPath | None = None,
