@@ -26,7 +26,7 @@ class _Collector(ABC):
     _MINIMISE: ClassVar[int] = 1
     _MAXIMISE: ClassVar[int] = -1
 
-    _csv_filename: str
+    _filename: str
     _level: AnyLevel
     _kind: AnyKind
     _multiplier: AnyDirectionMultiplier
@@ -35,13 +35,13 @@ class _Collector(ABC):
     @abstractmethod
     def __init__(
         self,
-        csv_name: str,
+        filename: str,
         level: AnyLevel,
         kind: AnyKind,
         direction: AnyDirection,
         is_final: bool,
     ) -> None:
-        self._csv_filename = csv_name + ".csv"
+        self._filename = filename
         self._level = level
         self._kind = kind
         self._multiplier = getattr(self, f"_{direction.upper()}")
@@ -53,10 +53,19 @@ class _Collector(ABC):
         if self._kind in ("objective", "constraint"):
             assert (
                 self._level == "job"
-            ), f"an '{self._kind}' result needs to be at the 'job' level."
+            ), f"an '{self._kind}' result needs to be at the 'job' level: {self._filename}."
             assert (
                 self._is_final == True
-            ), f"an '{self._kind}' result needs to be final."
+            ), f"an '{self._kind}' result needs to be final: {self._filename}."
+
+        if self._is_final:
+            assert (
+                self._filename.split(".")[-1] == "csv"
+            ), f"a final result needs to be a csv file: {self._filename}."
+        if self.__class__.__name__ == "RVICollector":
+            assert (
+                self._filename.split(".")[-1] == "csv"
+            ), f"a RVICollector result needs to be a csv file: {self._filename}."
 
     @abstractmethod
     def _collect(self, cwd: Path) -> None:
@@ -77,7 +86,7 @@ class RVICollector(_Collector):
         self,
         output_name: str,
         output_type: AnyOutputType,
-        csv_name: str,
+        filename: str,
         level: AnyLevel,
         kind: AnyKind,
         direction: AnyDirection = "minimise",
@@ -90,7 +99,7 @@ class RVICollector(_Collector):
         self._keys = tuple(keys)
         self._frequency = frequency
 
-        super().__init__(csv_name, level, kind, direction, is_final)
+        super().__init__(filename, level, kind, direction, is_final)
 
     def _touch(self, config_directory: Path) -> None:
         self._rvi_file = (
@@ -98,9 +107,7 @@ class RVICollector(_Collector):
         )
 
         suffixes = {"variable": "eso", "meter": "mtr"}
-        joined_rvi_lines = (
-            f"eplusout.{suffixes[self._output_type]}\n{self._csv_filename}\n"
-        )
+        joined_rvi_lines = f"eplusout.{suffixes[self._output_type]}\n{self._filename}\n"
         match self._keys:
             case ():
                 joined_rvi_lines += self._output_name
@@ -126,7 +133,7 @@ class ScriptCollector(_Collector):
         self,
         script_file: AnyStrPath,
         language: cf.AnyLanguage,
-        csv_name: str,
+        filename: str,
         level: AnyLevel,
         kind: AnyKind,
         direction: AnyDirection = "minimise",
@@ -136,14 +143,14 @@ class ScriptCollector(_Collector):
         self._script_file = Path(script_file)
         self._language = language
         self._script_args = script_args
-        super().__init__(csv_name, level, kind, direction, is_final)
+        super().__init__(filename, level, kind, direction, is_final)
 
     def _collect(self, cwd: Path) -> None:
         commands: AnyCli = (
             cf._config["exec.python"],
             self._script_file,
             cwd,
-            self._csv_filename,
+            self._filename,
             *self._script_args,
         )
 
@@ -208,7 +215,7 @@ class _ResultsManager:
                 if not result._is_final:
                     continue
 
-                with (record_directory / uid / result._csv_filename).open("rt") as fp:
+                with (record_directory / uid / result._filename).open("rt") as fp:
                     line = next(fp)
                     if idx == 0:
                         header_line += "," + line.rstrip().split(",", 1)[-1]
@@ -235,7 +242,7 @@ class _ResultsManager:
                             pass
                         else:
                             warn(
-                                f"multiple result lines found in '{result._csv_filename}', only the first collected."
+                                f"multiple result lines found in '{result._filename}', only the first collected."
                             )
             joined_val_lines += "\n"
 
