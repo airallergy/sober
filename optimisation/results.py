@@ -161,8 +161,8 @@ class ScriptCollector(_Collector):
 #######                    RESULTS MANAGER CLASSES                    #######
 #############################################################################
 class _ResultsManager:
-    _TASK_RECORD_FILENAME: ClassVar[str] = "task_record.csv"
-    _JOB_RECORD_FILENAME: ClassVar[str] = "job_record.csv"
+    _TASK_RECORDS_FILENAME: ClassVar[str] = "task_records.csv"
+    _JOB_RECORDS_FILENAME: ClassVar[str] = "job_records.csv"
 
     _task_results: tuple[_Collector, ...]
     _job_results: tuple[_Collector, ...]
@@ -247,7 +247,7 @@ class _ResultsManager:
             joined_val_lines += "\n"
 
         with (
-            record_directory / getattr(self, f"_{level.upper()}_RECORD_FILENAME")
+            record_directory / getattr(self, f"_{level.upper()}_RECORDS_FILENAME")
         ).open("wt") as fp:
             fp.write(header_line + "\n" + joined_val_lines)
 
@@ -287,7 +287,7 @@ class _ResultsManager:
 
     @cache
     def _recorded_batch(self, batch_directory: Path) -> AnyBatchResults:
-        with (batch_directory / self._JOB_RECORD_FILENAME).open("rt") as fp:
+        with (batch_directory / self._JOB_RECORDS_FILENAME).open("rt") as fp:
             next(fp)
             val_lines = fp.read().splitlines()
         return tuple(tuple(map(float, line.split(",")[2:])) for line in val_lines)
