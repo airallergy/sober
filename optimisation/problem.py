@@ -91,7 +91,9 @@ class Problem:
             if evaluation_directory is None
             else Path(evaluation_directory)
         )
-        self._config_directory = self._model_directory / f".{__package__}"
+        self._config_directory = self._model_directory / (
+            "." + __package__.split(".")[-1]
+        )
 
         self._prepare(n_processes, python_exec)
 
