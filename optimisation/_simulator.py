@@ -38,7 +38,7 @@ def _resolved_path(path: AnyStrPath, default_parent: Path) -> Path:
     if pure_path.is_absolute():
         return Path(pure_path).resolve(strict=True)
     else:
-        return default_parent / pure_path
+        return (default_parent / pure_path).resolve(strict=True)
 
 
 def _resolved_macros(macro_lines: Iterable[str], model_directory: Path) -> list[str]:
