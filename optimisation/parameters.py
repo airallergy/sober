@@ -84,6 +84,10 @@ class _ModelParameterMixin(ABC):
 
         super().__init__(*args, **kwargs)  # NOTE: to _FloatParameter/_IntParameter
 
+    @abstractmethod
+    def _detagged(self, tagged_model: str, parameter_vu_row: Any) -> str:
+        ...
+
 
 class _FloatParameter(_Parameter):
     @abstractmethod
@@ -215,6 +219,9 @@ class ContinuousParameter(_ModelParameterMixin, _FloatParameter):
     def __init__(self, tagger: _Tagger, low: float, high: float) -> None:
         super().__init__(tagger, low, high)
 
+    def _detagged(self, tagged_model: str, parameter_vu_row: AnyFloatVURow) -> str:
+        return tagged_model.replace(self._tagger._tag, str(parameter_vu_row[0]))
+
 
 class DiscreteParameter(_ModelParameterMixin, _IntParameter[float, float]):
     _variations: tuple[float, ...]
@@ -228,6 +235,9 @@ class DiscreteParameter(_ModelParameterMixin, _IntParameter[float, float]):
     ) -> None:
         super().__init__(tagger, variations, *uncertainties)
 
+    def _detagged(self, tagged_model: str, parameter_vu_row: AnyIntVURow) -> str:
+        return tagged_model.replace(self._tagger._tag, str(self[parameter_vu_row]))
+
 
 class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
     _variations: tuple[str, ...]
@@ -240,6 +250,9 @@ class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
         *uncertainties: Iterable[str],
     ) -> None:
         super().__init__(tagger, variations, *uncertainties)
+
+    def _detagged(self, tagged_model: str, parameter_vu_row: AnyIntVURow) -> str:
+        return tagged_model.replace(self._tagger._tag, str(self[parameter_vu_row]))
 
 
 class WeatherParameter(_IntParameter[Path | str, Path]):
@@ -366,14 +379,14 @@ class _ParametersManager(Generic[Parameter]):
         self, tagged_model: str, parameter_vu_rows: tuple[AnyVURow, ...]
     ) -> str:
         for parameter_vu_row, parameter in zip(parameter_vu_rows, self._parameters):
-            tagged_model = tagged_model.replace(
-                parameter._tagger._tag,
-                str(
-                    cast(AnyFloatVURow, parameter_vu_row)[0]  # NOTE: cast
-                    if isinstance(parameter, ContinuousParameter)
-                    else parameter[cast(AnyIntVURow, parameter_vu_row)]  # NOTE: cast
-                ),
-            )
+            if isinstance(parameter, ContinuousParameter):
+                tagged_model = parameter._detagged(
+                    tagged_model, cast(AnyFloatVURow, parameter_vu_row)  # NOTE: cast
+                )
+            else:
+                tagged_model = parameter._detagged(
+                    tagged_model, cast(AnyIntVURow, parameter_vu_row)  # NOTE: cast
+                )
         return tagged_model
 
     def _make_task(self, task_directory: Path, vu_mat: AnyVUMat) -> None:
