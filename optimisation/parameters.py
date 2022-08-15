@@ -321,6 +321,13 @@ class _ParametersManager(Generic[Parameter]):
 
     def _tagged(self, model_file: Path) -> str:
         macros, regulars = _split_model(model_file)
+        if (macros.rstrip() == "") ^ (self._model_type == ".idf"):
+            raise ValueError(
+                f"a '{self._model_type}' model is input, but "
+                + ("no " if self._model_type == ".imf" else "")
+                + "macro commands are found."
+            )
+
         if hasattr(cf, "_config"):
             idf = openidf(StringIO(regulars), str(cf._config["schema.energyplus"]))
         else:
