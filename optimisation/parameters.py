@@ -10,6 +10,7 @@ from typing import (
     Any,
     Generic,
     TypeVar,
+    Callable,
     TypeAlias,
     TypeGuard,
     SupportsIndex,
@@ -73,6 +74,7 @@ class _MacroTagger(_Tagger):
 class _Parameter(ABC):
     _low: float
     _high: float
+    _idx: int
 
 
 class _ModelParameterMixin(ABC):
@@ -85,7 +87,9 @@ class _ModelParameterMixin(ABC):
         super().__init__(*args, **kwargs)  # NOTE: to _FloatParameter/_IntParameter
 
     @abstractmethod
-    def _detagged(self, tagged_model: str, parameter_vu_row: Any) -> str:
+    def _detagged(
+        self, tagged_model: str, parameter_vu_row: Any, task_parameter_vals: list[Any]
+    ) -> str:
         ...
 
 
@@ -243,8 +247,15 @@ class ContinuousParameter(_ModelParameterMixin, _FloatParameter):
     def __init__(self, tagger: _Tagger, low: float, high: float) -> None:
         super().__init__(tagger, low, high)
 
-    def _detagged(self, tagged_model: str, parameter_vu_row: AnyFloatVURow) -> str:
-        return tagged_model.replace(self._tagger._tag, str(parameter_vu_row[0]))
+    def _detagged(
+        self,
+        tagged_model: str,
+        parameter_vu_row: AnyFloatVURow,
+        task_parameter_vals: list[Any],
+    ) -> str:
+        val = parameter_vu_row[0]
+        task_parameter_vals[self._idx] = val
+        return tagged_model.replace(self._tagger._tag, str(val))
 
 
 class DiscreteParameter(_ModelParameterMixin, _IntParameter[float, float]):
@@ -259,8 +270,15 @@ class DiscreteParameter(_ModelParameterMixin, _IntParameter[float, float]):
     ) -> None:
         super().__init__(tagger, variations, *uncertainties)
 
-    def _detagged(self, tagged_model: str, parameter_vu_row: AnyIntVURow) -> str:
-        return tagged_model.replace(self._tagger._tag, str(self[parameter_vu_row]))
+    def _detagged(
+        self,
+        tagged_model: str,
+        parameter_vu_row: AnyIntVURow,
+        task_parameter_vals: list[Any],
+    ) -> str:
+        val = self[parameter_vu_row]
+        task_parameter_vals[self._idx] = val
+        return tagged_model.replace(self._tagger._tag, str(val))
 
 
 class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
@@ -275,13 +293,54 @@ class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
     ) -> None:
         super().__init__(tagger, variations, *uncertainties)
 
-    def _detagged(self, tagged_model: str, parameter_vu_row: AnyIntVURow) -> str:
-        return tagged_model.replace(self._tagger._tag, str(self[parameter_vu_row]))
+    def _detagged(
+        self,
+        tagged_model: str,
+        parameter_vu_row: AnyIntVURow,
+        task_parameter_vals: list[Any],
+    ) -> str:
+        val = self[parameter_vu_row]
+        task_parameter_vals[self._idx] = val
+        return tagged_model.replace(self._tagger._tag, str(val))
 
 
-AnyIntParameter: TypeAlias = DiscreteParameter | CategoricalParameter
+class FunctionalParameter(_ModelParameterMixin, _IntParameter[_V, _U]):
+    _func: Callable[..., _V]
+    _parameter_indices: tuple[int, ...]
+    _args: tuple[str, ...]
+
+    def __init__(
+        self,
+        tagger: _Tagger,
+        func: Callable[..., _V],
+        parameter_indices: tuple[int, ...],
+        *args,
+    ) -> None:
+        super().__init__(tagger, (1,), *())
+        self._func = func  # TODO: this has been solved in the master branch
+        self._parameter_indices = parameter_indices
+        self._args = tuple(map(str, args))
+
+    def _detagged(
+        self,
+        tagged_model: str,
+        parameter_vu_row: AnyIntVURow,
+        task_parameter_vals: list[Any],
+    ) -> str:
+        val = self._func(
+            *(task_parameter_vals[idx] for idx in self._parameter_indices),
+            *self._args,
+        )
+        task_parameter_vals[self._idx] = val
+        return tagged_model.replace(self._tagger._tag, str(val))
+
+
+AnyIntParameter: TypeAlias = (
+    DiscreteParameter | CategoricalParameter | FunctionalParameter
+)
 AnyParameter: TypeAlias = ContinuousParameter | AnyIntParameter
 Parameter = TypeVar("Parameter", AnyParameter, AnyIntParameter)
+# this TypeVar definition is so to differ a parameter manager with mixed parameter types from one that only has integers
 
 #############################################################################
 #######                  PARAMETERS MANAGER CLASSES                   #######
@@ -303,6 +362,10 @@ class _ParametersManager(Generic[Parameter]):
     ) -> None:
         self._weather = weather
         self._parameters = tuple(parameters)
+
+        self._weather._idx = 0
+        for idx, parameter in enumerate(self._parameters):
+            parameter._idx = idx
 
         suffix = model_file.suffix
         if suffix not in MODEL_TYPES:
@@ -383,32 +446,40 @@ class _ParametersManager(Generic[Parameter]):
             yield job_uid, tasks
 
     def _detagged(
-        self, tagged_model: str, parameter_vu_rows: tuple[AnyVURow, ...]
+        self,
+        tagged_model: str,
+        parameter_vu_rows: tuple[AnyVURow, ...],
+        task_parameter_vals: list[Any],
     ) -> str:
         for parameter_vu_row, parameter in zip(parameter_vu_rows, self._parameters):
             if isinstance(parameter, ContinuousParameter):
                 tagged_model = parameter._detagged(
-                    tagged_model, cast(AnyFloatVURow, parameter_vu_row)  # NOTE: cast
+                    tagged_model,
+                    cast(AnyFloatVURow, parameter_vu_row),  # NOTE: cast
+                    task_parameter_vals,
                 )
             else:
                 tagged_model = parameter._detagged(
-                    tagged_model, cast(AnyIntVURow, parameter_vu_row)  # NOTE: cast
+                    tagged_model,
+                    cast(AnyIntVURow, parameter_vu_row),  # NOTE: cast
+                    task_parameter_vals,
                 )
         return tagged_model
 
     def _make_task(self, task_directory: Path, vu_mat: AnyVUMat) -> None:
-        weather_vu_row = vu_mat[0]
-        parameter_vu_rows = vu_mat[1:]
+        task_parameter_vals: list[Any] = [None] * len(self)
 
         # create task folder
         task_directory.mkdir(parents=True, exist_ok=True)
 
         # copy task weather files
         task_epw_file = task_directory / "in.epw"
-        copyfile(self._weather[weather_vu_row], task_epw_file)
+        src_epw_file = self._weather[vu_mat[0]]
+        task_parameter_vals[self._weather._idx] = src_epw_file
+        copyfile(src_epw_file, task_epw_file)
 
         # detag model with parameter values
-        model = self._detagged(self._tagged_model, parameter_vu_rows)
+        model = self._detagged(self._tagged_model, vu_mat[1:], task_parameter_vals)
 
         # write task model file
         task_model_file = task_directory / ("in" + self._model_type)

@@ -7,6 +7,7 @@ from .parameters import (
     WeatherParameter,
     DiscreteParameter,
     ContinuousParameter,
+    FunctionalParameter,
     CategoricalParameter,
 )
 
@@ -21,5 +22,6 @@ __all__ = (
     "WeatherParameter",
     "DiscreteParameter",
     "ContinuousParameter",
+    "FunctionalParameter",
     "CategoricalParameter",
 )
