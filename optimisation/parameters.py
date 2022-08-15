@@ -215,6 +215,30 @@ class StringTagger(_MacroTagger):
 #############################################################################
 #######                       PARAMETER CLASSES                       #######
 #############################################################################
+class WeatherParameter(_IntParameter[Path | str, Path]):
+    _variations: tuple[Path | str, ...]
+    _uncertainties: tuple[tuple[Path, ...], ...]
+
+    @overload
+    def __init__(self, variations: Iterable[AnyStrPath]) -> None:
+        ...
+
+    @overload
+    def __init__(
+        self, variations: Iterable[str], *uncertainties: Iterable[AnyStrPath]
+    ) -> None:
+        ...
+
+    def __init__(self, variations, *uncertainties):
+        super().__init__(
+            map(Path, variations) if len(uncertainties) else variations, *uncertainties
+        )
+        if self._is_uncertain:
+            self._uncertainties = tuple(
+                tuple(map(Path, item)) for item in self._uncertainties
+            )
+
+
 class ContinuousParameter(_ModelParameterMixin, _FloatParameter):
     def __init__(self, tagger: _Tagger, low: float, high: float) -> None:
         super().__init__(tagger, low, high)
@@ -253,30 +277,6 @@ class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
 
     def _detagged(self, tagged_model: str, parameter_vu_row: AnyIntVURow) -> str:
         return tagged_model.replace(self._tagger._tag, str(self[parameter_vu_row]))
-
-
-class WeatherParameter(_IntParameter[Path | str, Path]):
-    _variations: tuple[Path | str, ...]
-    _uncertainties: tuple[tuple[Path, ...], ...]
-
-    @overload
-    def __init__(self, variations: Iterable[AnyStrPath]) -> None:
-        ...
-
-    @overload
-    def __init__(
-        self, variations: Iterable[str], *uncertainties: Iterable[AnyStrPath]
-    ) -> None:
-        ...
-
-    def __init__(self, variations, *uncertainties):
-        super().__init__(
-            map(Path, variations) if len(uncertainties) else variations, *uncertainties
-        )
-        if self._is_uncertain:
-            self._uncertainties = tuple(
-                tuple(map(Path, item)) for item in self._uncertainties
-            )
 
 
 AnyIntParameter: TypeAlias = DiscreteParameter | CategoricalParameter
