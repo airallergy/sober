@@ -103,7 +103,8 @@ class RVICollector(_Collector):
 
     def _touch(self, config_directory: Path) -> None:
         self._rvi_file = (
-            config_directory / f"{self._output_name.replace(' ', '_').lower()}.rvi"
+            config_directory
+            / f"{self._output_name.replace(' ', '_').replace(':', '_').lower()}.rvi"
         )
 
         suffixes = {"variable": "eso", "meter": "mtr"}
@@ -112,6 +113,9 @@ class RVICollector(_Collector):
             case ():
                 joined_rvi_lines += self._output_name
             case _:
+                if self._output_type == "meter":
+                    raise ValueError("meter variables do not accept keys.")
+
                 joined_rvi_lines += "\n".join(
                     f"{key},{self._output_name}" for key in self._keys
                 )
