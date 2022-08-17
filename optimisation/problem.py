@@ -76,13 +76,16 @@ class Problem:
         weather: WeatherParameter,
         parameters: Iterable[AnyParameter] = (),
         results: Iterable[_Collector] = (),
-        callback: AnyCallback = None,
+        has_templates: bool = False,
         evaluation_directory: AnyStrPath | None = None,
+        callback: AnyCallback = None,
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
     ) -> None:
         model_file = Path(model_file).resolve(strict=True)
-        self._parameters_manager = _ParametersManager(weather, parameters, model_file)
+        self._parameters_manager = _ParametersManager(
+            weather, parameters, model_file, has_templates
+        )
         self._results_manager = _ResultsManager(results)
         self._callback = callback
         self._model_directory = model_file.parent

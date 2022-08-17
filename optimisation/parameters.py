@@ -353,12 +353,14 @@ class _ParametersManager(Generic[Parameter]):
     _parameters: tuple[Parameter, ...]
     _model_type: AnyModelType
     _tagged_model: str
+    _has_templates: bool
 
     def __init__(
         self,
         weather: WeatherParameter,
         parameters: Iterable[Parameter],
         model_file: Path,
+        has_templates: bool,
     ) -> None:
         self._weather = weather
         self._parameters = tuple(parameters)
@@ -372,8 +374,8 @@ class _ParametersManager(Generic[Parameter]):
             raise NotImplementedError(f"a '{suffix}' model is not supported.")
 
         self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
-
         self._tagged_model = self._tagged(model_file)
+        self._has_templates = has_templates
 
     def __iter__(self) -> Iterator[WeatherParameter | Parameter]:
         for parameter in chain((self._weather,), self._parameters):

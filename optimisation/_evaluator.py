@@ -23,10 +23,13 @@ def _evaluate(
         initializer=cf._update_config,
         initargs=(cf._config,),
     ) as parallel:
-        parallel.map(
+        parallel.starmap(
             _run_energyplus,
             (
-                batch_directory / job_uid / task_uid
+                (
+                    batch_directory / job_uid / task_uid,
+                    parameters_manager._has_templates,
+                )
                 for job_uid, tasks in jobs
                 for task_uid, _ in tasks
             ),
