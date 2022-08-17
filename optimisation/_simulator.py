@@ -18,7 +18,7 @@ def _run_epmacro(imf_file: Path) -> None:
     imf_file.with_name("out.idf").rename(imf_file.with_name("in.idf"))
 
 
-def _run_energyplus(cwd: Path, has_templates: bool = False) -> None:
+def _run_energyplus(cwd: Path, has_templates: bool) -> None:
     commands: AnyCli = (cf._config["exec.energyplus"],)
     if has_templates:
         commands += ("-x",)
@@ -26,7 +26,7 @@ def _run_energyplus(cwd: Path, has_templates: bool = False) -> None:
     _run(commands, cwd)
 
 
-def _run_readvars(rvi_file: Path, cwd: Path, frequency: str = "") -> None:
+def _run_readvars(rvi_file: Path, cwd: Path, frequency: str) -> None:
     commands: AnyCli = (cf._config["exec.readvars"], rvi_file, "Unlimited", "FixHeader")
     if frequency:
         commands += (frequency,)
