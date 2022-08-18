@@ -22,6 +22,7 @@ from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
+from ._logger import _Logger
 from ._tools import AnyStrPath, _Parallel
 from ._simulator import _run_epmacro, _split_model, _run_energyplus
 from ._typing import (
@@ -467,11 +468,9 @@ class _ParametersManager(Generic[Parameter]):
                 )
         return tagged_model
 
+    @_Logger(cwd_index=1)
     def _make_task(self, task_directory: Path, vu_mat: AnyVUMat) -> None:
         task_parameter_vals: list[Any] = [None] * len(self)
-
-        # create task folder
-        task_directory.mkdir(parents=True, exist_ok=True)
 
         # copy task weather files
         task_epw_file = task_directory / "in.epw"
@@ -506,6 +505,7 @@ class _ParametersManager(Generic[Parameter]):
                 ),
             )
 
+    @_Logger(cwd_index=1)
     def _simulate_task(self, task_directory: Path) -> None:
         return _run_energyplus(task_directory, self._has_templates)
 

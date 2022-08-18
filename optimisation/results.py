@@ -9,6 +9,7 @@ from typing import Literal, ClassVar, TypeAlias
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import config as cf
+from ._logger import _Logger
 from ._simulator import _run_readvars
 from ._typing import AnyJob, AnyUIDs, AnyBatchResults
 from ._tools import AnyCli, AnyStrPath, _run, _Parallel
@@ -255,10 +256,12 @@ class _ResultsManager:
         ).open("wt") as fp:
             fp.write(header_line + "\n" + joined_val_lines)
 
+    @_Logger(cwd_index=1)
     def _collect_task(self, task_directory: Path) -> None:
         for result in self._task_results:
             result._collect(task_directory)
 
+    @_Logger(cwd_index=1)
     def _collect_job(self, job_directory: Path, task_uids: AnyUIDs) -> None:
         for task_uid in task_uids:
             self._collect_task(job_directory / task_uid)

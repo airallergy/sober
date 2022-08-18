@@ -12,6 +12,8 @@ from typing import Any, Type, Generic, TypeVar, TypeAlias
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 from typing_extensions import TypeVarTuple  # NOTE: from typing after 3.11
 
+from ._logger import _log
+
 AnyStrPath: TypeAlias = str | PathLike[str]
 AnyCli: TypeAlias = tuple[AnyStrPath, ...]
 
@@ -24,7 +26,9 @@ def _run(commands: AnyCli, cwd: Path) -> None:
             for command in commands[1:]
         ),
     )
-    run(commands, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
+    res = run(commands, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
+
+    _log(cwd, res.stdout)
 
 
 # this bit is purely to make mypy happy :(
