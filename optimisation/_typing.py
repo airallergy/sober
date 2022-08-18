@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Literal, Callable, TypeAlias
+from collections.abc import Callable
+from typing import Literal, TypeAlias
 
 from typing_extensions import Required, TypedDict
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11

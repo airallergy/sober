@@ -5,12 +5,11 @@ from shutil import copyfile
 from abc import ABC, abstractmethod
 from itertools import chain, product
 from uuid import NAMESPACE_X500, uuid5
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from typing import (
     Any,
     Generic,
     TypeVar,
-    Callable,
     TypeAlias,
     TypeGuard,
     SupportsIndex,
