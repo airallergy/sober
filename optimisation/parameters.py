@@ -23,7 +23,7 @@ from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
 from ._tools import AnyStrPath, _Parallel
-from ._simulator import _run_epmacro, _split_model
+from ._simulator import _run_epmacro, _split_model, _run_energyplus
 from ._typing import (
     AnyJob,
     AnyVUMat,
@@ -503,6 +503,26 @@ class _ParametersManager(Generic[Parameter]):
                     (batch_directory / job_uid / task_uid, vu_mat)
                     for job_uid, tasks in jobs
                     for task_uid, vu_mat in tasks
+                ),
+            )
+
+    def _simulate_task(self, task_directory: Path) -> None:
+        return _run_energyplus(task_directory, self._has_templates)
+
+    def _simulate_batch(
+        self, batch_directory: Path, jobs: tuple[AnyJob, ...], *args
+    ) -> None:
+        with _Parallel(
+            cf._config["n.processes"],
+            initializer=cf._update_config,
+            initargs=(cf._config,),
+        ) as parallel:
+            parallel.map(
+                self._simulate_task,
+                (
+                    batch_directory / job_uid / task_uid
+                    for job_uid, tasks in jobs
+                    for task_uid, _ in tasks
                 ),
             )
 

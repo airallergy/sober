@@ -1,9 +1,6 @@
 from pathlib import Path
 
-from . import config as cf
-from ._tools import _Parallel
 from .results import _ResultsManager
-from ._simulator import _run_energyplus
 from .parameters import _ParametersManager
 from ._typing import AnyBatchResults, AnyVariationVec
 
@@ -18,22 +15,7 @@ def _evaluate(
 
     parameters_manager._make_batch(batch_directory, jobs)
 
-    with _Parallel(
-        cf._config["n.processes"],
-        initializer=cf._update_config,
-        initargs=(cf._config,),
-    ) as parallel:
-        parallel.starmap(
-            _run_energyplus,
-            (
-                (
-                    batch_directory / job_uid / task_uid,
-                    parameters_manager._has_templates,
-                )
-                for job_uid, tasks in jobs
-                for task_uid, _ in tasks
-            ),
-        )
+    parameters_manager._simulate_batch(batch_directory, jobs)
 
     results_manager._collect_batch(batch_directory, jobs)
 
