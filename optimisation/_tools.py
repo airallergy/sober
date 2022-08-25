@@ -16,12 +16,9 @@ from ._typing import AnyCli
 
 
 def _run(commands: AnyCli, cwd: Path) -> None:
-    commands = (
-        commands[0],
-        *(
-            command.resolve(strict=True) if isinstance(command, Path) else command
-            for command in commands[1:]
-        ),
+    commands = tuple(
+        command.resolve(strict=True) if isinstance(command, Path) else command
+        for command in commands
     )
     res = run(commands, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
 
