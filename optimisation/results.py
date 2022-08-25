@@ -10,9 +10,9 @@ from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import config as cf
 from ._logger import _Logger
+from ._tools import _run, _Parallel
 from ._simulator import _run_readvars
-from ._typing import AnyJob, AnyUIDs, AnyBatchResults
-from ._tools import AnyCli, AnyStrPath, _run, _Parallel
+from ._typing import AnyCli, AnyJob, AnyUIDs, AnyStrPath, AnyBatchResults
 
 AnyLevel: TypeAlias = Literal["task", "job"]
 AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]

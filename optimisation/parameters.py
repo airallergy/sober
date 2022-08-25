@@ -23,12 +23,13 @@ from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
 from ._logger import _Logger
-from ._tools import AnyStrPath, _Parallel
+from ._tools import _Parallel
 from ._simulator import _run_epmacro, _split_model, _run_energyplus
 from ._typing import (
     AnyJob,
     AnyVUMat,
     AnyVURow,
+    AnyStrPath,
     AnyIntVURow,
     AnyModelType,
     AnyFloatVURow,

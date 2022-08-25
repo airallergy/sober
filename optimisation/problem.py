@@ -5,11 +5,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 from . import config as cf
-from ._tools import AnyStrPath
 from ._multiplier import _multiply
 from . import _pymoo_namespace as pm
 from ._evaluator import _pymoo_evaluate
-from ._typing import AnyCallback, AnyVariationVec
+from ._typing import AnyStrPath, AnyCallback, AnyVariationVec
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
     AnyParameter,

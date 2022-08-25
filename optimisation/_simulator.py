@@ -1,8 +1,9 @@
 from pathlib import Path, PurePath
 from collections.abc import Iterable
 
+from ._tools import _run
 from . import config as cf
-from ._tools import AnyCli, AnyStrPath, _run
+from ._typing import AnyCli, AnyStrPath
 
 
 def _run_epmacro(imf_file: Path) -> None:

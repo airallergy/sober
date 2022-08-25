@@ -1,3 +1,4 @@
+from os import PathLike
 from pathlib import Path
 from collections.abc import Callable
 from typing import Literal, TypeAlias
@@ -6,6 +7,9 @@ from typing_extensions import Required, TypedDict
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import _pymoo_namespace as pm
+
+AnyStrPath: TypeAlias = str | PathLike[str]
+AnyCli: TypeAlias = tuple[AnyStrPath, ...]
 
 AnyModelType: TypeAlias = Literal[".idf", ".imf"]
 AnyLanguage: TypeAlias = Literal["python"]

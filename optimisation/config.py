@@ -2,8 +2,7 @@ from pathlib import Path
 from platform import system
 from multiprocessing import cpu_count
 
-from ._tools import AnyStrPath
-from ._typing import Config, AnyLanguage, AnyModelType
+from ._typing import Config, AnyStrPath, AnyLanguage, AnyModelType
 
 _config: Config
 
