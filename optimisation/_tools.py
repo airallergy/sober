@@ -25,7 +25,7 @@ def _run(commands: AnyCli, cwd: Path) -> None:
     )
     res = run(commands, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
 
-    _log(cwd, res.stdout)
+    _log(cwd, res.args, res.returncode, res.stdout)
 
 
 # this bit is purely to make mypy happy :(
