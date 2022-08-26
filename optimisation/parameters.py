@@ -490,6 +490,7 @@ class _ParametersManager(Generic[Parameter]):
         if self._model_type == ".imf":
             _run_epmacro(task_directory)
 
+    @_Logger(cwd_index=1, is_first=True)
     def _make_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],
@@ -509,6 +510,7 @@ class _ParametersManager(Generic[Parameter]):
     def _simulate_task(self, task_directory: Path) -> None:
         _run_energyplus(task_directory, self._has_templates)
 
+    @_Logger(cwd_index=1)
     def _simulate_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],

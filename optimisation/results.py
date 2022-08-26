@@ -280,6 +280,7 @@ class _ResultsManager:
         for result in self._job_results:
             result._collect(job_directory)
 
+    @_Logger(cwd_index=1)
     def _collect_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],
@@ -309,6 +310,7 @@ class _ResultsManager:
                     path.unlink()  # NOTE: missing is handled by the is_file check
                     break
 
+    @_Logger(cwd_index=1)
     def _clean_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],
