@@ -483,13 +483,12 @@ class _ParametersManager(Generic[Parameter]):
         model = self._detagged(self._tagged_model, vu_mat[1:], task_parameter_vals)
 
         # write task model file
-        task_model_file = task_directory / ("in" + self._model_type)
-        with open(task_model_file, "wt") as f:
+        with (task_directory / ("in" + self._model_type)).open("wt") as f:
             f.write(model)
 
         # run epmacro if needed
         if self._model_type == ".imf":
-            _run_epmacro(task_model_file)
+            _run_epmacro(task_directory)
 
     def _make_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(

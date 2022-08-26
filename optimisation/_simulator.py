@@ -6,17 +6,11 @@ from . import config as cf
 from ._typing import AnyCmdArgs, AnyStrPath
 
 
-def _run_epmacro(imf_file: Path) -> None:
-    if imf_file.stem != "in":
-        (imf_file.parent / "in.imf").symlink_to(imf_file)
-
+def _run_epmacro(cwd: Path) -> None:
     cmd_args: AnyCmdArgs = (cf._config["exec.epmacro"],)
-    _run(cmd_args, imf_file.parent)
+    _run(cmd_args, cwd)
 
-    if imf_file.stem != "in":
-        (imf_file.parent / "in.imf").unlink()
-
-    imf_file.with_name("out.idf").rename(imf_file.with_name("in.idf"))
+    (cwd / "out.idf").rename(cwd / "in.idf")
 
 
 def _run_energyplus(cwd: Path, has_templates: bool) -> None:
