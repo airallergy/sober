@@ -9,7 +9,7 @@ from typing import Literal, ClassVar, TypeAlias
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import config as cf
-from ._logger import _Logger
+from ._logger import _LoggerManager
 from ._tools import _run, _Parallel
 from ._simulator import _run_readvars
 from ._typing import AnyJob, AnyUIDs, AnyCmdArgs, AnyStrPath, AnyBatchResults
@@ -265,12 +265,12 @@ class _ResultsManager:
         ).open("wt") as fp:
             fp.write(header_line + "\n" + joined_val_lines)
 
-    @_Logger(cwd_index=1)
+    @_LoggerManager(cwd_index=1)
     def _collect_task(self, task_directory: Path) -> None:
         for result in self._task_results:
             result._collect(task_directory)
 
-    @_Logger(cwd_index=1, is_first=True)
+    @_LoggerManager(cwd_index=1, is_first=True)
     def _collect_job(self, job_directory: Path, task_uids: AnyUIDs) -> None:
         for task_uid in task_uids:
             self._collect_task(job_directory / task_uid)
@@ -280,7 +280,7 @@ class _ResultsManager:
         for result in self._job_results:
             result._collect(job_directory)
 
-    @_Logger(cwd_index=1)
+    @_LoggerManager(cwd_index=1)
     def _collect_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],
@@ -302,7 +302,7 @@ class _ResultsManager:
             "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
         )
 
-    @_Logger(cwd_index=1)
+    @_LoggerManager(cwd_index=1)
     def _clean_task(self, task_directory: Path) -> None:
         for path in task_directory.glob("*"):
             for pattern in self._clean_patterns:
@@ -310,7 +310,7 @@ class _ResultsManager:
                     path.unlink()  # NOTE: missing is handled by the is_file check
                     break
 
-    @_Logger(cwd_index=1)
+    @_LoggerManager(cwd_index=1)
     def _clean_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],

@@ -31,7 +31,7 @@ class _Filter(logging.Filter):
         return super().filter(record)
 
 
-class _Logger(AbstractContextManager, ContextDecorator):
+class _LoggerManager(AbstractContextManager, ContextDecorator):
     _cwd_index: SupportsIndex
     _is_first: bool
     _name: str
@@ -58,7 +58,7 @@ class _Logger(AbstractContextManager, ContextDecorator):
 
         return wrapper
 
-    def __enter__(self) -> "_Logger":  # TODO: use typing.Self after 3.11
+    def __enter__(self) -> "_LoggerManager":  # TODO: use typing.Self after 3.11
         # create a logger
         self.logger = logging.getLogger(self._name)
         self.logger.setLevel(logging.DEBUG)

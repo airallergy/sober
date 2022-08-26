@@ -22,8 +22,8 @@ from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
-from ._logger import _Logger
 from ._tools import _Parallel
+from ._logger import _LoggerManager
 from ._simulator import _run_epmacro, _split_model, _run_energyplus
 from ._typing import (
     AnyJob,
@@ -469,7 +469,7 @@ class _ParametersManager(Generic[Parameter]):
                 )
         return tagged_model
 
-    @_Logger(cwd_index=1, is_first=True)
+    @_LoggerManager(cwd_index=1, is_first=True)
     def _make_task(self, task_directory: Path, vu_mat: AnyVUMat) -> None:
         task_parameter_vals: list[Any] = [None] * len(self)
 
@@ -490,7 +490,7 @@ class _ParametersManager(Generic[Parameter]):
         if self._model_type == ".imf":
             _run_epmacro(task_directory)
 
-    @_Logger(cwd_index=1, is_first=True)
+    @_LoggerManager(cwd_index=1, is_first=True)
     def _make_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],
@@ -506,11 +506,11 @@ class _ParametersManager(Generic[Parameter]):
                 ),
             )
 
-    @_Logger(cwd_index=1)
+    @_LoggerManager(cwd_index=1)
     def _simulate_task(self, task_directory: Path) -> None:
         _run_energyplus(task_directory, self._has_templates)
 
-    @_Logger(cwd_index=1)
+    @_LoggerManager(cwd_index=1)
     def _simulate_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],
