@@ -166,11 +166,17 @@ class ScriptCollector(_Collector):
 #######                    RESULTS MANAGER CLASSES                    #######
 #############################################################################
 class _ResultsManager:
+    _DEFAULT_CLEAN_PATTERNS: ClassVar[tuple[str, ...]] = (
+        "*.audit",
+        "*.end",
+        "sqlite.err",
+    )
     _TASK_RECORDS_FILENAME: ClassVar[str] = "task_records.csv"
     _JOB_RECORDS_FILENAME: ClassVar[str] = "job_records.csv"
 
     _task_results: tuple[_Collector, ...]
     _job_results: tuple[_Collector, ...]
+    _clean_patterns: frozenset[str]
     _objectives: tuple[_Collector, ...]
     _constraints: tuple[_Collector, ...]
     _extras: tuple[_Collector, ...]
@@ -178,7 +184,9 @@ class _ResultsManager:
     _constraint_idxs: tuple[int, ...]
     _multipliers: tuple[AnyDirectionMultiplier, ...]
 
-    def __init__(self, results: Iterable[_Collector]) -> None:
+    def __init__(
+        self, results: Iterable[_Collector], clean_patterns: Iterable[str]
+    ) -> None:
         results = tuple(results)
         self._task_results = tuple(
             result for result in results if result._level == "task"
@@ -186,6 +194,7 @@ class _ResultsManager:
         self._job_results = tuple(
             result for result in results if result._level == "job"
         )
+        self._clean_patterns = frozenset(clean_patterns)
 
     def __iter__(self) -> Iterator[_Collector]:
         for collector in chain(self._task_results, self._job_results):
@@ -291,6 +300,29 @@ class _ResultsManager:
         self._record_final(
             "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
         )
+
+    @_Logger(cwd_index=1)
+    def _clean_task(self, task_directory: Path) -> None:
+        for path in task_directory.glob("*"):
+            for pattern in self._clean_patterns:
+                if path.match(pattern) and path.is_file():
+                    path.unlink()  # NOTE: missing is handled by the is_file check
+                    break
+
+    def _clean_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
+        with _Parallel(
+            cf._config["n.processes"],
+            initializer=cf._update_config,
+            initargs=(cf._config,),
+        ) as parallel:
+            parallel.map(
+                self._clean_task,
+                (
+                    batch_directory / job_uid / task_uid
+                    for job_uid, tasks in jobs
+                    for task_uid, _ in tasks
+                ),
+            )
 
     @cache
     def _recorded_batch(self, batch_directory: Path) -> AnyBatchResults:

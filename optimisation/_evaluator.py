@@ -19,6 +19,8 @@ def _evaluate(
 
     results_manager._collect_batch(batch_directory, jobs)
 
+    results_manager._clean_batch(batch_directory, jobs)
+
 
 def _pymoo_evaluate(
     *variation_vecs: AnyVariationVec,

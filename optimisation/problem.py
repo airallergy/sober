@@ -76,6 +76,7 @@ class Problem:
         parameters: Iterable[AnyParameter] = (),
         results: Iterable[_Collector] = (),
         has_templates: bool = False,
+        clean_patterns: Iterable[str] = _ResultsManager._DEFAULT_CLEAN_PATTERNS,
         evaluation_directory: AnyStrPath | None = None,
         callback: AnyCallback = None,
         n_processes: int | None = None,
@@ -85,8 +86,7 @@ class Problem:
         self._parameters_manager = _ParametersManager(
             weather, parameters, model_file, has_templates
         )
-        self._results_manager = _ResultsManager(results)
-        self._callback = callback
+        self._results_manager = _ResultsManager(results, clean_patterns)
         self._model_directory = model_file.parent
         self._evaluation_directory = (
             self._model_directory / "evaluation"
@@ -96,6 +96,7 @@ class Problem:
         self._config_directory = self._model_directory / (
             "." + __package__.split(".")[-1]
         )
+        self._callback = callback
 
         self._prepare(n_processes, python_exec)
 
