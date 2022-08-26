@@ -116,8 +116,7 @@ class _SubprocessLogger(AbstractContextManager):
 
 def _log(cwd: Path, msg: str = "") -> _SubprocessLogger:
     name = _cwd_to_logger_name(cwd)
-    if name not in logging.Logger.manager.loggerDict:
-        warn(f"no '{name}' logger found.")
+    assert name in logging.Logger.manager.loggerDict, f"unmanaged logger: {name}."
 
     logger = logging.getLogger(name)
     if msg:
