@@ -82,23 +82,19 @@ class _Logger(AbstractContextManager, ContextDecorator):
         logging.shutdown()
 
 
-class _log_subprocess(AbstractContextManager):
+class _SubprocessLogger(AbstractContextManager):
     _logger: logging.Logger
     _begin_time: float
     res: SubprocessRes
 
-    def __init__(self, cwd: Path) -> None:
-        name = _cwd_to_logger_name(cwd)
-        if name not in logging.Logger.manager.loggerDict:
-            warn(f"no '{name}' logger found.")
-
-        self._logger = logging.getLogger(name)
+    def __init__(self, logger: logging.Logger) -> None:
+        self._logger = logger
 
     @staticmethod
     def _asctime(seconds: float) -> str:
         return time.strftime("%c", time.localtime(seconds))
 
-    def __enter__(self) -> "_log_subprocess":  # TODO: use typing.Self after 3.11
+    def __enter__(self) -> "_SubprocessLogger":  # TODO: use typing.Self after 3.11
         self._begin_time = time.time()
         return self
 
@@ -116,3 +112,15 @@ class _log_subprocess(AbstractContextManager):
             f"completed with exit code {res.returncode}\n",
             extra={"asctime_": self._asctime(time.time())},
         )
+
+
+def _log(cwd: Path, msg: str = "") -> _SubprocessLogger:
+    name = _cwd_to_logger_name(cwd)
+    if name not in logging.Logger.manager.loggerDict:
+        warn(f"no '{name}' logger found.")
+
+    logger = logging.getLogger(name)
+    if msg:
+        logger.info(msg, extra={"asctime_": _SubprocessLogger._asctime(time.time())})
+
+    return _SubprocessLogger(logger)
