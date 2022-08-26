@@ -82,6 +82,10 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
         logging.shutdown()
 
 
+def _asctime(secs: float) -> str:
+    return time.strftime("%c", time.localtime(secs))
+
+
 class _SubprocessLogger(AbstractContextManager):
     _logger: logging.Logger
     _begin_time: float
@@ -89,10 +93,6 @@ class _SubprocessLogger(AbstractContextManager):
 
     def __init__(self, logger: logging.Logger) -> None:
         self._logger = logger
-
-    @staticmethod
-    def _asctime(seconds: float) -> str:
-        return time.strftime("%c", time.localtime(seconds))
 
     def __enter__(self) -> "_SubprocessLogger":  # TODO: use typing.Self after 3.11
         self._begin_time = time.time()
@@ -104,13 +104,13 @@ class _SubprocessLogger(AbstractContextManager):
         self._logger.info(
             f"running '{' '.join(str(item) for item in res.args)}'",
             extra={
-                "asctime_": self._asctime(self._begin_time),
+                "asctime_": _asctime(self._begin_time),
                 "stdout_lines": res.stdout.strip("\n").splitlines(),
             },
         )
         self._logger.info(
-            f"completed with exit code {res.returncode}\n",
-            extra={"asctime_": self._asctime(time.time())},
+            f"completed with exit code {res.returncode}",
+            extra={"asctime_": _asctime(time.time())},
         )
 
 
@@ -121,6 +121,6 @@ def _log(cwd: Path, msg: str = "") -> _SubprocessLogger:
 
     logger = logging.getLogger(name)
     if msg:
-        logger.info(msg, extra={"asctime_": _SubprocessLogger._asctime(time.time())})
+        logger.info(msg, extra={"asctime_": _asctime(time.time())})
 
     return _SubprocessLogger(logger)
