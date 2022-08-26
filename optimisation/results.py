@@ -12,7 +12,7 @@ from . import config as cf
 from ._logger import _Logger
 from ._tools import _run, _Parallel
 from ._simulator import _run_readvars
-from ._typing import AnyCli, AnyJob, AnyUIDs, AnyStrPath, AnyBatchResults
+from ._typing import AnyJob, AnyUIDs, AnyCmdArgs, AnyStrPath, AnyBatchResults
 
 AnyLevel: TypeAlias = Literal["task", "job"]
 AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]
@@ -132,7 +132,7 @@ class RVICollector(_Collector):
 class ScriptCollector(_Collector):
     _script_file: Path
     _language: cf.AnyLanguage
-    _script_args: AnyCli
+    _script_args: AnyCmdArgs
 
     def __init__(
         self,
@@ -143,7 +143,7 @@ class ScriptCollector(_Collector):
         kind: AnyKind,
         direction: AnyDirection = "minimise",
         is_final: bool = True,
-        *script_args: Unpack[AnyCli],  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
+        *script_args: Unpack[AnyCmdArgs],  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
     ) -> None:
         self._script_file = Path(script_file)
         self._language = language
@@ -151,7 +151,7 @@ class ScriptCollector(_Collector):
         super().__init__(filename, level, kind, direction, is_final)
 
     def _collect(self, cwd: Path) -> None:
-        commands: AnyCli = (
+        cmd_args: AnyCmdArgs = (
             cf._config["exec.python"],
             self._script_file,
             cwd,
@@ -159,7 +159,7 @@ class ScriptCollector(_Collector):
             *self._script_args,
         )
 
-        _run(commands, cwd)
+        _run(cmd_args, cwd)
 
 
 #############################################################################

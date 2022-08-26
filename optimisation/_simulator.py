@@ -3,15 +3,15 @@ from collections.abc import Iterable
 
 from ._tools import _run
 from . import config as cf
-from ._typing import AnyCli, AnyStrPath
+from ._typing import AnyCmdArgs, AnyStrPath
 
 
 def _run_epmacro(imf_file: Path) -> None:
     if imf_file.stem != "in":
         (imf_file.parent / "in.imf").symlink_to(imf_file)
 
-    commands: AnyCli = (cf._config["exec.epmacro"],)
-    _run(commands, imf_file.parent)
+    cmd_args: AnyCmdArgs = (cf._config["exec.epmacro"],)
+    _run(cmd_args, imf_file.parent)
 
     if imf_file.stem != "in":
         (imf_file.parent / "in.imf").unlink()
@@ -20,18 +20,23 @@ def _run_epmacro(imf_file: Path) -> None:
 
 
 def _run_energyplus(cwd: Path, has_templates: bool) -> None:
-    commands: AnyCli = (cf._config["exec.energyplus"],)
+    cmd_args: AnyCmdArgs = (cf._config["exec.energyplus"],)
     if has_templates:
-        commands += ("-x",)
-    commands += ("-w", "in.epw", "in.idf")
-    _run(commands, cwd)
+        cmd_args += ("-x",)
+    cmd_args += ("-w", "in.epw", "in.idf")
+    _run(cmd_args, cwd)
 
 
 def _run_readvars(rvi_file: Path, cwd: Path, frequency: str) -> None:
-    commands: AnyCli = (cf._config["exec.readvars"], rvi_file, "Unlimited", "FixHeader")
+    cmd_args: AnyCmdArgs = (
+        cf._config["exec.readvars"],
+        rvi_file,
+        "Unlimited",
+        "FixHeader",
+    )
     if frequency:
-        commands += (frequency,)
-    _run(commands, cwd)
+        cmd_args += (frequency,)
+    _run(cmd_args, cwd)
 
 
 def _resolved_path(path: AnyStrPath, default_parent: Path) -> Path:

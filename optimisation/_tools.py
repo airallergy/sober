@@ -11,17 +11,17 @@ from typing import Any, Type, Generic, TypeVar
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 from typing_extensions import TypeVarTuple  # NOTE: from typing after 3.11
 
-from ._typing import AnyCli
+from ._typing import AnyCmdArgs
 from ._logger import _log_subprocess
 
 
-def _run(commands: AnyCli, cwd: Path) -> None:
-    commands = tuple(
-        command.resolve(strict=True) if isinstance(command, Path) else command
-        for command in commands
+def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
+    cmd_args = tuple(
+        item.resolve(strict=True) if isinstance(item, Path) else item
+        for item in cmd_args
     )
     with _log_subprocess(cwd) as l:
-        l.res = run(commands, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
+        l.res = run(cmd_args, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
 
 
 # this bit is purely to make mypy happy :(

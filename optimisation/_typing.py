@@ -9,7 +9,7 @@ from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 from . import _pymoo_namespace as pm
 
 AnyStrPath: TypeAlias = str | PathLike[str]
-AnyCli: TypeAlias = tuple[AnyStrPath, ...]
+AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
 
 AnyModelType: TypeAlias = Literal[".idf", ".imf"]
 AnyLanguage: TypeAlias = Literal["python"]
@@ -53,6 +53,6 @@ AnyCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
 
 
 class SubprocessRes(Protocol):
-    args: AnyCli
+    args: AnyCmdArgs
     returncode: int
     stdout: str
