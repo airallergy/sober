@@ -18,7 +18,6 @@ def _run_energyplus(cwd: Path, has_templates: bool) -> None:
     cmd_args: AnyCmdArgs = (cf._config["exec.energyplus"],)
     if has_templates:
         cmd_args += ("-x",)
-    cmd_args += ("-w", "in.epw", "in.idf")
     _run(cmd_args, cwd)
 
 
