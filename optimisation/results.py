@@ -126,7 +126,7 @@ class RVICollector(_Collector):
             fp.write(joined_rvi_lines)
 
     def _collect(self, cwd: Path) -> None:
-        _run_readvars(self._rvi_file, cwd, self._frequency)
+        _run_readvars(cwd, self._rvi_file, self._frequency)
 
 
 class ScriptCollector(_Collector):

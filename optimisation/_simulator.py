@@ -21,7 +21,7 @@ def _run_energyplus(cwd: Path, has_templates: bool) -> None:
     _run(cmd_args, cwd)
 
 
-def _run_readvars(rvi_file: Path, cwd: Path, frequency: str) -> None:
+def _run_readvars(cwd: Path, rvi_file: Path, frequency: str) -> None:
     cmd_args: AnyCmdArgs = (
         cf._config["exec.readvars"],
         rvi_file,
