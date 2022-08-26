@@ -507,11 +507,9 @@ class _ParametersManager(Generic[Parameter]):
 
     @_Logger(cwd_index=1)
     def _simulate_task(self, task_directory: Path) -> None:
-        return _run_energyplus(task_directory, self._has_templates)
+        _run_energyplus(task_directory, self._has_templates)
 
-    def _simulate_batch(
-        self, batch_directory: Path, jobs: tuple[AnyJob, ...], *args
-    ) -> None:
+    def _simulate_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],
             initializer=cf._update_config,
