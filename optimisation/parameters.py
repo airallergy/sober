@@ -469,7 +469,7 @@ class _ParametersManager(Generic[Parameter]):
                 )
         return tagged_model
 
-    @_Logger(cwd_index=1)
+    @_Logger(cwd_index=1, is_first=True)
     def _make_task(self, task_directory: Path, vu_mat: AnyVUMat) -> None:
         task_parameter_vals: list[Any] = [None] * len(self)
 

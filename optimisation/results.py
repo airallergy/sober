@@ -270,7 +270,7 @@ class _ResultsManager:
         for result in self._task_results:
             result._collect(task_directory)
 
-    @_Logger(cwd_index=1)
+    @_Logger(cwd_index=1, is_first=True)
     def _collect_job(self, job_directory: Path, task_uids: AnyUIDs) -> None:
         for task_uid in task_uids:
             self._collect_task(job_directory / task_uid)

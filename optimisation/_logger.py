@@ -33,12 +33,14 @@ class _Filter(logging.Filter):
 
 class _Logger(AbstractContextManager, ContextDecorator):
     _cwd_index: SupportsIndex
+    _is_first: bool
     _name: str
     _log_file: Path
     _logger: logging.Logger
 
-    def __init__(self, cwd_index: SupportsIndex) -> None:
+    def __init__(self, cwd_index: SupportsIndex, is_first: bool = False) -> None:
         self._cwd_index = cwd_index
+        self._is_first = is_first
 
     def __call__(self, f: _F) -> _F:
         @wraps(f)
@@ -48,6 +50,9 @@ class _Logger(AbstractContextManager, ContextDecorator):
 
             self._name = _cwd_to_logger_name(cwd)
             self._log_file = cwd / "console.log"
+            if self._is_first:
+                self._log_file.unlink(missing_ok=True)
+
             with self._recreate_cm():  # type: ignore[attr-defined] # NOTE: why?
                 return f(*args, **kwargs)
 
