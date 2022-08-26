@@ -88,10 +88,5 @@ class _Parallel(AbstractContextManager, Generic[Unpack[InitArgs]]):  # type: ign
     def __enter__(self) -> "_Parallel":  # TODO: use typing.Self after 3.11
         return self
 
-    def __exit__(
-        self,
-        exc_type: Type[BaseException] | None,
-        exc_value: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> bool | None:
-        return None
+    def __exit__(self, *args) -> None:
+        pass
