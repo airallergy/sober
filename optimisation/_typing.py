@@ -1,7 +1,7 @@
 from os import PathLike
 from pathlib import Path
 from collections.abc import Callable
-from typing import Literal, TypeAlias
+from typing import Literal, Protocol, TypeAlias
 
 from typing_extensions import Required, TypedDict
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
@@ -50,3 +50,9 @@ Config = TypedDict(
 )
 
 AnyCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
+
+
+class SubprocessRes(Protocol):
+    args: AnyCli
+    returncode: int
+    stdout: str

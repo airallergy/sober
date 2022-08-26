@@ -1,3 +1,4 @@
+import time
 import logging
 from pathlib import Path
 from platform import node
@@ -7,7 +8,7 @@ from collections.abc import Callable
 from contextlib import ContextDecorator, AbstractContextManager
 from typing import TypeVar, ParamSpec, TypeAlias, SupportsIndex
 
-from ._typing import AnyCli
+from ._typing import SubprocessRes
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
@@ -64,29 +65,49 @@ class _Logger(AbstractContextManager, ContextDecorator):
 
         # set format for the file handler
         formatter = logging.Formatter(
-            f"%(asctime)s {HOST_STEM}: %(message)s",
-            datefmt="%c",
-            style="%",
+            f"%(asctime_)s {HOST_STEM}: %(message)s", datefmt="%c", style="%"
         )
         fh.setFormatter(formatter)
 
         self.logger.addHandler(fh)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self, *args) -> None:
         self.logger.handlers.clear()
         logging.shutdown()
 
 
-def _log(cwd: Path, commands: AnyCli, status: int, msg: str) -> None:
-    name = _cwd_to_logger_name(cwd)
-    if name not in logging.Logger.manager.loggerDict:
-        warn(f"no '{name}' logger found.")
-        return
+class _log_subprocess(AbstractContextManager):
+    _logger: logging.Logger
+    _begin_time: float
+    res: SubprocessRes
 
-    logger = logging.getLogger(name)
-    logger.info(
-        f"running '{' '.join(str(item) for item in commands)}'",
-        extra={"stdout_lines": msg.strip("\n").splitlines()},
-    )
-    logger.info(f"completed with exit code {status}\n")
+    def __init__(self, cwd: Path) -> None:
+        name = _cwd_to_logger_name(cwd)
+        if name not in logging.Logger.manager.loggerDict:
+            warn(f"no '{name}' logger found.")
+
+        self._logger = logging.getLogger(name)
+
+    @staticmethod
+    def _asctime(seconds: float) -> str:
+        return time.strftime("%c", time.localtime(seconds))
+
+    def __enter__(self) -> "_log_subprocess":  # TODO: use typing.Self after 3.11
+        self._begin_time = time.time()
+        return self
+
+    def __exit__(self, *args) -> None:
+        res = self.res
+
+        self._logger.info(
+            f"running '{' '.join(str(item) for item in res.args)}'",
+            extra={
+                "asctime_": self._asctime(self._begin_time),
+                "stdout_lines": res.stdout.strip("\n").splitlines(),
+            },
+        )
+        self._logger.info(
+            f"completed with exit code {res.returncode}\n",
+            extra={"asctime_": self._asctime(time.time())},
+        )
