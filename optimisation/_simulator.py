@@ -11,6 +11,7 @@ def _run_epmacro(cwd: Path) -> None:
     _run(cmd_args, cwd)
 
     (cwd / "out.idf").rename(cwd / "in.idf")
+    (cwd / "audit.out").rename(cwd / "epmacro.audit")
 
 
 def _run_energyplus(cwd: Path, has_templates: bool) -> None:
