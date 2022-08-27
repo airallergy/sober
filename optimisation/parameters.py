@@ -368,7 +368,7 @@ class _ParametersManager(Generic[Parameter]):
 
         self._weather._idx = 0
         for idx, parameter in enumerate(self._parameters):
-            parameter._idx = idx
+            parameter._idx = idx + 1
 
         suffix = model_file.suffix
         if suffix not in MODEL_TYPES:
