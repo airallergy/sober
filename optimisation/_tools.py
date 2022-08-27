@@ -1,12 +1,11 @@
 import sys
 from pathlib import Path
 from itertools import starmap
-from types import TracebackType
 from multiprocessing import get_context
 from subprocess import PIPE, STDOUT, run
+from typing import Any, Generic, TypeVar
 from contextlib import AbstractContextManager
 from collections.abc import Callable, Iterable
-from typing import Any, Type, Generic, TypeVar
 
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 from typing_extensions import TypeVarTuple  # NOTE: from typing after 3.11
