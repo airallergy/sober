@@ -123,7 +123,7 @@ class Problem:
         self._check_config()
 
     def _to_pymoo(self) -> PymooProblem:
-        if len(self._results_manager._objectives) == 0:
+        if not len(self._results_manager._objectives):
             raise ValueError("Optimisation needs at least one objective")
 
         return PymooProblem(

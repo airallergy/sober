@@ -66,7 +66,7 @@ def _split_model(model_file: Path) -> tuple[str, str]:
             trimmed_line = line.strip()
             if trimmed_line.startswith("##"):
                 macro_lines.append(trimmed_line)
-            elif trimmed_line != "":
+            elif trimmed_line:
                 regular_lines.append(trimmed_line)
     return (
         "\n".join(_resolved_macros(macro_lines, model_file.parent)) + "\n",

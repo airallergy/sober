@@ -231,7 +231,7 @@ class _ResultsManager:
 
                 with (record_directory / uid / result._filename).open("rt") as fp:
                     line = next(fp)
-                    if idx == 0:
+                    if not idx:
                         header_line += "," + line.rstrip().split(",", 1)[-1]
 
                         if level == "job":
