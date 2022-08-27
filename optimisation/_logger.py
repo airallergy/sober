@@ -1,13 +1,12 @@
-import time
 import logging
 from pathlib import Path
 from platform import node
 from functools import wraps
 from collections.abc import Callable
 from contextlib import ContextDecorator, AbstractContextManager
-from typing import TypeVar, ParamSpec, TypeAlias, SupportsIndex
+from typing import TypeVar, ClassVar, ParamSpec, TypeAlias, SupportsIndex, final
 
-from ._typing import SubprocessRes
+from ._typing import AnyCmdArgs, SubprocessRes
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
@@ -23,11 +22,32 @@ def _cwd_to_logger_name(cwd: Path) -> str:
 
 class _Filter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        if hasattr(record, "stdout_lines"):
-            stdout = "\t" + "\n\t".join(getattr(record, "stdout_lines"))
-            if stdout.strip() != "":
-                record.msg += ":\n" + stdout
+        if record.levelno == logging.DEBUG:
+            record.msg = "\t" + "\n\t".join(record.msg.splitlines())
+        if not record.msg.strip():
+            return False
         return super().filter(record)
+
+
+@final  # NOTE: to consciously call __init__, see python/mypy#13173
+class _Formatter(logging.Formatter):
+    _FMT_DEFAULT: ClassVar[str] = f"%(asctime)s {HOST_STEM}: %(message)s"
+    _FMT_DEBUG: ClassVar[str] = "%(message)s"
+
+    def __init__(self, fmt: str = _FMT_DEFAULT) -> None:
+        super().__init__(fmt, datefmt="%c", style="%")
+
+    def format(self, record: logging.LogRecord) -> str:
+        assert record.levelno != logging.NOTSET
+
+        if record.levelno == logging.DEBUG:
+            self.__init__(self._FMT_DEBUG)  # type: ignore[misc]
+            fmted = super().format(record)
+            self.__init__(self._FMT_DEFAULT)  # type: ignore[misc]
+        else:
+            fmted = super().format(record)
+
+        return fmted
 
 
 class _LoggerManager(AbstractContextManager, ContextDecorator):
@@ -66,12 +86,7 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
         fh = logging.FileHandler(self._log_file, "at")
         fh.setLevel(logging.DEBUG)
         fh.addFilter(_Filter())
-
-        # set format for the file handler
-        formatter = logging.Formatter(
-            f"%(asctime_)s {HOST_STEM}: %(message)s", datefmt="%c", style="%"
-        )
-        fh.setFormatter(formatter)
+        fh.setFormatter(_Formatter())
 
         self.logger.addHandler(fh)
         return self
@@ -81,44 +96,30 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
         logging.shutdown()
 
 
-def _asctime(secs: float) -> str:
-    return time.strftime("%c", time.localtime(secs))
-
-
 class _SubprocessLogger(AbstractContextManager):
     _logger: logging.Logger
-    _begin_time: float
+    _cmd: str
     res: SubprocessRes
 
-    def __init__(self, logger: logging.Logger) -> None:
+    def __init__(self, logger: logging.Logger, cmd_args: AnyCmdArgs) -> None:
         self._logger = logger
+        self._cmd = " ".join(str(cmd_arg) for cmd_arg in cmd_args)
 
     def __enter__(self) -> "_SubprocessLogger":  # TODO: use typing.Self after 3.11
-        self._begin_time = time.time()
+        self._logger.info(" ".join(("running", f"'{self._cmd}'")))
         return self
 
     def __exit__(self, *args) -> None:
-        res = self.res
-
-        self._logger.info(
-            f"running '{' '.join(str(item) for item in res.args)}'",
-            extra={
-                "asctime_": _asctime(self._begin_time),
-                "stdout_lines": res.stdout.strip("\n").splitlines(),
-            },
-        )
-        self._logger.info(
-            f"completed with exit code {res.returncode}",
-            extra={"asctime_": _asctime(time.time())},
-        )
+        self._logger.debug(self.res.stdout.strip("\n"))
+        self._logger.info(f"completed with exit code {self.res.returncode}")
 
 
-def _log(cwd: Path, msg: str = "") -> _SubprocessLogger:
+def _log(cwd: Path, msg: str = "", cmd_args: AnyCmdArgs = ()) -> _SubprocessLogger:
     name = _cwd_to_logger_name(cwd)
     assert name in logging.Logger.manager.loggerDict, f"unmanaged logger: {name}."
 
     logger = logging.getLogger(name)
     if msg:
-        logger.info(msg, extra={"asctime_": _asctime(time.time())})
+        logger.info(msg)
 
-    return _SubprocessLogger(logger)
+    return _SubprocessLogger(logger, cmd_args)

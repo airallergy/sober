@@ -53,6 +53,5 @@ AnyCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
 
 
 class SubprocessRes(Protocol):
-    args: AnyCmdArgs
     returncode: int
     stdout: str
