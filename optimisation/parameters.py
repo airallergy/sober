@@ -23,7 +23,7 @@ from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
 from ._tools import _Parallel
-from ._logger import _LoggerManager
+from ._logger import _log, _LoggerManager
 from ._simulator import _run_epmacro, _split_model, _run_energyplus
 from ._typing import (
     AnyJob,
@@ -506,6 +506,8 @@ class _ParametersManager(Generic[Parameter]):
                 ),
             )
 
+        _log(batch_directory, f"batch making completed")
+
     @_LoggerManager(cwd_index=1)
     def _simulate_task(self, task_directory: Path) -> None:
         _run_energyplus(task_directory, self._has_templates)
@@ -525,6 +527,8 @@ class _ParametersManager(Generic[Parameter]):
                     for task_uid, _ in tasks
                 ),
             )
+
+        _log(batch_directory, f"batch simulation completed")
 
 
 def _all_int_parameters(

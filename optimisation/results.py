@@ -9,9 +9,9 @@ from typing import Literal, ClassVar, TypeAlias
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import config as cf
-from ._logger import _LoggerManager
 from ._tools import _run, _Parallel
 from ._simulator import _run_readvars
+from ._logger import _log, _LoggerManager
 from ._typing import AnyJob, AnyUIDs, AnyCmdArgs, AnyStrPath, AnyBatchResults
 
 AnyLevel: TypeAlias = Literal["task", "job"]
@@ -302,6 +302,8 @@ class _ResultsManager:
             "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
         )
 
+        _log(batch_directory, f"batch collection completed")
+
     @_LoggerManager(cwd_index=1)
     def _clean_task(self, task_directory: Path) -> None:
         for path in task_directory.glob("*"):
@@ -325,6 +327,8 @@ class _ResultsManager:
                     for task_uid, _ in tasks
                 ),
             )
+
+        _log(batch_directory, f"batch cleaning completed")
 
     @cache
     def _recorded_batch(self, batch_directory: Path) -> AnyBatchResults:
