@@ -24,7 +24,7 @@ from eppy.bunchhelpers import makefieldname
 from . import config as cf
 from ._tools import _Parallel
 from ._logger import _log, _LoggerManager
-from ._simulator import _run_epmacro, _split_model, _run_energyplus
+from ._simulator import _run_epmacro, _split_model, _run_energyplus, _run_expandobjects
 from ._typing import (
     AnyJob,
     AnyVUMat,
@@ -490,6 +490,10 @@ class _ParametersManager(Generic[Parameter]):
         if self._model_type == ".imf":
             _run_epmacro(task_directory)
 
+        # run expandobjects if needed
+        if self._has_templates:
+            _run_expandobjects(task_directory)
+
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
@@ -510,7 +514,7 @@ class _ParametersManager(Generic[Parameter]):
 
     @_LoggerManager(cwd_index=1)
     def _simulate_task(self, task_directory: Path) -> None:
-        _run_energyplus(task_directory, self._has_templates)
+        _run_energyplus(task_directory)
 
     @_LoggerManager(cwd_index=1)
     def _simulate_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:

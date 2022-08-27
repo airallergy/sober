@@ -107,6 +107,7 @@ class Problem:
     def _check_config(self) -> None:
         cf._check_config(
             self._parameters_manager._model_type,
+            self._parameters_manager._has_templates,
             any(isinstance(result, RVICollector) for result in self._results_manager),
             set(
                 result._language

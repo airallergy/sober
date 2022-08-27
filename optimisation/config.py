@@ -14,12 +14,20 @@ def _update_config(config: Config) -> None:
 
 
 def _check_config(
-    model_type: AnyModelType, uses_rvi: bool, used_languages: set[AnyLanguage]
+    model_type: AnyModelType,
+    has_templates: bool,
+    uses_rvi: bool,
+    used_languages: set[AnyLanguage],
 ) -> None:
     if model_type == ".imf":
         assert (
             "exec.epmacro" in _config
         ), f"a macro model is input, but the epmacro executable is not configured: {_config}."
+
+    if has_templates:
+        assert (
+            "exec.expandobjects" in _config
+        ), f"hvac templates are used, but the expandobjects executable is not configured: {_config}."
 
     if uses_rvi:
         assert (
@@ -53,6 +61,7 @@ def config_energyplus(
     schema: AnyStrPath | None = None,
     energyplus_exec: AnyStrPath | None = None,
     epmacro_exec: AnyStrPath | None = None,
+    expandobjects_exec: AnyStrPath | None = None,
     readvars_exec: AnyStrPath | None = None,
 ) -> None:
     global _config
@@ -65,6 +74,7 @@ def config_energyplus(
         schema = root / "Energy+.idd"
         energyplus_exec = root / "energyplus"
         epmacro_exec = root / "EPMacro"
+        expandobjects_exec = root / "ExpandObjects"
         readvars_exec = root / "PostProcess" / "ReadVarsESO"
 
     if (energyplus_exec is None) or (schema is None):
@@ -78,6 +88,8 @@ def config_energyplus(
     }
     if epmacro_exec is not None:
         _config["exec.epmacro"] = Path(epmacro_exec).resolve(strict=True)
+    if expandobjects_exec is not None:
+        _config["exec.expandobjects"] = Path(expandobjects_exec).resolve(strict=True)
     if readvars_exec is not None:
         _config["exec.readvars"] = Path(readvars_exec).resolve(strict=True)
 

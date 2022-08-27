@@ -42,6 +42,7 @@ Config = TypedDict(
         "schema.energyplus": Required[Path],
         "exec.energyplus": Required[Path],
         "exec.epmacro": Path,
+        "exec.expandobjects": Path,
         "exec.readvars": Path,
         "exec.python": Path,
         "n.processes": int,

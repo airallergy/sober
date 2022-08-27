@@ -14,10 +14,22 @@ def _run_epmacro(cwd: Path) -> None:
     (cwd / "audit.out").rename(cwd / "epmacro.audit")
 
 
-def _run_energyplus(cwd: Path, has_templates: bool) -> None:
+def _run_expandobjects(cwd: Path) -> None:
+    # TODO: Basement & Slab
+    idd_file = cwd / cf._config["schema.energyplus"].name
+    idd_file.symlink_to(cf._config["schema.energyplus"])
+
+    cmd_args: AnyCmdArgs = (cf._config["exec.expandobjects"],)
+    _run(cmd_args, cwd)
+
+    (cwd / "expanded.idf").rename(cwd / "in.idf")
+    if (cwd / "expandedidf.err").exists():
+        (cwd / "expandedidf.err").rename(cwd / "expandobjects.audit")
+    idd_file.unlink()
+
+
+def _run_energyplus(cwd: Path) -> None:
     cmd_args: AnyCmdArgs = (cf._config["exec.energyplus"],)
-    if has_templates:
-        cmd_args += ("-x",)
     _run(cmd_args, cwd)
 
 
