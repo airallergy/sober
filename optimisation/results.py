@@ -281,7 +281,11 @@ class _ResultsManager:
         for task_uid in task_uids:
             self._collect_task(job_directory / task_uid)
 
+            _log(job_directory, f"collected {task_uid}")
+
         self._record_final("task", job_directory, task_uids)
+
+        _log(job_directory, "recorded final results")
 
         for result in self._job_results:
             result._collect(job_directory)
