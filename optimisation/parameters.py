@@ -479,6 +479,8 @@ class _ParametersManager(Generic[Parameter]):
         task_parameter_vals[self._weather._idx] = src_epw_file
         copyfile(src_epw_file, task_epw_file)
 
+        _log(task_directory, "created in.epw")
+
         # detag model with parameter values
         model = self._detagged(self._tagged_model, vu_mat[1:], task_parameter_vals)
 
@@ -493,6 +495,8 @@ class _ParametersManager(Generic[Parameter]):
         # run expandobjects if needed
         if self._has_templates:
             _run_expandobjects(task_directory)
+
+        _log(task_directory, "created in.idf")
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
@@ -510,7 +514,7 @@ class _ParametersManager(Generic[Parameter]):
                 ),
             )
 
-        _log(batch_directory, f"batch making completed")
+        _log(batch_directory, "batch making completed")
 
     @_LoggerManager(cwd_index=1)
     def _simulate_task(self, task_directory: Path) -> None:
@@ -532,7 +536,7 @@ class _ParametersManager(Generic[Parameter]):
                 ),
             )
 
-        _log(batch_directory, f"batch simulation completed")
+        _log(batch_directory, "batch simulation completed")
 
 
 def _all_int_parameters(

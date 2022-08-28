@@ -302,7 +302,7 @@ class _ResultsManager:
             "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
         )
 
-        _log(batch_directory, f"batch collection completed")
+        _log(batch_directory, "batch collection completed")
 
     @_LoggerManager(cwd_index=1)
     def _clean_task(self, task_directory: Path) -> None:
@@ -310,6 +310,8 @@ class _ResultsManager:
             for pattern in self._clean_patterns:
                 if path.match(pattern) and path.is_file():
                     path.unlink()  # NOTE: missing is handled by the is_file check
+
+                    _log(task_directory, f"deleted {path.relative_to(task_directory)}")
                     break
 
     @_LoggerManager(cwd_index=1)
@@ -328,7 +330,7 @@ class _ResultsManager:
                 ),
             )
 
-        _log(batch_directory, f"batch cleaning completed")
+        _log(batch_directory, "batch cleaning completed")
 
     @cache
     def _recorded_batch(self, batch_directory: Path) -> AnyBatchResults:
