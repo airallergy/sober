@@ -2,6 +2,7 @@ from pathlib import Path
 from warnings import warn
 from functools import cache
 from itertools import chain
+from os.path import normpath
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 from typing import Literal, ClassVar, TypeAlias
@@ -194,7 +195,12 @@ class _ResultsManager:
         self._job_results = tuple(
             result for result in results if result._level == "job"
         )
-        self._clean_patterns = frozenset(clean_patterns)
+        self._clean_patterns = frozenset(normpath(item) for item in clean_patterns)
+
+        if any(item.startswith(("..", "/")) for item in self._clean_patterns):
+            raise ValueError(
+                f"only files inside the task directory can be cleaned: {tuple(self._clean_patterns)}"
+            )
 
     def __iter__(self) -> Iterator[_Collector]:
         for collector in chain(self._task_results, self._job_results):
