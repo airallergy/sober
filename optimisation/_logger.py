@@ -5,7 +5,16 @@ from inspect import currentframe
 from functools import wraps, reduce
 from collections.abc import Callable
 from contextlib import ContextDecorator, AbstractContextManager
-from typing import Any, TypeVar, ClassVar, ParamSpec, TypeAlias, SupportsIndex, final
+from typing import (
+    Any,
+    Literal,
+    TypeVar,
+    ClassVar,
+    ParamSpec,
+    TypeAlias,
+    SupportsIndex,
+    final,
+)
 
 from ._typing import AnyCmdArgs, SubprocessRes
 
@@ -71,7 +80,8 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
             cwd.mkdir(parents=True, exist_ok=True)
 
             self._name = _cwd_to_logger_name(cwd)
-            self._log_file = cwd / "console.log"
+            level = f.__code__.co_name.split("_")[-1]
+            self._log_file = cwd / f"{level}.log"
             if self._is_first:
                 self._log_file.unlink(missing_ok=True)
 
