@@ -19,7 +19,7 @@ def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
         item.resolve(strict=True) if isinstance(item, Path) else item
         for item in cmd_args
     )
-    with _log(cwd, cmd_args=cmd_args) as l:
+    with _log(cwd, caller_depth=1, cmd_args=cmd_args) as l:
         l.res = run(cmd_args, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
 
 

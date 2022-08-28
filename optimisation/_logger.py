@@ -1,10 +1,11 @@
 import logging
 from pathlib import Path
 from platform import node
-from functools import wraps
+from inspect import currentframe
+from functools import wraps, reduce
 from collections.abc import Callable
 from contextlib import ContextDecorator, AbstractContextManager
-from typing import TypeVar, ClassVar, ParamSpec, TypeAlias, SupportsIndex, final
+from typing import Any, TypeVar, ClassVar, ParamSpec, TypeAlias, SupportsIndex, final
 
 from ._typing import AnyCmdArgs, SubprocessRes
 
@@ -31,7 +32,9 @@ class _Filter(logging.Filter):
 
 @final  # NOTE: to consciously call __init__, see python/mypy#13173
 class _Formatter(logging.Formatter):
-    _FMT_DEFAULT: ClassVar[str] = f"%(asctime)s {HOST_STEM}: %(message)s"
+    _FMT_DEFAULT: ClassVar[
+        str
+    ] = f"%(asctime)s {HOST_STEM} %(caller_name)s[%(process)d]: %(message)s"
     _FMT_DEBUG: ClassVar[str] = "%(message)s"
 
     def __init__(self, fmt: str = _FMT_DEFAULT) -> None:
@@ -97,16 +100,16 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
 
 
 class _SubprocessLogger(AbstractContextManager):
-    _logger: logging.Logger
+    _logger: logging.LoggerAdapter
     _cmd: str
     res: SubprocessRes
 
-    def __init__(self, logger: logging.Logger, cmd_args: AnyCmdArgs) -> None:
+    def __init__(self, logger: logging.LoggerAdapter, cmd_args: AnyCmdArgs) -> None:
         self._logger = logger
         self._cmd = " ".join(str(cmd_arg) for cmd_arg in cmd_args)
 
     def __enter__(self) -> "_SubprocessLogger":  # TODO: use typing.Self after 3.11
-        self._logger.info(" ".join(("running", f"'{self._cmd}'")))
+        self._logger.info(f"started '{self._cmd}'")
         return self
 
     def __exit__(self, *args) -> None:
@@ -114,11 +117,25 @@ class _SubprocessLogger(AbstractContextManager):
         self._logger.info(f"completed with exit code {self.res.returncode}")
 
 
-def _log(cwd: Path, msg: str = "", cmd_args: AnyCmdArgs = ()) -> _SubprocessLogger:
+def _rgetattr(obj: object, names: tuple[str, ...]) -> Any:
+    return reduce(getattr, names, obj)
+
+
+def _log(
+    cwd: Path, msg: str = "", caller_depth: int = 0, cmd_args: AnyCmdArgs = ()
+) -> _SubprocessLogger:
     name = _cwd_to_logger_name(cwd)
     assert name in logging.Logger.manager.loggerDict, f"unmanaged logger: {name}."
 
-    logger = logging.getLogger(name)
+    logger = logging.LoggerAdapter(
+        logging.getLogger(name),
+        extra={
+            "caller_name": _rgetattr(
+                currentframe(),
+                ("f_back",) * (caller_depth + 1) + ("f_code", "co_name"),
+            )  # TODO: change to co_qualname after 3.11, see python/cpython#88696
+        },
+    )
     if msg:
         logger.info(msg)
 
