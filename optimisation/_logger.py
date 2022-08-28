@@ -1,3 +1,4 @@
+import sys
 import logging
 from pathlib import Path
 from platform import node
@@ -66,6 +67,7 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
     _cwd_index: SupportsIndex
     _is_first: bool
     _name: str
+    _level: Literal["task", "job", "batch"]
     _log_file: Path
     _logger: logging.Logger
 
@@ -80,8 +82,8 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
             cwd.mkdir(parents=True, exist_ok=True)
 
             self._name = _cwd_to_logger_name(cwd)
-            level = f.__code__.co_name.split("_")[-1]
-            self._log_file = cwd / f"{level}.log"
+            self._level = f.__code__.co_name.split("_")[-1]
+            self._log_file = cwd / f"{self._level}.log"
             if self._is_first:
                 self._log_file.unlink(missing_ok=True)
 
@@ -100,8 +102,15 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
         fh.setLevel(logging.DEBUG)
         fh.addFilter(_Filter())
         fh.setFormatter(_Formatter())
-
         self.logger.addHandler(fh)
+
+        # create a stream handler
+        if self._level == "batch":
+            sh = logging.StreamHandler(sys.stdout)
+            sh.setLevel(logging.DEBUG)
+            sh.addFilter(_Filter())
+            sh.setFormatter(_Formatter())
+            self.logger.addHandler(sh)
         return self
 
     def __exit__(self, *args) -> None:
