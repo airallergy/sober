@@ -296,8 +296,8 @@ class _ResultsManager:
             cf._config["n.processes"],
             initializer=cf._update_config,
             initargs=(cf._config,),
-        ) as parallel:
-            parallel.starmap(
+        ) as p:
+            p.starmap(
                 self._collect_job,
                 (
                     (
@@ -330,8 +330,8 @@ class _ResultsManager:
             cf._config["n.processes"],
             initializer=cf._update_config,
             initargs=(cf._config,),
-        ) as parallel:
-            parallel.map(
+        ) as p:
+            p.map(
                 self._clean_task,
                 (
                     batch_directory / job_uid / task_uid
