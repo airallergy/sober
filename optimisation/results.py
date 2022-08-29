@@ -316,6 +316,8 @@ class _ResultsManager:
             "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
         )
 
+        _log(batch_directory, "recorded final results")
+
     @_LoggerManager(cwd_index=1)
     def _clean_task(self, task_directory: Path) -> None:
         for path in task_directory.glob("*"):
