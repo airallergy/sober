@@ -35,9 +35,31 @@ _P = TypeVar("_P")  # TODO: python/mypy#11855, python/typeshed#4827
 _R = TypeVar("_R", covariant=True)
 
 
+# [1] quite a few mypy complaints due to typeshed,
+#     stemmed from the implementation of starmap/starimap
+#     (related but stale: python/cpython#72567),
+#     a lot of private involved, so not likely to be PRed to typeshed
+if TYPE_CHECKING:  # [1]
+    starmapstar: Callable
+    from multiprocessing.pool import IMapIterator as IMapIterator_
+
+    class IMapIterator(IMapIterator_):
+        _job: int
+        _set_length: Callable
+
+else:
+    from multiprocessing.pool import IMapIterator, starmapstar
+
+
 class _Pool(Pool):
-    if TYPE_CHECKING:
-        _processes: int  # make mypy happy
+    if TYPE_CHECKING:  # [1]
+        from queue import SimpleQueue
+
+        _processes: int
+        _check_running: Callable
+        _get_tasks: Callable
+        _taskqueue: SimpleQueue
+        _guarded_task_generation: Callable
 
     def __init__(
         self,
@@ -59,10 +81,21 @@ class _Pool(Pool):
 
     def starmap_(
         self, func: Callable[..., _R], iterable: Iterable[Iterable[Any]]
-    ) -> list[_R]:
-        return super().starmap(
-            func, x := tuple(iterable), chunksize=self._chunk_size(len(x))
+    ) -> Iterable[_R]:
+        # borrowed from https://stackoverflow.com/questions/57354700/starmap-combined-with-tqdm
+        self._check_running()
+
+        task_batches = self._get_tasks(
+            func, x := tuple(iterable), self._chunk_size(len(x))
         )
+        result = IMapIterator(self)
+        self._taskqueue.put(
+            (
+                self._guarded_task_generation(result._job, starmapstar, task_batches),
+                result._set_length,
+            )
+        )
+        return (item for chunk in result for item in chunk)
 
 
 class _Loop(AbstractContextManager):
@@ -77,8 +110,8 @@ class _Loop(AbstractContextManager):
 
     def starmap_(
         self, func: Callable[..., _R], iterable: Iterable[Iterable[Any]]
-    ) -> list[_R]:
-        return list(starmap(func, iterable))
+    ) -> Iterable[_R]:
+        return starmap(func, iterable)
 
 
 def _Parallel(
