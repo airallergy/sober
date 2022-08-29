@@ -276,7 +276,7 @@ class _ResultsManager:
         for result in self._task_results:
             result._collect(task_directory)
 
-    @_LoggerManager(cwd_index=1, is_first=True)
+    @_LoggerManager(cwd_index=1)
     def _collect_job(self, job_directory: Path, task_uids: AnyUIDs) -> None:
         for task_uid in task_uids:
             self._collect_task(job_directory / task_uid)
@@ -297,20 +297,19 @@ class _ResultsManager:
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            pairs = tuple(
-                (job_uid, tuple(task_uid for task_uid, _ in tasks))
-                for job_uid, tasks in jobs
-            )
             it = p.starmap_(
                 self._collect_job,
                 (
-                    (batch_directory / job_uid, task_uids)
-                    for job_uid, task_uids in pairs
+                    (
+                        batch_directory / job_uid,
+                        tuple(task_uid for task_uid, _ in tasks),
+                    )
+                    for job_uid, tasks in jobs
                 ),
             )
 
-            for pair, _ in zip(pairs, it):
-                _log(batch_directory, f"collected {pair[0]}")
+            for (job_uid, _), _ in zip(jobs, it):
+                _log(batch_directory, f"collected {job_uid}")
 
         self._record_final(
             "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)

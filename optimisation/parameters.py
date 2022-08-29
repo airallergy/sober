@@ -27,6 +27,7 @@ from ._logger import _log, _LoggerManager
 from ._simulator import _run_epmacro, _split_model, _run_energyplus, _run_expandobjects
 from ._typing import (
     AnyJob,
+    AnyTask,
     AnyVUMat,
     AnyVURow,
     AnyStrPath,
@@ -499,27 +500,26 @@ class _ParametersManager(Generic[Parameter]):
         _log(task_directory, "created in.idf")
 
     @_LoggerManager(cwd_index=1, is_first=True)
+    def _make_job(self, job_directory: Path, tasks: AnyTask) -> None:
+        for task_uid, vu_mat in tasks:
+            self._make_task(job_directory / task_uid, vu_mat)
+
+            _log(job_directory, f"made {task_uid}")
+
+    @_LoggerManager(cwd_index=1, is_first=True)
     def _make_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
         with _Parallel(
             cf._config["n.processes"],
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            pairs = tuple(
-                (job_uid, task_uid, vu_mat)
-                for job_uid, tasks in jobs
-                for task_uid, vu_mat in tasks
-            )
             it = p.starmap_(
-                self._make_task,
-                (
-                    (batch_directory / job_uid / task_uid, vu_mat)
-                    for job_uid, task_uid, vu_mat in pairs
-                ),
+                self._make_job,
+                ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
             )
 
-            for pair, _ in zip(pairs, it):
-                _log(batch_directory, f"made {'-'.join(pair[:2])}")
+            for (job_uid, _), _ in zip(jobs, it):
+                _log(batch_directory, f"made {job_uid}")
 
     @_LoggerManager(cwd_index=1)
     def _simulate_task(self, task_directory: Path) -> None:
