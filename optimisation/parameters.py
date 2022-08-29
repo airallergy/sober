@@ -152,16 +152,14 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
 
     def __getitem__(self, index):
         match self._is_uncertain, index:
-            case False, int() as x:
+            case _, int() as x:
                 return self._variations[x]
             case False, (int() as x, 0):
                 return self._variations[x]
             case True, (int() as x, int() as y):
                 return self._uncertainties[x][y]
-            case _, int() | (int(), int()):
-                raise IndexError(
-                    "no " * (not self._is_uncertain) + "uncertainties defined."
-                )
+            case False, (int(), int()):
+                raise IndexError("no uncertainties defined.")
             case _:
                 raise IndexError(f"invalid index: {index}.")
 
