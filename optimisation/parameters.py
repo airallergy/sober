@@ -527,16 +527,16 @@ class _ParametersManager(Generic[Parameter]):
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            p.map_(
+            pairs = tuple(
+                (job_uid, task_uid) for job_uid, tasks in jobs for task_uid, _ in tasks
+            )
+            it = p.map_(
                 self._simulate_task,
-                (
-                    batch_directory / job_uid / task_uid
-                    for job_uid, tasks in jobs
-                    for task_uid, _ in tasks
-                ),
+                (batch_directory / job_uid / task_uid for job_uid, task_uid in pairs),
             )
 
-        _log(batch_directory, "batch simulation completed")
+            for pair, _ in zip(pairs, it):
+                _log(batch_directory, f"simulated {'-'.join(pair)}")
 
 
 def _all_int_parameters(

@@ -331,16 +331,16 @@ class _ResultsManager:
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            p.map_(
+            pairs = tuple(
+                (job_uid, task_uid) for job_uid, tasks in jobs for task_uid, _ in tasks
+            )
+            it = p.map_(
                 self._clean_task,
-                (
-                    batch_directory / job_uid / task_uid
-                    for job_uid, tasks in jobs
-                    for task_uid, _ in tasks
-                ),
+                (batch_directory / job_uid / task_uid for job_uid, task_uid in pairs),
             )
 
-        _log(batch_directory, "batch cleaning completed")
+            for pair, _ in zip(pairs, it):
+                _log(batch_directory, f"cleaned {'-'.join(pair)}")
 
     @cache
     def _recorded_batch(self, batch_directory: Path) -> AnyBatchResults:
