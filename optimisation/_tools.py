@@ -52,8 +52,8 @@ class _Pool(Pool):
     def _chunk_size(self, n_tasks: int) -> int:
         return max(n_tasks // self._processes, 1)
 
-    def map_(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> list[_R]:
-        return super().map(
+    def map_(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> Iterable[_R]:
+        return super().imap(
             func, x := tuple(iterable), chunksize=self._chunk_size(len(x))
         )
 
@@ -72,8 +72,8 @@ class _Loop(AbstractContextManager):
     def __exit__(self, *args) -> None:
         pass
 
-    def map_(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> list[_R]:
-        return list(map(func, iterable))
+    def map_(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> Iterable[_R]:
+        return map(func, iterable)
 
     def starmap_(
         self, func: Callable[..., _R], iterable: Iterable[Iterable[Any]]
