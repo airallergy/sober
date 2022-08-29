@@ -505,7 +505,7 @@ class _ParametersManager(Generic[Parameter]):
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            p.starmap(
+            p.starmap_(
                 self._make_task,
                 (
                     (batch_directory / job_uid / task_uid, vu_mat)
@@ -527,7 +527,7 @@ class _ParametersManager(Generic[Parameter]):
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            p.map(
+            p.map_(
                 self._simulate_task,
                 (
                     batch_directory / job_uid / task_uid

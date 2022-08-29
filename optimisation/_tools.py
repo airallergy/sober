@@ -31,7 +31,7 @@ else:
     _MULTIPROCESSING_CONTEXT = get_context("spawn")
 
 InitArgs = TypeVarTuple("InitArgs")  # type: ignore[misc] # TODO: after 3.11
-_P = TypeVar("_P")
+_P = TypeVar("_P")  # TODO: python/mypy#11855, python/typeshed#4827
 _R = TypeVar("_R", covariant=True)
 
 
@@ -52,21 +52,13 @@ class _Pool(Pool):
     def _chunk_size(self, n_tasks: int) -> int:
         return max(n_tasks // self._processes, 1)
 
-    def map(
-        self,
-        func: Callable[[_P], _R],
-        iterable: Iterable[_P],
-        chunksize: int | None = None,
-    ) -> list[_R]:
+    def map_(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> list[_R]:
         return super().map(
             func, x := tuple(iterable), chunksize=self._chunk_size(len(x))
         )
 
-    def starmap(
-        self,
-        func: Callable[..., _R],
-        iterable: Iterable[Iterable[Any]],
-        chunksize: int | None = None,
+    def starmap_(
+        self, func: Callable[..., _R], iterable: Iterable[Iterable[Any]]
     ) -> list[_R]:
         return super().starmap(
             func, x := tuple(iterable), chunksize=self._chunk_size(len(x))
@@ -80,10 +72,10 @@ class _Loop(AbstractContextManager):
     def __exit__(self, *args) -> None:
         pass
 
-    def map(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> list[_R]:
+    def map_(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> list[_R]:
         return list(map(func, iterable))
 
-    def starmap(
+    def starmap_(
         self, func: Callable[..., _R], iterable: Iterable[Iterable[Any]]
     ) -> list[_R]:
         return list(starmap(func, iterable))

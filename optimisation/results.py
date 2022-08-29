@@ -297,7 +297,7 @@ class _ResultsManager:
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            p.starmap(
+            p.starmap_(
                 self._collect_job,
                 (
                     (
@@ -331,7 +331,7 @@ class _ResultsManager:
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            p.map(
+            p.map_(
                 self._clean_task,
                 (
                     batch_directory / job_uid / task_uid
