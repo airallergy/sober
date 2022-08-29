@@ -297,22 +297,24 @@ class _ResultsManager:
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            p.starmap_(
+            pairs = tuple(
+                (job_uid, tuple(task_uid for task_uid, _ in tasks))
+                for job_uid, tasks in jobs
+            )
+            it = p.starmap_(
                 self._collect_job,
                 (
-                    (
-                        batch_directory / job_uid,
-                        tuple(task_uid for task_uid, _ in tasks),
-                    )
-                    for job_uid, tasks in jobs
+                    (batch_directory / job_uid, task_uids)
+                    for job_uid, task_uids in pairs
                 ),
             )
+
+            for pair, _ in zip(pairs, it):
+                _log(batch_directory, f"collected {pair[0]}")
 
         self._record_final(
             "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
         )
-
-        _log(batch_directory, "batch collection completed")
 
     @_LoggerManager(cwd_index=1)
     def _clean_task(self, task_directory: Path) -> None:

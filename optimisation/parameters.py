@@ -505,16 +505,21 @@ class _ParametersManager(Generic[Parameter]):
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            p.starmap_(
+            pairs = tuple(
+                (job_uid, task_uid, vu_mat)
+                for job_uid, tasks in jobs
+                for task_uid, vu_mat in tasks
+            )
+            it = p.starmap_(
                 self._make_task,
                 (
                     (batch_directory / job_uid / task_uid, vu_mat)
-                    for job_uid, tasks in jobs
-                    for task_uid, vu_mat in tasks
+                    for job_uid, task_uid, vu_mat in pairs
                 ),
             )
 
-        _log(batch_directory, "batch making completed")
+            for pair, _ in zip(pairs, it):
+                _log(batch_directory, f"made {'-'.join(pair[:2])}")
 
     @_LoggerManager(cwd_index=1)
     def _simulate_task(self, task_directory: Path) -> None:
