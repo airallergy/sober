@@ -476,7 +476,7 @@ class _ParametersManager(Generic[Parameter]):
         rows: list[list[Any]],
     ) -> None:
         header_line = (
-            "UID,W"
+            f"{level.capitalize()}UID,W"
             + ",".join(f"P{parameter._idx}" for parameter in self._parameters)
             + "\n"
         )
