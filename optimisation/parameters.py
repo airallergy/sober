@@ -475,7 +475,13 @@ class _ParametersManager(Generic[Parameter]):
         record_directory: Path,
         rows: list[list[Any]],
     ) -> None:
+        header_line = (
+            "UID,W"
+            + ",".join(f"P{parameter._idx}" for parameter in self._parameters)
+            + "\n"
+        )
         with (record_directory / f"{level}s.csv").open("wt") as fp:
+            fp.write(header_line)
             fp.writelines((",".join(map(str, row)) + "\n") for row in rows)
 
     @_LoggerManager(cwd_index=1, is_first=True)
