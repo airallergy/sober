@@ -220,16 +220,23 @@ class _ResultsManager:
         self, level: AnyLevel, record_directory: Path, uids: tuple[str, ...]
     ) -> None:
         # only final results
-        header_line = f"#,{level.capitalize()}UID"
+        with (
+            record_directory / getattr(cf, f"_{level.upper()}_RECORDS_FILENAME")
+        ).open("rt") as fp:
+            header_line = "#," + next(fp).rstrip()
+            val_lines = fp.read().splitlines()
+
         joined_val_lines = ""
         if level == "job":
-            count = 0
+            count = header_line.count(",") + 1
             self._objective_idxs = ()
             self._constraint_idxs = ()
             self._multipliers = ()
 
-        for idx, uid in enumerate(uids):
-            joined_val_lines += f"{idx},{uid}"
+        for idx, (uid, val_line) in enumerate(zip(uids, val_lines)):
+            assert uid == val_line.split(",")[0]
+
+            joined_val_lines += f"{idx},{val_line}"
             for result in getattr(self, f"_{level}_results"):
                 if not result._is_final:
                     continue
@@ -241,7 +248,7 @@ class _ResultsManager:
 
                         if level == "job":
                             if result._kind == "objective":
-                                n_results = line.count(",")
+                                n_results = line.count(",")  # cuz 0th col is datetime
                                 self._objective_idxs += tuple(
                                     range(count, count := count + n_results)
                                 )
@@ -347,7 +354,7 @@ class _ResultsManager:
         with (batch_directory / cf._JOB_RECORDS_FILENAME).open("rt") as fp:
             next(fp)
             val_lines = fp.read().splitlines()
-        return tuple(tuple(map(float, line.split(",")[2:])) for line in val_lines)
+        return tuple(tuple(map(float, line.split(","))) for line in val_lines)
 
     def _recorded_objectives(self, batch_directory: Path) -> AnyBatchResults:
         return tuple(

@@ -480,7 +480,9 @@ class _ParametersManager(Generic[Parameter]):
             + ",".join(f"P{parameter._idx}" for parameter in self._parameters)
             + "\n"
         )
-        with (record_directory / f"{level}s.csv").open("wt") as fp:
+        with (
+            record_directory / getattr(cf, f"_{level.upper()}_RECORDS_FILENAME")
+        ).open("wt") as fp:
             fp.write(header_line)
             fp.writelines((",".join(map(str, row)) + "\n") for row in rows)
 
