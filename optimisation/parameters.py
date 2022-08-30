@@ -450,10 +450,10 @@ class _ParametersManager(Generic[Parameter]):
     def _detagged(
         self,
         tagged_model: str,
-        parameter_vu_rows: tuple[AnyVURow, ...],
+        parameter_vu_mat: tuple[AnyVURow, ...],
         task_parameter_vals: list[Any],
     ) -> str:
-        for parameter_vu_row, parameter in zip(parameter_vu_rows, self._parameters):
+        for parameter_vu_row, parameter in zip(parameter_vu_mat, self._parameters):
             if isinstance(parameter, ContinuousParameter):
                 tagged_model = parameter._detagged(
                     tagged_model,
@@ -498,7 +498,7 @@ class _ParametersManager(Generic[Parameter]):
         _log(task_directory, "created in.idf")
 
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _make_job(self, job_directory: Path, tasks: AnyTask) -> None:
+    def _make_job(self, job_directory: Path, tasks: tuple[AnyTask, ...]) -> None:
         for task_uid, vu_mat in tasks:
             self._make_task(job_directory / task_uid, vu_mat)
 
