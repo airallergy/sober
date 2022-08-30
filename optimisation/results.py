@@ -218,9 +218,10 @@ class _ResultsManager:
             if isinstance(result, RVICollector):
                 result._touch(config_directory)
 
-    def _record_final(
+    def _record(
         self, level: AnyLevel, record_directory: Path, uids: tuple[str, ...]
     ) -> None:
+        # only final results
         header_line = f"#,{level.capitalize()}UID"
         joined_val_lines = ""
         if level == "job":
@@ -283,7 +284,7 @@ class _ResultsManager:
 
             _log(job_directory, f"collected {task_uid}")
 
-        self._record_final("task", job_directory, task_uids)
+        self._record("task", job_directory, task_uids)
 
         _log(job_directory, "recorded final results")
 
@@ -311,9 +312,7 @@ class _ResultsManager:
             for (job_uid, _), _ in zip(jobs, it):
                 _log(batch_directory, f"collected {job_uid}")
 
-        self._record_final(
-            "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
-        )
+        self._record("job", batch_directory, tuple(job_uid for job_uid, _ in jobs))
 
         _log(batch_directory, "recorded final results")
 

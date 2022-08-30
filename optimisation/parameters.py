@@ -9,6 +9,7 @@ from collections.abc import Callable, Iterable, Iterator
 from typing import (
     Any,
     Generic,
+    Literal,
     TypeVar,
     TypeAlias,
     TypeGuard,
@@ -468,8 +469,17 @@ class _ParametersManager(Generic[Parameter]):
                 )
         return tagged_model
 
+    def _record(
+        self,
+        level: Literal["task", "job"],
+        record_directory: Path,
+        rows: list[list[Any]],
+    ) -> None:
+        with (record_directory / f"{level}s.csv").open("wt") as fp:
+            fp.writelines((",".join(map(str, row)) + "\n") for row in rows)
+
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _make_task(self, task_directory: Path, vu_mat: AnyVUMat) -> None:
+    def _make_task(self, task_directory: Path, vu_mat: AnyVUMat) -> list[Any]:
         task_parameter_vals: list[Any] = [None] * len(self)
 
         # copy task weather files
@@ -497,12 +507,37 @@ class _ParametersManager(Generic[Parameter]):
 
         _log(task_directory, "created in.idf")
 
+        return task_parameter_vals
+
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _make_job(self, job_directory: Path, tasks: tuple[AnyTask, ...]) -> None:
+    def _make_job(self, job_directory: Path, tasks: tuple[AnyTask, ...]) -> list[Any]:
+        job_parameter_vals: list[Any] = [None] * len(self)
+
+        task_rows = []
         for task_uid, vu_mat in tasks:
-            self._make_task(job_directory / task_uid, vu_mat)
+            vals = self._make_task(job_directory / task_uid, vu_mat)
+            task_rows.append([task_uid] + vals)
 
             _log(job_directory, f"made {task_uid}")
+
+            if None in job_parameter_vals:
+                job_parameter_vals = list(
+                    (
+                        self._weather[vu_mat[0][0]],
+                        *(
+                            val
+                            if isinstance(parameter, ContinuousParameter)
+                            else parameter[val]
+                            for (val, _), parameter in zip(vu_mat[1:], self._parameters)  # type: ignore[has-type] # might be resolved after python/mypy#12280
+                        ),
+                    )
+                )
+
+        self._record("task", job_directory, task_rows)
+
+        _log(job_directory, "recorded parameter values")
+
+        return job_parameter_vals
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
@@ -516,8 +551,15 @@ class _ParametersManager(Generic[Parameter]):
                 ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
             )
 
-            for (job_uid, _), _ in zip(jobs, it):
+            job_rows = []
+            for (job_uid, _), vals in zip(jobs, it):
+                job_rows.append([job_uid] + vals)
+
                 _log(batch_directory, f"made {job_uid}")
+
+        self._record("job", batch_directory, job_rows)
+
+        _log(batch_directory, "recorded parameter values")
 
     @_LoggerManager(cwd_index=1)
     def _simulate_task(self, task_directory: Path) -> None:
