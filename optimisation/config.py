@@ -4,6 +4,9 @@ from multiprocessing import cpu_count
 
 from ._typing import Config, AnyStrPath, AnyLanguage, AnyModelType
 
+_TASK_RECORDS_FILENAME: str = "task_records.csv"
+_JOB_RECORDS_FILENAME: str = "job_records.csv"
+
 _config: Config
 
 
