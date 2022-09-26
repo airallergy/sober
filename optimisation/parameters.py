@@ -141,7 +141,7 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
 
         self._is_uncertain = set(self._ns_uncertainty) != {1}
         self._low = 0
-        self._high = self._n_variations
+        self._high = self._n_variations - 1
 
     @overload
     def __getitem__(self, index: SupportsIndex) -> _V:
