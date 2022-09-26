@@ -1,6 +1,5 @@
 from typing import TypedDict
 
-from .problem import Problem
 from . import _pymoo_namespace as pm
 from .parameters import AnyParameter, ContinuousParameter, _ParametersManager
 
@@ -42,11 +41,11 @@ def _algorithm(
     )
 
 
-def optimise(
-    problem: Problem, population_size: int, termination: pm.Termination, seed: int
+def _optimise(
+    problem: pm.Problem, population_size: int, termination: pm.Termination, seed: int
 ) -> pm.Result:
     return pm.minimize(
-        problem=problem._to_pymoo(),
+        problem=problem,
         algorithm=_algorithm(population_size, problem._parameters_manager),
         termination=termination,
         seed=seed,
