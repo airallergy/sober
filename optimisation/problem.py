@@ -1,3 +1,4 @@
+from math import log10
 from pathlib import Path
 from collections.abc import Iterable
 
@@ -22,6 +23,7 @@ class PymooProblem(pm.Problem):
     _parameters_manager: _ParametersManager
     _results_manager: _ResultsManager
     _evaluation_directory: Path
+    _len_batch_count: int
 
     def __init__(
         self,
@@ -34,6 +36,7 @@ class PymooProblem(pm.Problem):
         parameters_manager: _ParametersManager,
         results_manager: _ResultsManager,
         evaluation_directory: Path,
+        expected_max_n_generation: int,
     ) -> None:
         super().__init__(
             n_var=n_var, n_obj=n_obj, n_constr=n_constr, xl=xl, xu=xu, callback=callback
@@ -42,19 +45,22 @@ class PymooProblem(pm.Problem):
         self._results_manager = results_manager
         self._evaluation_directory = evaluation_directory
 
+        self._len_batch_count = int(log10(expected_max_n_generation)) + 1
+
     def _evaluate(
         self,
         x: tuple[AnyVariationVec, ...],
         out,
         *args,
-        algoritm: pm.Algorithm,
+        algorithm: pm.Algorithm,
         **kwargs,
     ) -> None:
         out["F"], out["G"] = _pymoo_evaluate(
             *x,
             parameters_manager=self._parameters_manager,
             results_manager=self._results_manager,
-            batch_directory=self._evaluation_directory / ("B" + algoritm.n_gen),
+            batch_directory=self._evaluation_directory
+            / f"B{algorithm.n_gen - (1 - algorithm.is_initialized):0{self._len_batch_count}}",
         )
 
 
@@ -123,7 +129,7 @@ class Problem:
         self._results_manager._touch_rvi(self._config_directory)
         self._check_config()
 
-    def _to_pymoo(self) -> PymooProblem:
+    def _to_pymoo(self, expected_max_n_generation: int) -> PymooProblem:
         if not len(self._results_manager._objectives):
             raise ValueError("Optimisation needs at least one objective")
 
@@ -143,6 +149,7 @@ class Problem:
             self._parameters_manager,
             self._results_manager,
             self._evaluation_directory,
+            expected_max_n_generation,
         )
 
     def run_brute_force(self) -> None:
