@@ -350,16 +350,16 @@ class _ResultsManager:
                 _log(batch_directory, f"cleaned {'-'.join(pair)}")
 
     @cache
-    def _recorded_batch(self, batch_directory: Path) -> AnyBatchResults:
+    def _recorded_batch(self, batch_directory: Path) -> tuple[tuple[str, ...], ...]:
         with (batch_directory / cf._JOB_RECORDS_FILENAME).open("rt") as fp:
             next(fp)
             val_lines = fp.read().splitlines()
-        return tuple(tuple(map(float, line.split(","))) for line in val_lines)
+        return tuple(tuple(line.split(",")) for line in val_lines)
 
     def _recorded_objectives(self, batch_directory: Path) -> AnyBatchResults:
         return tuple(
             tuple(
-                job_vals[idx] * multiplier
+                float(job_vals[idx]) * multiplier
                 for idx, multiplier in zip(self._objective_idxs, self._multipliers)
             )
             for job_vals in self._recorded_batch(batch_directory)
@@ -367,6 +367,6 @@ class _ResultsManager:
 
     def _recorded_constraints(self, batch_directory: Path) -> AnyBatchResults:
         return tuple(
-            tuple(job_vals[idx] for idx in self._constraint_idxs)
+            tuple(float(job_vals[idx]) for idx in self._constraint_idxs)
             for job_vals in self._recorded_batch(batch_directory)
         )
