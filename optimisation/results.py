@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 from warnings import warn
 from functools import cache
@@ -223,59 +224,66 @@ class _ResultsManager:
         with (
             record_directory / getattr(cf, f"_{level.upper()}_RECORDS_FILENAME")
         ).open("rt") as fp:
-            header_line = "#," + next(fp).rstrip()
-            val_lines = fp.read().splitlines()
+            reader = csv.reader(fp, dialect="excel")
 
-        joined_val_lines = ""
+            headers = ["#"] + next(reader)
+            records = list(reader)
+
         if level == "job":
-            count = header_line.count(",") + 1
             self._objective_idxs = ()
             self._constraint_idxs = ()
             self._multipliers = ()
 
-        for idx, (uid, val_line) in enumerate(zip(uids, val_lines)):
-            assert uid == val_line.split(",")[0]
+        for idx, uid in enumerate(uids):
+            assert uid == records[idx][0]
 
-            joined_val_lines += f"{idx},{val_line}"
+            records[idx] = [str(idx)] + records[idx]
             for result in getattr(self, f"_{level}_results"):
                 if not result._is_final:
                     continue
 
                 with (record_directory / uid / result._filename).open("rt") as fp:
-                    line = next(fp)
-                    if not idx:
-                        header_line += "," + line.rstrip().split(",", 1)[-1]
+                    reader = csv.reader(fp, dialect="excel")
+
+                    if idx:
+                        next(reader)
+                    else:  # do this only once (when idx is 0)
+                        begin_count = len(headers)
+                        headers += next(reader)[1:]
+                        end_count = len(headers)
 
                         if level == "job":
                             if result._kind == "objective":
-                                n_results = line.count(",")  # cuz 0th col is datetime
                                 self._objective_idxs += tuple(
-                                    range(count, count := count + n_results)
+                                    range(begin_count, end_count)
                                 )
-                                self._multipliers += (result._multiplier,) * n_results
+                                self._multipliers += (result._multiplier,) * (
+                                    end_count - begin_count
+                                )
                             elif result._kind == "constraint":
                                 self._constraint_idxs += tuple(
-                                    range(count, count := count + line.count(","))
+                                    range(begin_count, end_count)
                                 )
 
-                    line = next(fp)
-                    joined_val_lines += "," + line.rstrip().split(",", 1)[-1]
+                    records[idx] += next(reader)[1:]
 
                     if __debug__:
                         try:
-                            next(fp)
+                            next(reader)
                         except StopIteration:
                             pass
                         else:
                             warn(
                                 f"multiple result lines found in '{result._filename}', only the first collected."
                             )
-            joined_val_lines += "\n"
 
         with (
             record_directory / getattr(cf, f"_{level.upper()}_RECORDS_FILENAME")
         ).open("wt") as fp:
-            fp.write(header_line + "\n" + joined_val_lines)
+            writer = csv.writer(fp, dialect="excel")
+
+            writer.writerow(headers)
+            writer.writerows(records)
 
     @_LoggerManager(cwd_index=1)
     def _collect_task(self, task_directory: Path) -> None:
@@ -350,11 +358,12 @@ class _ResultsManager:
                 _log(batch_directory, f"cleaned {'-'.join(pair)}")
 
     @cache
-    def _recorded_batch(self, batch_directory: Path) -> tuple[tuple[str, ...], ...]:
+    def _recorded_batch(self, batch_directory: Path) -> tuple[list[str], ...]:
         with (batch_directory / cf._JOB_RECORDS_FILENAME).open("rt") as fp:
-            next(fp)
-            val_lines = fp.read().splitlines()
-        return tuple(tuple(line.split(",")) for line in val_lines)
+            reader = csv.reader(fp, dialect="excel")
+
+            next(reader)
+            return tuple(reader)
 
     def _recorded_objectives(self, batch_directory: Path) -> AnyBatchResults:
         return tuple(

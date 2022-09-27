@@ -1,3 +1,4 @@
+import csv
 from math import log10
 from io import StringIO
 from pathlib import Path
@@ -475,20 +476,18 @@ class _ParametersManager(Generic[Parameter]):
         record_directory: Path,
         rows: list[list[Any]],
     ) -> None:
-        header_line = (
-            ",".join(
+        with (
+            record_directory / getattr(cf, f"_{level.upper()}_RECORDS_FILENAME")
+        ).open("wt") as fp:
+            writer = csv.writer(fp, dialect="excel")
+
+            writer.writerow(
                 chain(
                     (f"{level.capitalize()}UID", "W"),
                     (f"P{parameter._idx}" for parameter in self._parameters),
                 )
             )
-            + "\n"
-        )
-        with (
-            record_directory / getattr(cf, f"_{level.upper()}_RECORDS_FILENAME")
-        ).open("wt") as fp:
-            fp.write(header_line)
-            fp.writelines((",".join(map(str, row)) + "\n") for row in rows)
+            writer.writerows(map(str, row) for row in rows)
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_task(self, task_directory: Path, vu_mat: AnyVUMat) -> list[Any]:
