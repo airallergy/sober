@@ -1,7 +1,7 @@
 from os import PathLike
 from pathlib import Path
 from collections.abc import Callable
-from typing import Literal, Protocol, TypeAlias
+from typing import Literal, TypeVar, Protocol, TypeAlias
 
 from typing_extensions import Required, TypedDict
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
@@ -14,9 +14,10 @@ AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
 AnyModelType: TypeAlias = Literal[".idf", ".imf"]
 AnyLanguage: TypeAlias = Literal["python"]
 
-AnyIntVURow: TypeAlias = tuple[int, int]
-AnyFloatVURow: TypeAlias = tuple[float, float]  # TODO: check this against tuple[float]
-AnyVURow: TypeAlias = AnyIntVURow | AnyFloatVURow  # type: ignore[operator] #python/typeshed#4819
+_S = TypeVar("_S", int, float)
+AnyVURow: TypeAlias = tuple[_S, _S]  # TODO: double check this for float params
+AnyIntVURow: TypeAlias = AnyVURow[int]
+AnyFloatVURow: TypeAlias = AnyVURow[float]
 AnyVariationVec: TypeAlias = tuple[int, Unpack[tuple[float, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
 AnyUncertaintyVec: TypeAlias = tuple[int, Unpack[tuple[float, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
 AnyVUMat: TypeAlias = tuple[
