@@ -307,7 +307,7 @@ class FunctionalParameter(_ModelParameterMixin, _IntParameter[_V, _U]):
         *args,
     ) -> None:
         super().__init__(tagger, (1,), *())
-        self._func = func  # TODO: this has been solved in the master branch
+        self._func = func
         self._parameter_indices = parameter_indices
         self._args = tuple(map(str, args))
 
@@ -344,7 +344,7 @@ class _ParametersManager(Generic[Parameter]):
     _model_type: AnyModelType
     _tagged_model: str
     _has_templates: bool
-    _has_uncertainties:bool
+    _has_uncertainties: bool
 
     def __init__(
         self,
