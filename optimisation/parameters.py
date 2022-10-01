@@ -63,18 +63,6 @@ class _Tagger(ABC):
         ...
 
 
-class _RegularTagger(_Tagger):
-    @abstractmethod
-    def _tagged(self, model: IDF) -> IDF:
-        ...
-
-
-class _MacroTagger(_Tagger):
-    @abstractmethod
-    def _tagged(self, model: str) -> str:
-        ...
-
-
 class _Parameter(ABC):
     _low: float
     _high: float
@@ -169,7 +157,7 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
 #############################################################################
 #######                        TAGGER CLASSES                         #######
 #############################################################################
-class IndexTagger(_RegularTagger):
+class IndexTagger(_Tagger):
     """Tagger for regular commands by indexing.
 
     No support for nested regular commands.
@@ -194,8 +182,8 @@ class IndexTagger(_RegularTagger):
         return model
 
 
-class StringTagger(_MacroTagger):
-    """Tagger for macro commands by string replacement.
+class StringTagger(_Tagger):
+    """Tagger for regular and macro commands by string replacement.
 
     No support for nested macro commands.
     """
@@ -387,7 +375,15 @@ class _ParametersManager(Generic[Parameter]):
         return 1 + len(self._parameters)
 
     def _tagged(self, model_file: Path) -> str:
-        macros, regulars = _split_model(model_file)
+        with model_file.open("rt") as fp:
+            model = fp.read()
+
+        for parameter in self._parameters:
+            tagger = parameter._tagger
+            if isinstance(tagger, StringTagger):
+                model = tagger._tagged(model)
+
+        macros, regulars = _split_model(model)
         if (not macros.rstrip()) ^ (self._model_type == ".idf"):
             raise ValueError(
                 f"a '{self._model_type}' model is input, but "
@@ -405,11 +401,8 @@ class _ParametersManager(Generic[Parameter]):
 
         for parameter in self._parameters:
             tagger = parameter._tagger
-            # NOTE: match-case crashes mypy here
-            if isinstance(tagger, _RegularTagger):
+            if isinstance(tagger, IndexTagger):
                 idf = tagger._tagged(idf)
-            elif isinstance(tagger, _MacroTagger):
-                macros = tagger._tagged(macros)
 
         return macros + idf.idfstr()
 
