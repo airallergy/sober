@@ -344,6 +344,7 @@ class _ParametersManager(Generic[Parameter]):
     _model_type: AnyModelType
     _tagged_model: str
     _has_templates: bool
+    _has_uncertainties:bool
 
     def __init__(
         self,
@@ -366,6 +367,9 @@ class _ParametersManager(Generic[Parameter]):
         self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
         self._tagged_model = self._tagged(model_file)
         self._has_templates = has_templates
+        self._has_uncertainties = any(
+            item._is_uncertain for item in self if isinstance(item, _IntParameter)
+        )
 
     def __iter__(self) -> Iterator[WeatherParameter | Parameter]:
         for parameter in chain((self._weather,), self._parameters):

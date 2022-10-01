@@ -3,6 +3,7 @@ from pathlib import Path
 from warnings import warn
 from functools import cache
 from itertools import chain
+from shutil import copyfile
 from os.path import normpath
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
@@ -50,8 +51,6 @@ class _Collector(ABC):
         self._multiplier = getattr(self, f"_{direction.upper()}")
         self._is_final = is_final
 
-        self._check_args()
-
     def _check_args(self) -> None:
         if self._kind in ("objective", "constraint"):
             assert (
@@ -69,6 +68,9 @@ class _Collector(ABC):
             assert (
                 self._filename.split(".")[-1] == "csv"
             ), f"a RVICollector result needs to be a csv file: {self._filename}."
+            assert (
+                self._level == "task"
+            ), f"a RVICollector result needs to be on the task level."
 
     @abstractmethod
     def _collect(self, cwd: Path) -> None:
@@ -164,6 +166,22 @@ class ScriptCollector(_Collector):
         _run(cmd_args, cwd)
 
 
+class _CopyCollector(_Collector):
+    # NOTE: this is for handling non-uncertain cases only
+    #       copy final results from task folders to job ones
+
+    def __init__(
+        self,
+        filename: str,
+        kind: AnyKind,
+        direction: AnyDirection = "minimise",
+    ) -> None:
+        super().__init__(filename, "job", kind, direction, True)
+
+    def _collect(self, cwd: Path) -> None:
+        copyfile(cwd / "T0" / self._filename, cwd / self._filename)
+
+
 #############################################################################
 #######                    RESULTS MANAGER CLASSES                    #######
 #############################################################################
@@ -185,9 +203,34 @@ class _ResultsManager:
     _multipliers: tuple[AnyDirectionMultiplier, ...]
 
     def __init__(
-        self, results: Iterable[_Collector], clean_patterns: Iterable[str]
+        self,
+        results: Iterable[_Collector],
+        clean_patterns: Iterable[str],
+        has_uncertainties: bool,
     ) -> None:
         results = tuple(results)
+        auto_results = []
+        if not has_uncertainties:
+            for item in results:
+                if item._level == "job":
+                    raise ValueError(
+                        "all results collectors need to be on the task level when no uncertainty in parameters."
+                    )
+
+                if item._is_final:
+                    auto_results.append(
+                        _CopyCollector(
+                            item._filename,
+                            item._kind,
+                            "minimise" if item._multiplier == 1 else "maximise",
+                        )
+                    )
+                    item._kind = "extra"
+            results += tuple(auto_results)
+
+        for item in results:
+            item._check_args()
+
         self._task_results = tuple(
             result for result in results if result._level == "task"
         )

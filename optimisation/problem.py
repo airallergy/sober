@@ -92,7 +92,9 @@ class Problem:
         self._parameters_manager = _ParametersManager(
             weather, parameters, model_file, has_templates
         )
-        self._results_manager = _ResultsManager(results, clean_patterns)
+        self._results_manager = _ResultsManager(
+            results, clean_patterns, self._parameters_manager._has_uncertainties
+        )
         self._model_directory = model_file.parent
         self._evaluation_directory = (
             self._model_directory / "evaluation"
