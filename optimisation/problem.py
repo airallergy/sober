@@ -73,7 +73,6 @@ class PymooProblem(pm.Problem):
 class Problem:
     _parameters_manager: _ParametersManager[AnyParameter]
     _results_manager: _ResultsManager
-    _callback: AnyCallback
     _model_directory: Path
     _evaluation_directory: Path
     _config_directory: Path
@@ -87,7 +86,6 @@ class Problem:
         has_templates: bool = False,
         clean_patterns: Iterable[str] = _ResultsManager._DEFAULT_CLEAN_PATTERNS,
         evaluation_directory: AnyStrPath | None = None,
-        callback: AnyCallback = None,
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
     ) -> None:
@@ -107,7 +105,6 @@ class Problem:
         self._config_directory = self._model_directory / (
             "." + __package__.split(".")[-1]
         )
-        self._callback = callback
 
         self._prepare(n_processes, python_exec)
 
@@ -134,7 +131,9 @@ class Problem:
         self._results_manager._touch_rvi(self._config_directory)
         self._check_config()
 
-    def _to_pymoo(self, expected_max_n_generation: int) -> PymooProblem:
+    def _to_pymoo(
+        self, callback: AnyCallback, expected_max_n_generation: int
+    ) -> PymooProblem:
         if not len(self._results_manager._objectives):
             raise ValueError("Optimisation needs at least one objective")
 
@@ -150,7 +149,7 @@ class Problem:
                 (parameter._high for parameter in self._parameters_manager),
                 dtype=np.float_,
             ),
-            self._callback,
+            callback,
             self._parameters_manager,
             self._results_manager,
             self._evaluation_directory,
