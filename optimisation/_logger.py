@@ -17,6 +17,7 @@ from typing import (
     final,
 )
 
+from . import config as cf
 from ._typing import AnyCmdArgs, SubprocessRes
 
 _P = ParamSpec("_P")
@@ -67,7 +68,7 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
     _cwd_index: SupportsIndex
     _is_first: bool
     _name: str
-    _level: Literal["task", "job", "batch"]
+    _level: Literal["task", "job", "batch", "epoch"]
     _log_file: Path
     _logger: logging.Logger
 
@@ -105,7 +106,9 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
         self.logger.addHandler(fh)
 
         # create a stream handler
-        if self._level == "batch":
+        if (self._level == "batch" and not cf._has_batches) or (
+            self._level == "epoch" and cf._has_batches
+        ):
             sh = logging.StreamHandler(sys.stdout)
             sh.setLevel(logging.DEBUG)
             sh.addFilter(_Filter())

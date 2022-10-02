@@ -5,6 +5,7 @@ from collections.abc import Iterable
 import numpy as np
 from numpy.typing import NDArray
 
+from ._logger import _log
 from . import config as cf
 from ._multiplier import _multiply
 from . import _pymoo_namespace as pm
@@ -55,13 +56,15 @@ class PymooProblem(pm.Problem):
         algorithm: pm.Algorithm,
         **kwargs,
     ) -> None:
+        batch_uid = f"B{algorithm.n_gen - (1 - algorithm.is_initialized):0{self._len_batch_count}}"
         out["F"], out["G"] = _pymoo_evaluate(
             *x,
             parameters_manager=self._parameters_manager,
             results_manager=self._results_manager,
-            batch_directory=self._evaluation_directory
-            / f"B{algorithm.n_gen - (1 - algorithm.is_initialized):0{self._len_batch_count}}",
+            batch_directory=self._evaluation_directory / batch_uid,
         )
+
+        _log(self._evaluation_directory, f"evaluated {batch_uid}")
 
 
 #############################################################################
@@ -155,6 +158,8 @@ class Problem:
         )
 
     def run_brute_force(self) -> None:
+        cf._has_batches = False
+
         if _all_int_parameters(self._parameters_manager):
             _multiply(
                 self._parameters_manager,

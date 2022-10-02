@@ -1,5 +1,7 @@
+from pathlib import Path
 from typing import TypedDict
 
+from ._logger import _LoggerManager
 from . import _pymoo_namespace as pm
 from .parameters import AnyParameter, ContinuousParameter, _ParametersManager
 
@@ -41,8 +43,13 @@ def _algorithm(
     )
 
 
-def _optimise(
-    problem: pm.Problem, population_size: int, termination: pm.Termination, seed: int
+@_LoggerManager(cwd_index=0, is_first=True)
+def _optimise_epoch(
+    cwd: Path,
+    problem: pm.Problem,
+    population_size: int,
+    termination: pm.Termination,
+    seed: int,
 ) -> pm.Result:
     return pm.minimize(
         problem=problem,

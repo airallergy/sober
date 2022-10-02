@@ -543,7 +543,7 @@ class _ParametersManager(Generic[Parameter]):
 
         self._record("task", job_directory, task_rows)
 
-        _log(job_directory, "recorded parameter values")
+        _log(job_directory, "recorded parameters")
 
         return job_parameter_vals
 
@@ -567,7 +567,7 @@ class _ParametersManager(Generic[Parameter]):
 
         self._record("job", batch_directory, job_rows)
 
-        _log(batch_directory, "recorded parameter values")
+        _log(batch_directory, "recorded parameters")
 
     @_LoggerManager(cwd_index=1)
     def _simulate_task(self, task_directory: Path) -> None:
