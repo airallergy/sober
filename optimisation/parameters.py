@@ -35,7 +35,7 @@ from ._typing import (
     AnyStrPath,
     AnyIntVURow,
     AnyModelType,
-    AnyFloatVURow,
+    AnyRealVURow,
     AnyVariationVec,
     AnyUncertaintyVec,
 )
@@ -76,7 +76,7 @@ class _ModelParameterMixin(ABC):
     def __init__(self, tagger: _Tagger, *args, **kwargs) -> None:
         self._tagger = tagger
 
-        super().__init__(*args, **kwargs)  # NOTE: to _FloatParameter/_IntParameter
+        super().__init__(*args, **kwargs)  # NOTE: to _RealParameter/_IntParameter
 
     @abstractmethod
     def _detagged(
@@ -85,7 +85,7 @@ class _ModelParameterMixin(ABC):
         ...
 
 
-class _FloatParameter(_Parameter):
+class _RealParameter(_Parameter):
     @abstractmethod
     def __init__(self, low: float, high: float) -> None:
         self._low = low
@@ -233,14 +233,14 @@ class WeatherParameter(_IntParameter[Path | str, Path]):
             )
 
 
-class ContinuousParameter(_ModelParameterMixin, _FloatParameter):
+class ContinuousParameter(_ModelParameterMixin, _RealParameter):
     def __init__(self, tagger: _Tagger, low: float, high: float) -> None:
         super().__init__(tagger, low, high)
 
     def _detagged(
         self,
         tagged_model: str,
-        parameter_vu_row: AnyFloatVURow,
+        parameter_vu_row: AnyRealVURow,
         task_parameter_vals: list[Any],
     ) -> str:
         val = parameter_vu_row[0]
@@ -456,7 +456,7 @@ class _ParametersManager(Generic[Parameter]):
             if isinstance(parameter, ContinuousParameter):
                 tagged_model = parameter._detagged(
                     tagged_model,
-                    cast(AnyFloatVURow, parameter_vu_row),  # NOTE: cast
+                    cast(AnyRealVURow, parameter_vu_row),  # NOTE: cast
                     task_parameter_vals,
                 )
             else:
