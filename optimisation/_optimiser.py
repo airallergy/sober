@@ -12,7 +12,11 @@ class Operators(TypedDict):
     mutation: pm.MixedVariableMutation
 
 
-def _operators(parameters_manager: _ParametersManager[AnyParameter]) -> Operators:
+def _operators(
+    parameters_manager: _ParametersManager[AnyParameter],
+    p_crossover: float,
+    p_mutation: float,
+) -> Operators:
     mask = tuple(
         "real" if isinstance(parameter, ContinuousParameter) else "int"
         for parameter in parameters_manager
@@ -20,26 +24,44 @@ def _operators(parameters_manager: _ParametersManager[AnyParameter]) -> Operator
     return {
         "sampling": pm.MixedVariableSampling(
             mask,
-            {"real": pm.get_sampling("real_lhs"), "int": pm.get_sampling("int_lhs")},
+            {
+                "real": pm.LatinHypercubeSampling(),
+                "int": pm.IntegerFromFloatSampling(pm.LatinHypercubeSampling),
+            },
         ),
         "crossover": pm.MixedVariableCrossover(
             mask,
-            {"real": pm.get_crossover("real_sbx"), "int": pm.get_crossover("int_sbx")},
+            {
+                "real": pm.SimulatedBinaryCrossover(
+                    prob=p_crossover, eta=15  # TODO: eta has defaults from 0.60
+                ),
+                "int": pm.IntegerFromFloatCrossover(
+                    pm.SimulatedBinaryCrossover, prob=p_crossover, eta=15
+                ),
+            },
         ),
         "mutation": pm.MixedVariableMutation(
             mask,
-            {"real": pm.get_mutation("real_pm"), "int": pm.get_mutation("int_pm")},
+            {
+                "real": pm.PolynomialMutation(prob=p_mutation, eta=20),
+                "int": pm.IntegerFromFloatMutation(
+                    pm.PolynomialMutation, prob=p_mutation, eta=20
+                ),
+            },
         ),
     }
 
 
 def _algorithm(
-    population_size: int, parameters_manager: _ParametersManager[AnyParameter]
+    population_size: int,
+    parameters_manager: _ParametersManager[AnyParameter],
+    p_crossover: float,
+    p_mutation: float,
 ) -> pm.NSGA2:
     return pm.NSGA2(
         pop_size=population_size,
         eliminate_duplicates=True,
-        **_operators(parameters_manager)
+        **_operators(parameters_manager, p_crossover, p_mutation)
     )
 
 
@@ -49,12 +71,17 @@ def _optimise_epoch(
     problem: pm.Problem,
     population_size: int,
     termination: pm.Termination,
+    p_crossover: float,
+    p_mutation: float,
+    save_history: bool,
     seed: int,
 ) -> pm.Result:
     return pm.minimize(
         problem=problem,
-        algorithm=_algorithm(population_size, problem._parameters_manager),
+        algorithm=_algorithm(
+            population_size, problem._parameters_manager, p_crossover, p_mutation
+        ),
         termination=termination,
         seed=seed,
-        save_history=False,
+        save_history=save_history,
     )

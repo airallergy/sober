@@ -10,6 +10,7 @@ from . import config as cf
 from ._multiplier import _multiply
 from . import _pymoo_namespace as pm
 from ._evaluator import _pymoo_evaluate
+from ._optimiser import _optimise_epoch
 from ._typing import AnyStrPath, AnyCallback, AnyVariationVec
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
@@ -167,3 +168,28 @@ class Problem:
             )
         else:
             raise ValueError("With continous parameters cannot run brute force.")
+
+    def run_nsga2(
+        self,
+        population_size: int,
+        termination: pm.Termination,
+        p_crossover: float = 1.0,
+        p_mutation: float = 0.2,
+        callback: AnyCallback = None,
+        saves_history: bool = True,
+        expected_max_n_generation: int = 9999,
+        seed: int | None = None,
+    ) -> pm.Result:
+        if isinstance(termination, pm.MaximumGenerationTermination):
+            expected_max_n_generation = termination.n_max_gen
+
+        return _optimise_epoch(
+            self._evaluation_directory,
+            self._to_pymoo(callback, expected_max_n_generation),
+            population_size,
+            termination,
+            p_crossover,
+            p_mutation,
+            saves_history,
+            seed,
+        )
