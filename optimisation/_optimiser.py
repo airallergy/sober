@@ -7,9 +7,9 @@ from .parameters import AnyParameter, ContinuousParameter, _ParametersManager
 
 
 class Operators(TypedDict):
-    sampling: pm.MixedVariableSampling
-    crossover: pm.MixedVariableCrossover
-    mutation: pm.MixedVariableMutation
+    sampling: pm.Sampling
+    crossover: pm.Crossover
+    mutation: pm.Mutation
 
 
 def _operators(

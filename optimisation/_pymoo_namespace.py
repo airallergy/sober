@@ -2,7 +2,10 @@ from pymoo.optimize import minimize
 from pymoo.core.result import Result
 from pymoo.core.problem import Problem
 from pymoo.core.callback import Callback
+from pymoo.core.mutation import Mutation
+from pymoo.core.sampling import Sampling
 from pymoo.core.algorithm import Algorithm
+from pymoo.core.crossover import Crossover
 from pymoo.core.termination import Termination
 from pymoo.operators.mutation.pm import PolynomialMutation
 from pymoo.operators.sampling.lhs import LatinHypercubeSampling
