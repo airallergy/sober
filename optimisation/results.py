@@ -6,8 +6,8 @@ from itertools import chain
 from shutil import copyfile
 from os.path import normpath
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Iterator
 from typing import Literal, ClassVar, TypeAlias
+from collections.abc import Callable, Iterable, Iterator
 
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
@@ -20,20 +20,21 @@ from ._typing import AnyJob, AnyUIDs, AnyCmdArgs, AnyStrPath, AnyBatchResults
 AnyLevel: TypeAlias = Literal["task", "job"]
 AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]
 AnyDirection: TypeAlias = Literal["minimise", "maximise"]
-AnyDirectionMultiplier: TypeAlias = Literal[1, -1]
+AnyBounds: TypeAlias = (
+    tuple[None, float] | tuple[float, None] | tuple[float, float]  # type:ignore[misc]
+)  # TODO: python/mypy#11098
+AnyConverter: TypeAlias = Callable[[float], float]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
 
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Collector(ABC):
-    _MINIMISE: ClassVar[int] = 1
-    _MAXIMISE: ClassVar[int] = -1
-
     _filename: str
     _level: AnyLevel
     _kind: AnyKind
-    _multiplier: AnyDirectionMultiplier
+    _direction: AnyDirection
+    _bounds: AnyBounds
     _is_final: bool
 
     @abstractmethod
@@ -43,12 +44,14 @@ class _Collector(ABC):
         level: AnyLevel,
         kind: AnyKind,
         direction: AnyDirection,
+        bounds: AnyBounds,
         is_final: bool,
     ) -> None:
         self._filename = filename
         self._level = level
         self._kind = kind
-        self._multiplier = getattr(self, f"_{direction.upper()}")
+        self._direction = direction
+        self._bounds = bounds
         self._is_final = is_final
 
     def _check_args(self) -> None:
@@ -59,6 +62,13 @@ class _Collector(ABC):
             assert (
                 self._is_final == True
             ), f"an '{self._kind}' result needs to be final: {self._filename}."
+
+        if self._kind == "constraint":
+            if self._bounds[0] and self._bounds[1]:
+                # TODO: add support for equality after pymoo 0.60
+                assert (
+                    self._bounds[0] < self._bounds[1]
+                ), f"the lower bound should be less than the upper bound in an '{self._kind}' result: {self._filename}."
 
         if self._is_final:
             assert (
@@ -75,6 +85,18 @@ class _Collector(ABC):
     @abstractmethod
     def _collect(self, cwd: Path) -> None:
         ...
+
+    def _to_objective(self, x: float) -> float:
+        return x * {"minimise": 1, "maximise": -1}[self._direction]
+
+    def _to_constraint(self, x: float) -> float:
+        match self._bounds:
+            case (None, _ as upper):
+                return x - upper
+            case (_ as lower, None):
+                return lower - x
+            case (lower, upper):
+                return abs(x - (upper + lower) / 2) - (upper - lower) / 2
 
 
 #############################################################################
@@ -95,6 +117,7 @@ class RVICollector(_Collector):
         level: AnyLevel,
         kind: AnyKind,
         direction: AnyDirection = "minimise",
+        bounds: AnyBounds = (None, 0),
         is_final: bool = True,
         keys: Iterable[str] = (),
         frequency: str = "",
@@ -104,7 +127,7 @@ class RVICollector(_Collector):
         self._keys = tuple(keys)
         self._frequency = frequency
 
-        super().__init__(filename, level, kind, direction, is_final)
+        super().__init__(filename, level, kind, direction, bounds, is_final)
 
     def _touch(self, config_directory: Path) -> None:
         self._rvi_file = (
@@ -146,13 +169,14 @@ class ScriptCollector(_Collector):
         level: AnyLevel,
         kind: AnyKind,
         direction: AnyDirection = "minimise",
+        bounds: AnyBounds = (None, 0),
         is_final: bool = True,
         *script_args: Unpack[AnyCmdArgs],  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
     ) -> None:
         self._script_file = Path(script_file)
         self._language = language
         self._script_args = script_args
-        super().__init__(filename, level, kind, direction, is_final)
+        super().__init__(filename, level, kind, direction, bounds, is_final)
 
     def _collect(self, cwd: Path) -> None:
         cmd_args: AnyCmdArgs = (
@@ -175,8 +199,9 @@ class _CopyCollector(_Collector):
         filename: str,
         kind: AnyKind,
         direction: AnyDirection = "minimise",
+        bounds: AnyBounds = (None, 0),
     ) -> None:
-        super().__init__(filename, "job", kind, direction, True)
+        super().__init__(filename, "job", kind, direction, bounds, True)
 
     def _collect(self, cwd: Path) -> None:
         copyfile(cwd / "T0" / self._filename, cwd / self._filename)
@@ -200,7 +225,8 @@ class _ResultsManager:
     _extras: tuple[_Collector, ...]
     _objective_idxs: tuple[int, ...]
     _constraint_idxs: tuple[int, ...]
-    _multipliers: tuple[AnyDirectionMultiplier, ...]
+    _to_objectives: tuple[AnyConverter, ...]
+    _to_constraints: tuple[AnyConverter, ...]
 
     def __init__(
         self,
@@ -222,7 +248,8 @@ class _ResultsManager:
                         _CopyCollector(
                             item._filename,
                             item._kind,
-                            "minimise" if item._multiplier == 1 else "maximise",
+                            item._direction,
+                            item._bounds,
                         )
                     )
                     item._kind = "extra"
@@ -275,7 +302,8 @@ class _ResultsManager:
         if level == "job":
             self._objective_idxs = ()
             self._constraint_idxs = ()
-            self._multipliers = ()
+            self._to_objectives = ()
+            self._to_constraints = ()
 
         for idx, uid in enumerate(uids):
             assert uid == records[idx][0]
@@ -300,12 +328,15 @@ class _ResultsManager:
                                 self._objective_idxs += tuple(
                                     range(begin_count, end_count)
                                 )
-                                self._multipliers += (result._multiplier,) * (
+                                self._to_objectives += (result._to_objective,) * (
                                     end_count - begin_count
                                 )
                             elif result._kind == "constraint":
                                 self._constraint_idxs += tuple(
                                     range(begin_count, end_count)
+                                )
+                                self._to_constraints += (result._to_constraint,) * (
+                                    end_count - begin_count
                                 )
 
                     records[idx] += next(reader)[1:]
@@ -411,14 +442,17 @@ class _ResultsManager:
     def _recorded_objectives(self, batch_directory: Path) -> AnyBatchResults:
         return tuple(
             tuple(
-                float(job_vals[idx]) * multiplier
-                for idx, multiplier in zip(self._objective_idxs, self._multipliers)
+                func(float(job_vals[idx]))
+                for idx, func in zip(self._objective_idxs, self._to_objectives)
             )
             for job_vals in self._recorded_batch(batch_directory)
         )
 
     def _recorded_constraints(self, batch_directory: Path) -> AnyBatchResults:
         return tuple(
-            tuple(float(job_vals[idx]) for idx in self._constraint_idxs)
+            tuple(
+                func(float(job_vals[idx]))
+                for idx, func in zip(self._constraint_idxs, self._to_constraints)
+            )
             for job_vals in self._recorded_batch(batch_directory)
         )

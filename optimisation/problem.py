@@ -58,12 +58,14 @@ class PymooProblem(pm.Problem):
         **kwargs,
     ) -> None:
         batch_uid = f"B{algorithm.n_gen - (1 - algorithm.is_initialized):0{self._len_batch_count}}"
-        out["F"], out["G"] = _pymoo_evaluate(
+        objectives, constraints = _pymoo_evaluate(
             *x,
             parameters_manager=self._parameters_manager,
             results_manager=self._results_manager,
             batch_directory=self._evaluation_directory / batch_uid,
         )
+        out["F"] = np.asarray(objectives, dtype=np.float_)
+        out["G"] = np.asarray(constraints, dtype=np.float_)
 
         _log(self._evaluation_directory, f"evaluated {batch_uid}")
 
