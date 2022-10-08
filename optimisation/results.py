@@ -20,9 +20,9 @@ from ._typing import AnyJob, AnyUIDs, AnyCmdArgs, AnyStrPath, AnyBatchResults
 AnyLevel: TypeAlias = Literal["task", "job"]
 AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]
 AnyDirection: TypeAlias = Literal["minimise", "maximise"]
-AnyBounds: TypeAlias = (
-    tuple[None, float] | tuple[float, None] | tuple[float, float]  # type:ignore[misc]
-)  # TODO: python/mypy#11098
+# AnyBounds: TypeAlias = tuple[None, float] | tuple[float, None] | tuple[float, float]
+# this crashes mypy currently
+AnyBounds: TypeAlias = tuple[float | None, float | None]  # TODO: python/mypy#11098
 AnyConverter: TypeAlias = Callable[[float], float]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
 
@@ -89,8 +89,12 @@ class _Collector(ABC):
     def _to_objective(self, x: float) -> float:
         return x * {"minimise": 1, "maximise": -1}[self._direction]
 
-    def _to_constraint(self, x: float) -> float:
+    def _to_constraint(  # type:ignore[return] # python/mypy#12534
+        self, x: float
+    ) -> float:
         match self._bounds:
+            case (None, None):
+                raise ValueError(f"bounds not defined: {self._filename}")
             case (None, _ as upper):
                 return x - upper
             case (_ as lower, None):
