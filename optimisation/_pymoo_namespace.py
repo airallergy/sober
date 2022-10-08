@@ -10,6 +10,7 @@ from pymoo.core.termination import Termination
 from pymoo.operators.mutation.pm import PolynomialMutation
 from pymoo.operators.sampling.lhs import LatinHypercubeSampling
 from pymoo.operators.crossover.sbx import SimulatedBinaryCrossover
+from pymoo.util.termination.max_gen import MaximumGenerationTermination
 from pymoo.algorithms.moo.nsga2 import NSGA2  # TODO: nsga3 needs reference direction
 from pymoo.operators.mixed_variable_operator import (
     MixedVariableMutation,

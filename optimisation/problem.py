@@ -5,12 +5,12 @@ from collections.abc import Iterable
 import numpy as np
 from numpy.typing import NDArray
 
-from ._logger import _log
 from . import config as cf
 from ._multiplier import _multiply
+from ._optimiser import _algorithm
 from . import _pymoo_namespace as pm
 from ._evaluator import _pymoo_evaluate
-from ._optimiser import _optimise_epoch
+from ._logger import _log, _LoggerManager
 from ._typing import AnyStrPath, AnyCallback, AnyVariationVec
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
@@ -21,7 +21,7 @@ from .parameters import (
 )
 
 
-class PymooProblem(pm.Problem):
+class _PymooProblem(pm.Problem):
     _parameters_manager: _ParametersManager
     _results_manager: _ResultsManager
     _evaluation_directory: Path
@@ -136,11 +136,11 @@ class Problem:
 
     def _to_pymoo(
         self, callback: AnyCallback, expected_max_n_generation: int
-    ) -> PymooProblem:
+    ) -> _PymooProblem:
         if not len(self._results_manager._objectives):
             raise ValueError("Optimisation needs at least one objective")
 
-        return PymooProblem(
+        return _PymooProblem(
             len(self._parameters_manager),
             len(self._results_manager._objectives),
             len(self._results_manager._constraints),
@@ -171,6 +171,20 @@ class Problem:
         else:
             raise ValueError("With continous parameters cannot run brute force.")
 
+    @_LoggerManager(cwd_index=1, is_first=True)
+    def _optimise_epoch(
+        self,
+        cwd: Path,
+        problem: _PymooProblem,
+        algorithm: pm.Algorithm,
+        termination: pm.Termination,
+        save_history: bool,
+        seed: int,
+    ) -> pm.Result:
+        return pm.minimize(
+            problem, algorithm, termination, save_history=save_history, seed=seed
+        )
+
     def run_nsga2(
         self,
         population_size: int,
@@ -185,13 +199,16 @@ class Problem:
         if isinstance(termination, pm.MaximumGenerationTermination):
             expected_max_n_generation = termination.n_max_gen
 
-        return _optimise_epoch(
+        problem = self._to_pymoo(callback, expected_max_n_generation)
+        algorithm = _algorithm(
+            population_size, self._parameters_manager, p_crossover, p_mutation
+        )
+
+        return self._optimise_epoch(
             self._evaluation_directory,
-            self._to_pymoo(callback, expected_max_n_generation),
-            population_size,
+            problem,
+            algorithm,
             termination,
-            p_crossover,
-            p_mutation,
             saves_history,
             seed,
         )

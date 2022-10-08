@@ -79,7 +79,8 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
     def __call__(self, f: _F) -> _F:
         @wraps(f)
         def wrapper(*args, **kwargs) -> _R:
-            cwd: Path = args[self._cwd_index]
+            cwd = args[self._cwd_index]
+            assert isinstance(cwd, Path), f"the {self._cwd_index}th argument is no Path"
             cwd.mkdir(parents=True, exist_ok=True)
 
             self._name = _cwd_to_logger_name(cwd)
