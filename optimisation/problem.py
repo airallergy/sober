@@ -1,5 +1,6 @@
 from math import log10
 from pathlib import Path
+from shutil import rmtree
 from collections.abc import Iterable
 
 import numpy as np
@@ -26,6 +27,7 @@ class _PymooProblem(pm.Problem):
     _results_manager: _ResultsManager
     _evaluation_directory: Path
     _len_batch_count: int
+    _saves_batches: bool
 
     def __init__(
         self,
@@ -39,6 +41,7 @@ class _PymooProblem(pm.Problem):
         results_manager: _ResultsManager,
         evaluation_directory: Path,
         expected_max_n_generation: int,
+        saves_batches: bool,
     ) -> None:
         super().__init__(
             n_var=n_var, n_obj=n_obj, n_constr=n_constr, xl=xl, xu=xu, callback=callback
@@ -46,8 +49,8 @@ class _PymooProblem(pm.Problem):
         self._parameters_manager = parameters_manager
         self._results_manager = results_manager
         self._evaluation_directory = evaluation_directory
-
         self._len_batch_count = int(log10(expected_max_n_generation)) + 1
+        self._saves_batches = saves_batches
 
     def _evaluate(
         self,
@@ -66,6 +69,9 @@ class _PymooProblem(pm.Problem):
         )
         out["F"] = np.asarray(objectives, dtype=np.float_)
         out["G"] = np.asarray(constraints, dtype=np.float_)
+
+        if not self._saves_batches:
+            rmtree(self._evaluation_directory / batch_uid)
 
         _log(self._evaluation_directory, f"evaluated {batch_uid}")
 
@@ -135,7 +141,10 @@ class Problem:
         self._check_config()
 
     def _to_pymoo(
-        self, callback: AnyCallback, expected_max_n_generation: int
+        self,
+        callback: AnyCallback,
+        expected_max_n_generation: int,
+        saves_batches: bool,
     ) -> _PymooProblem:
         if not len(self._results_manager._objectives):
             raise ValueError("Optimisation needs at least one objective")
@@ -157,6 +166,7 @@ class Problem:
             self._results_manager,
             self._evaluation_directory,
             expected_max_n_generation,
+            saves_batches,
         )
 
     def run_brute_force(self) -> None:
@@ -194,12 +204,13 @@ class Problem:
         callback: AnyCallback = None,
         saves_history: bool = True,
         expected_max_n_generation: int = 9999,
+        saves_batches: bool = True,
         seed: int | None = None,
     ) -> pm.Result:
         if isinstance(termination, pm.MaximumGenerationTermination):
             expected_max_n_generation = termination.n_max_gen
 
-        problem = self._to_pymoo(callback, expected_max_n_generation)
+        problem = self._to_pymoo(callback, expected_max_n_generation, saves_batches)
         algorithm = _algorithm(
             "nsga2", population_size, self._parameters_manager, p_crossover, p_mutation
         )
@@ -223,12 +234,13 @@ class Problem:
         callback: AnyCallback = None,
         saves_history: bool = True,
         expected_max_n_generation: int = 9999,
+        saves_batches: bool = True,
         seed: int | None = None,
     ) -> pm.Result:
         if isinstance(termination, pm.MaximumGenerationTermination):
             expected_max_n_generation = termination.n_max_gen
 
-        problem = self._to_pymoo(callback, expected_max_n_generation)
+        problem = self._to_pymoo(callback, expected_max_n_generation, saves_batches)
         if not reference_directions:
             reference_directions = pm.RieszEnergyReferenceDirectionFactory(
                 problem.n_obj, population_size, seed=seed
