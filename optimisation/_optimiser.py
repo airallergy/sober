@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Literal, TypedDict, overload
 
 from . import _pymoo_namespace as pm
 from .parameters import AnyParameter, ContinuousParameter, _ParametersManager
@@ -50,14 +50,48 @@ def _operators(
     }
 
 
+@overload
 def _algorithm(
+    algorithm: Literal["nsga2"],
     population_size: int,
     parameters_manager: _ParametersManager[AnyParameter],
     p_crossover: float,
     p_mutation: float,
-) -> pm.NSGA2:
-    return pm.NSGA2(
-        pop_size=population_size,
-        eliminate_duplicates=True,
-        **_operators(parameters_manager, p_crossover, p_mutation)
-    )
+) -> pm.Algorithm:
+    ...
+
+
+@overload
+def _algorithm(
+    algorithm: Literal["nsga3"],
+    population_size: int,
+    parameters_manager: _ParametersManager[AnyParameter],
+    p_crossover: float,
+    p_mutation: float,
+    reference_directions: pm.ReferenceDirectionFactory,
+) -> pm.Algorithm:
+    ...
+
+
+def _algorithm(
+    algorithm,
+    population_size,
+    parameters_manager,
+    p_crossover,
+    p_mutation,
+    reference_directions=None,
+) -> pm.Algorithm:
+    # python/mypy#7213, reference_directions cannot be inferred correctly
+    if algorithm == "nsga2":
+        return pm.NSGA2(
+            pop_size=population_size,
+            eliminate_duplicates=True,
+            **_operators(parameters_manager, p_crossover, p_mutation),
+        )
+    else:
+        return pm.NSGA3(
+            reference_directions,
+            pop_size=population_size,
+            eliminate_duplicates=True,
+            **_operators(parameters_manager, p_crossover, p_mutation),
+        )

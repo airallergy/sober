@@ -201,7 +201,46 @@ class Problem:
 
         problem = self._to_pymoo(callback, expected_max_n_generation)
         algorithm = _algorithm(
-            population_size, self._parameters_manager, p_crossover, p_mutation
+            "nsga2", population_size, self._parameters_manager, p_crossover, p_mutation
+        )
+
+        return self._optimise_epoch(
+            self._evaluation_directory,
+            problem,
+            algorithm,
+            termination,
+            saves_history,
+            seed,
+        )
+
+    def run_nsga3(
+        self,
+        population_size: int,
+        termination: pm.Termination,
+        p_crossover: float = 1.0,
+        p_mutation: float = 0.2,
+        reference_directions: pm.ReferenceDirectionFactory | None = None,
+        callback: AnyCallback = None,
+        saves_history: bool = True,
+        expected_max_n_generation: int = 9999,
+        seed: int | None = None,
+    ) -> pm.Result:
+        if isinstance(termination, pm.MaximumGenerationTermination):
+            expected_max_n_generation = termination.n_max_gen
+
+        problem = self._to_pymoo(callback, expected_max_n_generation)
+        if not reference_directions:
+            reference_directions = pm.RieszEnergyReferenceDirectionFactory(
+                problem.n_obj, population_size, seed=seed
+            ).do()
+
+        algorithm = _algorithm(
+            "nsga3",
+            population_size,
+            self._parameters_manager,
+            p_crossover,
+            p_mutation,
+            reference_directions,
         )
 
         return self._optimise_epoch(
