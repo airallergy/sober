@@ -1,3 +1,3 @@
-# phd_optimisation
+# Prob - Prob robustly optimise buildings
 
-A standalone repo for my PhD optimisation framework
+pre-alpha version, subject to change.
