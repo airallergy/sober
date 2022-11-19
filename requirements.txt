@@ -1,0 +1,4 @@
+pymoo
+eppy
+numpy>=1.23
+typing_extensions
