@@ -48,18 +48,30 @@ _U = TypeVar("_U")  # AnyUncertaintyVar
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Tagger(ABC):
-    _tag: str
+    _tags: tuple[str, ...]
 
     @abstractmethod
-    def __init__(self, uuid_descriptions: tuple[str, ...]) -> None:
-        self._tag = self._uuid(*uuid_descriptions)
+    def __init__(self, *uuid_descriptions: tuple[str, ...]) -> None:
+        self._tags = tuple(self._uuid(*item) for item in uuid_descriptions)
 
     @classmethod
-    def _uuid(cls, *descriptions: str) -> str:
-        return str(uuid5(NAMESPACE_X500, cls.__name__ + "-".join(descriptions)))
+    def _uuid(cls, *description: str) -> str:
+        return str(uuid5(NAMESPACE_X500, cls.__name__ + "-".join(description)))
 
     @abstractmethod
     def _tagged(self, model: Any) -> Any:
+        ...
+
+
+class _IDFTagger(_Tagger):
+    @abstractmethod
+    def _tagged(self, model: IDF) -> IDF:
+        ...
+
+
+class _TextTagger(_Tagger):
+    @abstractmethod
+    def _tagged(self, model: str) -> str:
         ...
 
 
@@ -157,53 +169,76 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
 #############################################################################
 #######                        TAGGER CLASSES                         #######
 #############################################################################
-class IndexTagger(_Tagger):
+class IndexTagger(_IDFTagger):
     """Tagger for regular commands by indexing.
+
+    index_trio == (class_name, object_name, field_name)
 
     No support for nested regular commands.
     """
 
-    _class_name: str
-    _object_name: str
-    _field_name: str
+    _index_trios: tuple[tuple[str, str, str], ...]
 
-    def __init__(self, class_name: str, object_name: str, field_name: str) -> None:
-        self._class_name = class_name
-        self._object_name = object_name
-        self._field_name = field_name
+    def __init__(self, *index_trios: Iterable[str]) -> None:
+        _index_trios = tuple(tuple(item) for item in index_trios)  # mypy bug with map
 
-        super().__init__((self._class_name, self._object_name, self._field_name))
+        if any(len(item) != 3 for item in _index_trios):
+            raise ValueError(
+                "each index trio should contain exactly three elements: class_name, object_name, field_name."
+            )
+
+        _index_trios = cast(tuple[tuple[str, str, str], ...], _index_trios)
+        self._index_trios = tuple(set(_index_trios))
+
+        super().__init__(*self._index_trios)
 
     def _tagged(self, model: IDF) -> IDF:
-        # NOTE: maybe applicable to multiple fields
-        model.getobject(self._class_name, self._object_name)[
-            makefieldname(self._field_name)
-        ] = self._tag
+        for (class_name, object_name, field_name), tag in zip(
+            self._index_trios, self._tags
+        ):
+            model.getobject(class_name, object_name)[makefieldname(field_name)] = tag
         return model
 
 
-class StringTagger(_Tagger):
+class StringTagger(_TextTagger):
     """Tagger for regular and macro commands by string replacement.
+
+    string_trio == (string, prefix, suffix)
 
     No support for nested macro commands.
     """
 
-    _string: str
-    _prefix: str
-    _suffix: str
+    _string_trios: tuple[tuple[str, str, str], ...]
 
-    def __init__(self, string: str, prefix: str = "", suffix: str = "") -> None:
-        if not (string.startswith(prefix) and string.endswith(suffix)):
+    def __init__(self, *string_trios: Iterable[str]) -> None:
+        _string_trios = tuple(tuple(item) for item in string_trios)  # mypy bug with map
+
+        if any(len(item) == 0 for item in _string_trios):
+            raise ValueError(
+                "each string trio should contain at least one element: string."
+            )
+        if any(len(item) > 3 for item in _string_trios):
+            raise ValueError(
+                "each string trio should contain at most three elements: string, prefix, suffix."
+            )
+
+        _string_trios = tuple(item + ("",) * (3 - len(item)) for item in _string_trios)
+        _string_trios = cast(tuple[tuple[str, str, str], ...], _string_trios)
+
+        if any(
+            not (string.startswith(prefix) and string.endswith(suffix))
+            for string, prefix, suffix in _string_trios
+        ):
             raise ValueError("string needs to share the prefix and the suffix.")
 
-        self._string = string
-        self._prefix = prefix
-        self._suffix = suffix
+        self._string_trios = _string_trios
 
-        super().__init__((self._string,))
+        super().__init__(*self._string_trios)
 
     def _tagged(self, model: str) -> str:
-        return model.replace(self._string, self._prefix + self._tag + self._suffix)
+        for (string, prefix, suffix), tag in zip(self._string_trios, self._tags):
+            model = model.replace(string, prefix + tag + suffix)
+        return model
 
 
 #############################################################################
@@ -245,7 +280,11 @@ class ContinuousParameter(_ModelParameterMixin, _RealParameter):
     ) -> str:
         val = parameter_vu_row[0]
         task_parameter_vals[self._idx] = val
-        return tagged_model.replace(self._tagger._tag, str(val))
+
+        for tag in self._tagger._tags:
+            tagged_model = tagged_model.replace(tag, str(val))
+
+        return tagged_model
 
 
 class DiscreteParameter(_ModelParameterMixin, _IntParameter[float, float]):
@@ -268,7 +307,11 @@ class DiscreteParameter(_ModelParameterMixin, _IntParameter[float, float]):
     ) -> str:
         val = self[parameter_vu_row]
         task_parameter_vals[self._idx] = val
-        return tagged_model.replace(self._tagger._tag, str(val))
+
+        for tag in self._tagger._tags:
+            tagged_model = tagged_model.replace(tag, str(val))
+
+        return tagged_model
 
 
 class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
@@ -291,7 +334,11 @@ class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
     ) -> str:
         val = self[parameter_vu_row]
         task_parameter_vals[self._idx] = val
-        return tagged_model.replace(self._tagger._tag, str(val))
+
+        for tag in self._tagger._tags:
+            tagged_model = tagged_model.replace(tag, str(val))
+
+        return tagged_model
 
 
 class FunctionalParameter(_ModelParameterMixin, _IntParameter[_V, _U]):
@@ -303,13 +350,13 @@ class FunctionalParameter(_ModelParameterMixin, _IntParameter[_V, _U]):
         self,
         tagger: _Tagger,
         func: Callable[..., _V],
-        parameter_indices: tuple[int, ...],
+        parameter_indices: Iterable[int],
         *args,
     ) -> None:
         super().__init__(tagger, (1,), *())
         self._func = func
-        self._parameter_indices = parameter_indices
-        self._args = tuple(map(str, args))
+        self._parameter_indices = tuple(parameter_indices)
+        self._args = args
 
     def _detagged(
         self,
@@ -322,7 +369,11 @@ class FunctionalParameter(_ModelParameterMixin, _IntParameter[_V, _U]):
             *self._args,
         )
         task_parameter_vals[self._idx] = val
-        return tagged_model.replace(self._tagger._tag, str(val))
+        
+        for tag in self._tagger._tags:
+            tagged_model = tagged_model.replace(tag, str(val))
+
+        return tagged_model
 
 
 AnyIntParameter: TypeAlias = (
@@ -384,7 +435,7 @@ class _ParametersManager(Generic[Parameter]):
 
         for parameter in self._parameters:
             tagger = parameter._tagger
-            if isinstance(tagger, StringTagger):
+            if isinstance(tagger, _TextTagger):
                 model = tagger._tagged(model)
 
         macros, regulars = _split_model(model)
@@ -405,7 +456,7 @@ class _ParametersManager(Generic[Parameter]):
 
         for parameter in self._parameters:
             tagger = parameter._tagger
-            if isinstance(tagger, IndexTagger):
+            if isinstance(tagger, _IDFTagger):
                 idf = tagger._tagged(idf)
 
         return macros + idf.idfstr()
