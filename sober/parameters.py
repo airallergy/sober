@@ -477,11 +477,6 @@ class _ParametersManager(Generic[Parameter]):
         with model_file.open("rt") as fp:
             model = fp.read()
 
-        for parameter in self._parameters:
-            tagger = parameter._tagger
-            if isinstance(tagger, _TextTagger):
-                model = tagger._tagged(model)
-
         macros, regulars = _split_model(model, model_file.parent)
         if (not macros.rstrip()) ^ (self._model_type == ".idf"):
             raise ValueError(
@@ -489,6 +484,12 @@ class _ParametersManager(Generic[Parameter]):
                 + ("no " if self._model_type == ".imf" else "")
                 + "macro commands are found."
             )
+
+        for parameter in self._parameters:
+            tagger = parameter._tagger
+            if isinstance(tagger, _TextTagger):
+                macros = tagger._tagged(macros)
+                regulars = tagger._tagged(regulars)
 
         if hasattr(cf, "_config"):
             idf = openidf(StringIO(regulars), str(cf._config["schema.energyplus"]))
