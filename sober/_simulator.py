@@ -54,7 +54,6 @@ def _resolved_path(path: AnyStrPath, default_parent: Path) -> Path:
 
 
 def _resolved_macros(macro_lines: Iterable[str], model_directory: Path) -> list[str]:
-    # NOTE: currently not used, may be useful in the future
     # lines should have been trimmed
     # model_directory should have been resolved
     fileprefix = model_directory
@@ -71,7 +70,7 @@ def _resolved_macros(macro_lines: Iterable[str], model_directory: Path) -> list[
     return resolved_macro_lines
 
 
-def _split_model(model: str) -> tuple[str, str]:
+def _split_model(model: str, model_directory: Path) -> tuple[str, str]:
     macro_lines = []
     regular_lines = []
     for line in model.splitlines():
@@ -80,4 +79,7 @@ def _split_model(model: str) -> tuple[str, str]:
             macro_lines.append(trimmed_line)
         elif trimmed_line:
             regular_lines.append(trimmed_line)
-    return ("\n".join(macro_lines) + "\n", "\n".join(regular_lines) + "\n")
+    return (
+        "\n".join(_resolved_macros(macro_lines, model_directory)) + "\n",
+        "\n".join(regular_lines) + "\n",
+    )

@@ -482,7 +482,7 @@ class _ParametersManager(Generic[Parameter]):
             if isinstance(tagger, _TextTagger):
                 model = tagger._tagged(model)
 
-        macros, regulars = _split_model(model)
+        macros, regulars = _split_model(model, model_file.parent)
         if (not macros.rstrip()) ^ (self._model_type == ".idf"):
             raise ValueError(
                 f"a '{self._model_type}' model is input, but "
