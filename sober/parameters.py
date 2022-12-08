@@ -342,21 +342,39 @@ class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
 
 
 class FunctionalParameter(_ModelParameterMixin, _IntParameter[_V, _U]):
-    _func: Callable[..., _V]
+    _func: Callable[..., _V | Iterable[_V]]
     _parameter_indices: tuple[int, ...]
     _args: tuple[str, ...]
+    _is_scalar: bool
 
+    @overload
     def __init__(
         self,
         tagger: _Tagger,
         func: Callable[..., _V],
         parameter_indices: Iterable[int],
         *args,
+        is_scalar: Literal[True],
     ) -> None:
+        ...
+
+    @overload
+    def __init__(
+        self,
+        tagger: _Tagger,
+        func: Callable[..., Iterable[_V]],
+        parameter_indices: Iterable[int],
+        *args,
+        is_scalar: Literal[False],
+    ) -> None:
+        ...
+
+    def __init__(self, tagger, func, parameter_indices, *args, is_scalar=True) -> None:
         super().__init__(tagger, (1,), *())
         self._func = func
         self._parameter_indices = tuple(parameter_indices)
         self._args = args
+        self._is_scalar = is_scalar
 
     def _detagged(
         self,
@@ -364,14 +382,30 @@ class FunctionalParameter(_ModelParameterMixin, _IntParameter[_V, _U]):
         parameter_vu_row: AnyIntVURow,
         task_parameter_vals: list[Any],
     ) -> str:
-        val = self._func(
-            *(task_parameter_vals[idx] for idx in self._parameter_indices),
-            *self._args,
-        )
-        task_parameter_vals[self._idx] = val
-        
-        for tag in self._tagger._tags:
-            tagged_model = tagged_model.replace(tag, str(val))
+        if self._is_scalar:
+            self._func = cast(Callable[..., _V], self._func)
+
+            val = self._func(
+                *(task_parameter_vals[idx] for idx in self._parameter_indices),
+                *self._args,
+            )
+            task_parameter_vals[self._idx] = val
+
+            for tag in self._tagger._tags:
+                tagged_model = tagged_model.replace(tag, str(val))
+        else:
+            self._func = cast(Callable[..., Iterable[_V]], self._func)
+
+            vals = tuple(
+                self._func(
+                    *(task_parameter_vals[idx] for idx in self._parameter_indices),
+                    *self._args,
+                )
+            )
+            task_parameter_vals[self._idx] = vals
+
+            for val, tag in zip(vals, self._tagger._tags):
+                tagged_model = tagged_model.replace(tag, str(val))
 
         return tagged_model
 
