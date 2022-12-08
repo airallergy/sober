@@ -169,6 +169,16 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
 #############################################################################
 #######                        TAGGER CLASSES                         #######
 #############################################################################
+class NoneTagger(_Tagger):
+    """Tagger for intermediate parameters, usually associated with FunctionalParameter."""
+
+    def __init__(self) -> None:
+        pass
+
+    def _tagged(self, model: Any) -> Any:
+        return model
+
+
 class IndexTagger(_IDFTagger):
     """Tagger for regular commands by indexing.
 
