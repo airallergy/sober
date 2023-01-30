@@ -4,7 +4,6 @@ from shutil import rmtree
 from collections.abc import Iterable
 
 import numpy as np
-from numpy.typing import NDArray
 
 from . import config as cf
 from ._multiplier import _multiply
@@ -12,11 +11,12 @@ from ._optimiser import _algorithm
 from . import _pymoo_namespace as pm
 from ._evaluator import _pymoo_evaluate
 from ._logger import _log, _LoggerManager
-from ._typing import AnyStrPath, AnyCallback, AnyVariationVec
+from ._typing import AnyStrPath, AnyCallback, AnyVariationMap
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
     AnyParameter,
     WeatherParameter,
+    ContinuousParameter,
     _ParametersManager,
     _all_int_parameters,
 )
@@ -31,20 +31,28 @@ class _PymooProblem(pm.Problem):
 
     def __init__(
         self,
-        n_var: int,
-        n_obj: int,
-        n_constr: int,
-        xl: NDArray[np.float_],
-        xu: NDArray[np.float_],
-        callback: AnyCallback,
         parameters_manager: _ParametersManager,
         results_manager: _ResultsManager,
         evaluation_directory: Path,
+        callback: AnyCallback,
         expected_max_n_generation: int,
         saves_batches: bool,
     ) -> None:
+        n_parameters = len(parameters_manager)
+        variables = {
+            f"x{idx:0{int(log10(n_parameters)) + 1}}": (
+                pm.Real(bounds=(parameter._low, parameter._high))
+                if isinstance(parameter, ContinuousParameter)
+                else pm.Integer(bounds=(parameter._low, parameter._high))
+            )
+            for idx, parameter in enumerate(parameters_manager)
+        }
+
         super().__init__(
-            n_var=n_var, n_obj=n_obj, n_constr=n_constr, xl=xl, xu=xu, callback=callback
+            n_obj=len(results_manager._objectives),
+            n_ieq_constr=len(results_manager._constraints),
+            vars=variables,
+            callback=callback,
         )
         self._parameters_manager = parameters_manager
         self._results_manager = results_manager
@@ -54,15 +62,17 @@ class _PymooProblem(pm.Problem):
 
     def _evaluate(
         self,
-        x: tuple[AnyVariationVec, ...],
+        x: tuple[AnyVariationMap, ...],
         out,
         *args,
         algorithm: pm.Algorithm,
         **kwargs,
     ) -> None:
-        batch_uid = f"B{algorithm.n_gen - (1 - algorithm.is_initialized):0{self._len_batch_count}}"
+        batch_uid = f"B{algorithm.n_gen - 1:0{self._len_batch_count}}"
         objectives, constraints = _pymoo_evaluate(
-            *x,
+            *(
+                tuple(item.values()) for item in x
+            ),  # type:ignore[arg-type] # python/mypy#12280
             parameters_manager=self._parameters_manager,
             results_manager=self._results_manager,
             batch_directory=self._evaluation_directory / batch_uid,
@@ -150,21 +160,10 @@ class Problem:
             raise ValueError("Optimisation needs at least one objective")
 
         return _PymooProblem(
-            len(self._parameters_manager),
-            len(self._results_manager._objectives),
-            len(self._results_manager._constraints),
-            np.fromiter(
-                (parameter._low for parameter in self._parameters_manager),
-                dtype=np.float_,
-            ),
-            np.fromiter(
-                (parameter._high for parameter in self._parameters_manager),
-                dtype=np.float_,
-            ),
-            callback,
             self._parameters_manager,
             self._results_manager,
             self._evaluation_directory,
+            callback,
             expected_max_n_generation,
             saves_batches,
         )
@@ -211,9 +210,7 @@ class Problem:
             expected_max_n_generation = termination.n_max_gen
 
         problem = self._to_pymoo(callback, expected_max_n_generation, saves_batches)
-        algorithm = _algorithm(
-            "nsga2", population_size, self._parameters_manager, p_crossover, p_mutation
-        )
+        algorithm = _algorithm("nsga2", population_size, p_crossover, p_mutation)
 
         return self._optimise_epoch(
             self._evaluation_directory,
@@ -247,12 +244,7 @@ class Problem:
             ).do()
 
         algorithm = _algorithm(
-            "nsga3",
-            population_size,
-            self._parameters_manager,
-            p_crossover,
-            p_mutation,
-            reference_directions,
+            "nsga3", population_size, p_crossover, p_mutation, reference_directions
         )
 
         return self._optimise_epoch(
