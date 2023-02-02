@@ -15,20 +15,41 @@ Operators = TypedDict(
 )
 
 
-def _operators(p_crossover: float, p_mutation: float) -> Operators:
+def _operators(
+    algorithm: Literal["nsga2", "nsga3"], p_crossover: float, p_mutation: float
+) -> Operators:
+    selections = {
+        "nsga2": pm.TournamentSelection(func_comp=pm.binary_tournament),
+        "nsga3": pm.TournamentSelection(func_comp=pm.comp_by_cv_then_random),
+    }
+    etas = {
+        "nsga2": {"crossover": 15, "mutation": 20},
+        "nsga3": {"crossover": 30, "mutation": 20},
+    }
     return {
         "sampling": pm.MixedVariableSampling(),
         "mating": pm.MixedVariableMating(
+            selection=selections[algorithm],
             crossover={
-                pm.Real: pm.SimulatedBinaryCrossover(prob=p_crossover),
+                pm.Real: pm.SimulatedBinaryCrossover(
+                    prob=p_crossover, eta=etas[algorithm]["crossover"]
+                ),
                 pm.Integer: pm.SimulatedBinaryCrossover(
-                    prob=p_crossover, vtype=float, repair=pm.RoundingRepair()
+                    prob=p_crossover,
+                    eta=etas[algorithm]["crossover"],
+                    vtype=float,
+                    repair=pm.RoundingRepair(),
                 ),
             },
             mutation={
-                pm.Real: pm.PolynomialMutation(prob=p_mutation),
+                pm.Real: pm.PolynomialMutation(
+                    prob=p_mutation, eta=etas[algorithm]["mutation"]
+                ),
                 pm.Integer: pm.PolynomialMutation(
-                    prob=p_mutation, vtype=float, repair=pm.RoundingRepair()
+                    prob=p_mutation,
+                    eta=etas[algorithm]["mutation"],
+                    vtype=float,
+                    repair=pm.RoundingRepair(),
                 ),
             },
             eliminate_duplicates=pm.MixedVariableDuplicateElimination(),
@@ -69,8 +90,12 @@ def _algorithm(
     reference_directions=None,
 ) -> pm.Algorithm:
     if algorithm == "nsga2":
-        return pm.NSGA2(population_size, **_operators(p_crossover, p_mutation))
+        return pm.NSGA2(
+            population_size, **_operators(algorithm, p_crossover, p_mutation)
+        )
     else:
         return pm.NSGA3(
-            reference_directions, population_size, **_operators(p_crossover, p_mutation)
+            reference_directions,
+            population_size,
+            **_operators(algorithm, p_crossover, p_mutation)
         )
