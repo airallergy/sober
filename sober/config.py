@@ -113,8 +113,8 @@ def config_script(python_exec: AnyStrPath | None = None) -> None:
         _config["exec.python"] = Path(python_exec).resolve(strict=True)
 
 
-def config_multiprocessing(processes: int | None = None) -> None:
+def config_multiprocessing(n_processes: int | None = None) -> None:
     global _config
     check_config_init()
 
-    _config["n.processes"] = cpu_count() if processes is None else processes
+    _config["n.processes"] = cpu_count() - 1 if n_processes is None else n_processes
