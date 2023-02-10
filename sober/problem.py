@@ -170,7 +170,7 @@ class Problem:
             saves_batches,
         )
 
-    def run_brute_force(self) -> None:
+    def run_sample(self, sample_size: int, seed: int | None = None) -> None:
         cf._has_batches = False
 
         if _all_int_parameters(self._parameters_manager):
@@ -178,9 +178,14 @@ class Problem:
                 self._parameters_manager,
                 self._results_manager,
                 self._evaluation_directory,
+                sample_size,
+                seed,
             )
         else:
             raise ValueError("With continous parameters cannot run brute force.")
+
+    def run_brute_force(self) -> None:
+        self.run_sample(0)
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _optimise_epoch(
@@ -191,7 +196,7 @@ class Problem:
         termination: pm.Termination,
         save_history: bool,
         checkpoint_interval: int,
-        seed: int,
+        seed: int | None,
     ) -> pm.Result:
         if checkpoint_interval <= 0:
             return pm.minimize(
