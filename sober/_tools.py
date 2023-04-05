@@ -71,13 +71,8 @@ class _Pool(Pool):
             processes, initializer, initargs, context=_MULTIPROCESSING_CONTEXT
         )
 
-    def _chunk_size(self, n_tasks: int) -> int:
-        return max(n_tasks // self._processes, 1)
-
     def map_(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> Iterable[_R]:
-        return super().imap(
-            func, x := tuple(iterable), chunksize=self._chunk_size(len(x))
-        )
+        return super().imap(func, iterable, 1)
 
     def starmap_(
         self, func: Callable[..., _R], iterable: Iterable[Iterable[Any]]
@@ -85,9 +80,7 @@ class _Pool(Pool):
         # borrowed from https://stackoverflow.com/questions/57354700/starmap-combined-with-tqdm
         self._check_running()
 
-        task_batches = self._get_tasks(
-            func, x := tuple(iterable), self._chunk_size(len(x))
-        )
+        task_batches = self._get_tasks(func, iterable, 1)
         result = IMapIterator(self)
         self._taskqueue.put(
             (
