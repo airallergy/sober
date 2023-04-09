@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 from itertools import starmap
 from multiprocessing.pool import Pool
+from uuid import NAMESPACE_X500, uuid5
 from multiprocessing import get_context
 from subprocess import PIPE, STDOUT, run
 from contextlib import AbstractContextManager
@@ -13,6 +14,10 @@ from typing_extensions import TypeVarTuple  # NOTE: from typing after 3.11
 
 from ._logger import _log
 from ._typing import AnyCmdArgs
+
+
+def _uuid(*description: str) -> str:
+    return str(uuid5(NAMESPACE_X500, "-".join(description)))
 
 
 def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:

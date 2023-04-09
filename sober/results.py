@@ -12,9 +12,9 @@ from collections.abc import Callable, Iterable, Iterator
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import config as cf
-from ._tools import _run, _Parallel
 from ._simulator import _run_readvars
 from ._logger import _log, _LoggerManager
+from ._tools import _run, _uuid, _Parallel
 from ._typing import AnyJob, AnyUIDs, AnyCmdArgs, AnyStrPath, AnyBatchResults
 
 AnyLevel: TypeAlias = Literal["task", "job"]
@@ -132,13 +132,13 @@ class RVICollector(_Collector):
         super().__init__(filename, level, kind, direction, bounds, is_final)
 
     def _touch(self, config_directory: Path) -> None:
-        self._rvi_file = config_directory / f"{id(self)}.rvi"
-
         suffixes = {"variable": "eso", "meter": "mtr"}
         rvi = f"eplusout.{suffixes[self._output_type]}\n{self._filename}\n"
         rvi += "\n".join(self._output_names)
         rvi += "\n0\n"
 
+        rvi_filestem = _uuid(self.__class__.__name__, *rvi.splitlines())
+        self._rvi_file = config_directory / (rvi_filestem + ".rvi")
         with self._rvi_file.open("wt") as fp:
             fp.write(rvi)
 
