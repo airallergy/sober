@@ -1,6 +1,7 @@
 from pathlib import Path
 from platform import system
-from multiprocessing import cpu_count
+
+from psutil import cpu_count
 
 from ._typing import Config, AnyStrPath, AnyLanguage, AnyModelType
 
@@ -117,4 +118,6 @@ def config_multiprocessing(n_processes: int | None = None) -> None:
     global _config
     check_config_init()
 
-    _config["n.processes"] = cpu_count() - 1 if n_processes is None else n_processes
+    _config["n.processes"] = (
+        cpu_count(logical=False) - 1 if n_processes is None else n_processes
+    )
