@@ -182,10 +182,19 @@ class Problem:
                 seed,
             )
         else:
-            raise ValueError("With continous parameters cannot run brute force.")
+            raise ValueError("With continous parameters cannot run sample.")
 
     def run_brute_force(self) -> None:
-        self.run_sample(0)
+        if _all_int_parameters(self._parameters_manager):
+            self.run_sample(-1)
+        else:
+            raise ValueError("With continous parameters cannot run brute force.")
+
+    def run_each_variation(self, seed: int | None = None) -> None:
+        if _all_int_parameters(self._parameters_manager):
+            self.run_sample(0, seed)
+        else:
+            raise ValueError("With continous parameters cannot run each variation.")
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _optimise_epoch(

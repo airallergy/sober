@@ -15,26 +15,29 @@ def _multiply(
     sample_size: int,
     seed: int | None,
 ) -> None:
-    search_space = np.fromiter(
-        product(
-            range(parameters_manager._weather._n_variations),
-            *(
-                range(parameter._n_variations)
-                for parameter in parameters_manager._parameters
-            ),
-        ),
-        dtype=tuple,
+    ns_variations = tuple(parameter._n_variations for parameter in parameters_manager)
+    full_search_space = np.asarray(
+        tuple(product(*map(range, ns_variations))), dtype=np.int_
     )
 
-    if sample_size <= 0:
-        sample_slice = np.arange(len(search_space))
+    rng = np.random.default_rng(seed)
+
+    if sample_size < 0:
+        search_space = full_search_space
+    elif sample_size == 0:
+        max_n_variations = max(ns_variations)
+        search_space = np.asarray(
+            tuple(
+                np.resize(rng.permutation(n), max_n_variations) for n in ns_variations
+            ),
+            dtype=np.int_,
+        ).T
     else:
-        rng = np.random.default_rng(seed)
-        sample_slice = rng.choice(len(search_space), sample_size, replace=False)
-        sample_slice.sort()
+        sample_slice = rng.choice(len(full_search_space), sample_size, replace=False)
+        search_space = full_search_space[sorted(sample_slice)]
 
     _evaluate(
-        *search_space[sample_slice],
+        *search_space,
         parameters_manager=parameters_manager,
         results_manager=results_manager,
         batch_directory=evaluation_directory,
