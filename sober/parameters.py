@@ -5,7 +5,6 @@ from pathlib import Path
 from shutil import copyfile
 from abc import ABC, abstractmethod
 from itertools import chain, product
-from uuid import NAMESPACE_X500, uuid5
 from collections.abc import Callable, Iterable, Iterator
 from typing import (
     Any,
@@ -24,7 +23,7 @@ from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
-from ._tools import _Parallel
+from ._tools import _uuid, _Parallel
 from ._logger import _log, _LoggerManager
 from ._simulator import _run_epmacro, _split_model, _run_energyplus, _run_expandobjects
 from ._typing import (
@@ -52,11 +51,9 @@ class _Tagger(ABC):
 
     @abstractmethod
     def __init__(self, *uuid_descriptions: tuple[str, ...]) -> None:
-        self._tags = tuple(self._uuid(*item) for item in uuid_descriptions)
-
-    @classmethod
-    def _uuid(cls, *description: str) -> str:
-        return str(uuid5(NAMESPACE_X500, cls.__name__ + "-".join(description)))
+        self._tags = tuple(
+            _uuid(self.__class__.__name__, *item) for item in uuid_descriptions
+        )
 
     @abstractmethod
     def _tagged(self, model: Any) -> Any:

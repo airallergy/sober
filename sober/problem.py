@@ -1,3 +1,4 @@
+import pickle
 from math import log10
 from pathlib import Path
 from shutil import rmtree
@@ -168,7 +169,7 @@ class Problem:
             saves_batches,
         )
 
-    def run_brute_force(self) -> None:
+    def run_sample(self, sample_size: int, seed: int | None = None) -> None:
         cf._has_batches = False
 
         if _all_int_parameters(self._parameters_manager):
@@ -176,9 +177,23 @@ class Problem:
                 self._parameters_manager,
                 self._results_manager,
                 self._evaluation_directory,
+                sample_size,
+                seed,
             )
         else:
+            raise ValueError("With continous parameters cannot run sample.")
+
+    def run_brute_force(self) -> None:
+        if _all_int_parameters(self._parameters_manager):
+            self.run_sample(-1)
+        else:
             raise ValueError("With continous parameters cannot run brute force.")
+
+    def run_each_variation(self, seed: int | None = None) -> None:
+        if _all_int_parameters(self._parameters_manager):
+            self.run_sample(0, seed)
+        else:
+            raise ValueError("With continous parameters cannot run each variation.")
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _optimise_epoch(
@@ -188,11 +203,75 @@ class Problem:
         algorithm: pm.Algorithm,
         termination: pm.Termination,
         save_history: bool,
-        seed: int,
+        checkpoint_interval: int,
+        seed: int | None,
     ) -> pm.Result:
-        return pm.minimize(
-            problem, algorithm, termination, save_history=save_history, seed=seed
-        )
+        if checkpoint_interval <= 0:
+            return pm.minimize(
+                problem, algorithm, termination, save_history=save_history, seed=seed
+            )
+        else:
+            if not isinstance(termination, pm.MaximumGenerationTermination):
+                raise ValueError(
+                    "checkpoints only work with max generation termination."
+                )
+
+            n_loops = termination.n_max_gen // checkpoint_interval + 1
+            for idx in range(n_loops):
+                algorithm.has_terminated = False
+                current_termination = (
+                    termination
+                    if idx + 1 == n_loops
+                    else pm.MaximumGenerationTermination(
+                        (idx + 1) * checkpoint_interval
+                    )
+                )
+
+                if algorithm.n_gen and (
+                    algorithm.n_gen >= current_termination.n_max_gen
+                ):
+                    # for resume
+                    # >= is in alignment with pm.MaximumGenerationTermination
+                    continue
+
+                result = pm.minimize(
+                    problem,
+                    algorithm,
+                    current_termination,
+                    save_history=save_history,
+                    seed=seed,
+                )
+
+                with (cwd / "checkpoint.pickle").open("wb") as fp:
+                    pickle.dump((self, result), fp)
+                _log(
+                    cwd,
+                    f"created checkpoint at generation {current_termination.n_max_gen-1}",
+                )
+                algorithm = result.algorithm
+            return result
+
+    @staticmethod
+    def resume(
+        checkpoint_file: AnyStrPath,
+        termination: pm.Termination,
+        checkpoint_interval: int = 0,
+    ) -> pm.Result:
+        checkpoint_file = Path(checkpoint_file)
+        with checkpoint_file.open("rb") as fp:
+            problem, result = pickle.load(fp)
+        if not (isinstance(problem, Problem) and isinstance(result, pm.Result)):
+            raise TypeError(f"invalid checkpoint file: {checkpoint_file.resolve()}.")
+
+        return problem._optimise_epoch(
+            problem._evaluation_directory,
+            result.problem,
+            result.algorithm,
+            termination,
+            result.algorithm.save_history,  # void
+            checkpoint_interval,
+            result.algorithm.seed,  # void
+        )  # void: only termination will be updated in algorithm
 
     def run_nsga2(
         self,
@@ -204,6 +283,7 @@ class Problem:
         saves_history: bool = True,
         expected_max_n_generation: int = 9999,
         saves_batches: bool = True,
+        checkpoint_interval: int = 0,
         seed: int | None = None,
     ) -> pm.Result:
         if isinstance(termination, pm.MaximumGenerationTermination):
@@ -218,6 +298,7 @@ class Problem:
             algorithm,
             termination,
             saves_history,
+            checkpoint_interval,
             seed,
         )
 
@@ -232,6 +313,7 @@ class Problem:
         saves_history: bool = True,
         expected_max_n_generation: int = 9999,
         saves_batches: bool = True,
+        checkpoint_interval: int = 0,
         seed: int | None = None,
     ) -> pm.Result:
         if isinstance(termination, pm.MaximumGenerationTermination):
@@ -253,5 +335,6 @@ class Problem:
             algorithm,
             termination,
             saves_history,
+            checkpoint_interval,
             seed,
         )

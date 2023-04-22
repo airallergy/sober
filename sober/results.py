@@ -12,9 +12,9 @@ from collections.abc import Callable, Iterable, Iterator
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import config as cf
-from ._tools import _run, _Parallel
 from ._simulator import _run_readvars
 from ._logger import _log, _LoggerManager
+from ._tools import _run, _uuid, _Parallel
 from ._typing import AnyJob, AnyUIDs, AnyCmdArgs, AnyStrPath, AnyBatchResults
 
 AnyLevel: TypeAlias = Literal["task", "job"]
@@ -25,6 +25,7 @@ AnyDirection: TypeAlias = Literal["minimise", "maximise"]
 AnyBounds: TypeAlias = tuple[float | None, float | None]  # TODO: python/mypy#11098
 AnyConverter: TypeAlias = Callable[[float], float]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
+
 
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
@@ -107,15 +108,14 @@ class _Collector(ABC):
 #######                       COLLECTOR CLASSES                       #######
 #############################################################################
 class RVICollector(_Collector):
-    _output_name: str
+    _output_names: tuple[str, ...]
     _output_type: AnyOutputType
     _rvi_file: Path
-    _keys: tuple[str, ...]
     _frequency: str
 
     def __init__(
         self,
-        output_name: str,
+        *output_names: str,
         output_type: AnyOutputType,
         filename: str,
         level: AnyLevel,
@@ -123,38 +123,24 @@ class RVICollector(_Collector):
         direction: AnyDirection = "minimise",
         bounds: AnyBounds = (None, 0),
         is_final: bool = True,
-        keys: Iterable[str] = (),
         frequency: str = "",
     ) -> None:
-        self._output_name = output_name
+        self._output_names = output_names
         self._output_type = output_type
-        self._keys = tuple(keys)
         self._frequency = frequency
 
         super().__init__(filename, level, kind, direction, bounds, is_final)
 
     def _touch(self, config_directory: Path) -> None:
-        self._rvi_file = (
-            config_directory
-            / f"{self._output_name.replace(' ', '_').replace(':', '_').lower()}.rvi"
-        )
-
         suffixes = {"variable": "eso", "meter": "mtr"}
-        joined_rvi_lines = f"eplusout.{suffixes[self._output_type]}\n{self._filename}\n"
-        match self._keys:
-            case ():
-                joined_rvi_lines += self._output_name
-            case _:
-                if self._output_type == "meter":
-                    raise ValueError("meter variables do not accept keys.")
+        rvi = f"eplusout.{suffixes[self._output_type]}\n{self._filename}\n"
+        rvi += "\n".join(self._output_names)
+        rvi += "\n0\n"
 
-                joined_rvi_lines += "\n".join(
-                    f"{key},{self._output_name}" for key in self._keys
-                )
-        joined_rvi_lines += "\n0\n"
-
+        rvi_filestem = _uuid(self.__class__.__name__, *rvi.splitlines())
+        self._rvi_file = config_directory / (rvi_filestem + ".rvi")
         with self._rvi_file.open("wt") as fp:
-            fp.write(joined_rvi_lines)
+            fp.write(rvi)
 
     def _collect(self, cwd: Path) -> None:
         _run_readvars(cwd, self._rvi_file, self._frequency)
