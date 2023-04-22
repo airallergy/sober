@@ -18,8 +18,9 @@ _S = TypeVar("_S", int, float)
 AnyVURow: TypeAlias = tuple[_S, _S]  # TODO: double check this for float params
 AnyIntVURow: TypeAlias = AnyVURow[int]
 AnyRealVURow: TypeAlias = AnyVURow[float]
-AnyVariationVec: TypeAlias = tuple[int, Unpack[tuple[float, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
-AnyUncertaintyVec: TypeAlias = tuple[int, Unpack[tuple[float, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
+AnyVariationMap: TypeAlias = dict[str, _S]
+AnyVariationVec: TypeAlias = tuple[int, Unpack[tuple[_S, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
+AnyUncertaintyVec: TypeAlias = tuple[int, Unpack[tuple[_S, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
 AnyVUMat: TypeAlias = tuple[
     AnyIntVURow, Unpack[tuple[AnyVURow, ...]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
 ]

@@ -2,10 +2,10 @@ import csv
 from pathlib import Path
 from warnings import warn
 from functools import cache
-from itertools import chain
 from shutil import copyfile
 from os.path import normpath
 from abc import ABC, abstractmethod
+from itertools import chain, product
 from typing import Literal, ClassVar, TypeAlias
 from collections.abc import Callable, Iterable, Iterator
 
@@ -18,7 +18,6 @@ from ._tools import _run, _uuid, _Parallel
 from ._typing import AnyJob, AnyUIDs, AnyCmdArgs, AnyStrPath, AnyBatchResults
 
 AnyLevel: TypeAlias = Literal["task", "job"]
-AnyKind: TypeAlias = Literal["objective", "constraint", "extra"]
 AnyDirection: TypeAlias = Literal["minimise", "maximise"]
 # AnyBounds: TypeAlias = tuple[None, float] | tuple[float, None] | tuple[float, float]
 # this crashes mypy currently
@@ -27,13 +26,21 @@ AnyConverter: TypeAlias = Callable[[float], float]
 AnyOutputType: TypeAlias = Literal["variable", "meter"]
 
 
+def _rectified_iterable_str(s: str | Iterable[str]) -> tuple[str, ...]:
+    if isinstance(s, str):
+        return (s,)
+    else:
+        return tuple(s)
+
+
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Collector(ABC):
     _filename: str
     _level: AnyLevel
-    _kind: AnyKind
+    _objectives: tuple[str, ...]
+    _constraints: tuple[str, ...]
     _direction: AnyDirection
     _bounds: AnyBounds
     _is_final: bool
@@ -43,38 +50,48 @@ class _Collector(ABC):
         self,
         filename: str,
         level: AnyLevel,
-        kind: AnyKind,
+        objectives: str | Iterable[str],
+        constraints: str | Iterable[str],
         direction: AnyDirection,
         bounds: AnyBounds,
         is_final: bool,
     ) -> None:
         self._filename = filename
         self._level = level
-        self._kind = kind
+        self._objectives = _rectified_iterable_str(objectives)
+        self._constraints = _rectified_iterable_str(constraints)
         self._direction = direction
         self._bounds = bounds
         self._is_final = is_final
 
     def _check_args(self) -> None:
-        if self._kind in ("objective", "constraint"):
+        if self._objectives:
             assert (
                 self._level == "job"
-            ), f"an '{self._kind}' result needs to be at the 'job' level: {self._filename}."
+            ), f"a collector containing objectives needs to be at the 'job' level: {self._filename}."
             assert (
                 self._is_final == True
-            ), f"an '{self._kind}' result needs to be final: {self._filename}."
+            ), f"a collector containing objectives needs to be final: {self._filename}."
 
-        if self._kind == "constraint":
+        if self._constraints:
+            assert (
+                self._level == "job"
+            ), f"a collector containing constraints needs to be at the 'job' level: {self._filename}."
+            assert (
+                self._is_final == True
+            ), f"a collector containing constraints needs to be final: {self._filename}."
+
             if self._bounds[0] and self._bounds[1]:
                 # TODO: add support for equality after pymoo 0.60
                 assert (
                     self._bounds[0] < self._bounds[1]
-                ), f"the lower bound should be less than the upper bound in an '{self._kind}' result: {self._filename}."
+                ), f"the lower bound should be less than the upper bound for constraints: {self._filename}."
 
         if self._is_final:
             assert (
                 self._filename.split(".")[-1] == "csv"
             ), f"a final result needs to be a csv file: {self._filename}."
+
         if self.__class__.__name__ == "RVICollector":
             assert (
                 self._filename.split(".")[-1] == "csv"
@@ -94,7 +111,7 @@ class _Collector(ABC):
         self, x: float
     ) -> float:
         match self._bounds:
-            case (None, None):
+            case (None, None):  # TODO: python/mypy#11098
                 raise ValueError(f"bounds not defined: {self._filename}")
             case (None, _ as upper):
                 return x - upper
@@ -115,32 +132,47 @@ class RVICollector(_Collector):
 
     def __init__(
         self,
-        *output_names: str,
+        output_names: str | Iterable[str],
         output_type: AnyOutputType,
         filename: str,
-        level: AnyLevel,
-        kind: AnyKind,
+        keys: str | Iterable[str] = (),
+        frequency: str = "",
+        level: AnyLevel = "task",
+        objectives: str | Iterable[str] = (),
+        constraints: str | Iterable[str] = (),
         direction: AnyDirection = "minimise",
         bounds: AnyBounds = (None, 0),
         is_final: bool = True,
-        frequency: str = "",
     ) -> None:
-        self._output_names = output_names
+        self._output_names = _rectified_iterable_str(output_names)
         self._output_type = output_type
+        self._keys = _rectified_iterable_str(keys)
         self._frequency = frequency
 
-        super().__init__(filename, level, kind, direction, bounds, is_final)
+        super().__init__(
+            filename, level, objectives, constraints, direction, bounds, is_final
+        )
 
     def _touch(self, config_directory: Path) -> None:
         suffixes = {"variable": "eso", "meter": "mtr"}
-        rvi = f"eplusout.{suffixes[self._output_type]}\n{self._filename}\n"
-        rvi += "\n".join(self._output_names)
-        rvi += "\n0\n"
+        rvi_str = f"eplusout.{suffixes[self._output_type]}\n{self._filename}\n"
+        match self._keys:
+            case ():
+                rvi_str += "\n".join(self._output_names)
+            case _:
+                if self._output_type == "meter":
+                    raise ValueError("meter variables do not accept keys.")
 
-        rvi_filestem = _uuid(self.__class__.__name__, *rvi.splitlines())
+                rvi_str += "\n".join(
+                    f"{key},{name}"
+                    for key, name in product(self._keys, self._output_names)
+                )
+        rvi_str += "\n0\n"
+
+        rvi_filestem = _uuid(self.__class__.__name__, *rvi_str.splitlines())
         self._rvi_file = config_directory / (rvi_filestem + ".rvi")
         with self._rvi_file.open("wt") as fp:
-            fp.write(rvi)
+            fp.write(rvi_str)
 
     def _collect(self, cwd: Path) -> None:
         _run_readvars(cwd, self._rvi_file, self._frequency)
@@ -149,24 +181,27 @@ class RVICollector(_Collector):
 class ScriptCollector(_Collector):
     _script_file: Path
     _language: cf.AnyLanguage
-    _script_args: AnyCmdArgs
+    _script_args: tuple[str, ...]
 
     def __init__(
         self,
         script_file: AnyStrPath,
         language: cf.AnyLanguage,
         filename: str,
-        level: AnyLevel,
-        kind: AnyKind,
+        script_args: str | Iterable[str] = (),
+        level: AnyLevel = "task",
+        objectives: str | Iterable[str] = (),
+        constraints: str | Iterable[str] = (),
         direction: AnyDirection = "minimise",
         bounds: AnyBounds = (None, 0),
         is_final: bool = True,
-        *script_args: Unpack[AnyCmdArgs],  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
     ) -> None:
         self._script_file = Path(script_file)
         self._language = language
-        self._script_args = script_args
-        super().__init__(filename, level, kind, direction, bounds, is_final)
+        self._script_args = _rectified_iterable_str(script_args)
+        super().__init__(
+            filename, level, objectives, constraints, direction, bounds, is_final
+        )
 
     def _collect(self, cwd: Path) -> None:
         cmd_args: AnyCmdArgs = (
@@ -174,7 +209,8 @@ class ScriptCollector(_Collector):
             self._script_file,
             cwd,
             self._filename,
-            *self._script_args,
+            ",".join(self._objectives) + ";" + ",".join(self._constraints),
+            ",".join(self._script_args),
         )
 
         _run(cmd_args, cwd)
@@ -187,11 +223,14 @@ class _CopyCollector(_Collector):
     def __init__(
         self,
         filename: str,
-        kind: AnyKind,
-        direction: AnyDirection = "minimise",
-        bounds: AnyBounds = (None, 0),
+        objectives: str | Iterable[str],
+        constraints: str | Iterable[str],
+        direction: AnyDirection,
+        bounds: AnyBounds,
     ) -> None:
-        super().__init__(filename, "job", kind, direction, bounds, True)
+        super().__init__(
+            filename, "job", objectives, constraints, direction, bounds, True
+        )
 
     def _collect(self, cwd: Path) -> None:
         copyfile(cwd / "T0" / self._filename, cwd / self._filename)
@@ -210,8 +249,8 @@ class _ResultsManager:
     _task_results: tuple[_Collector, ...]
     _job_results: tuple[_Collector, ...]
     _clean_patterns: frozenset[str]
-    _objectives: tuple[_Collector, ...]
-    _constraints: tuple[_Collector, ...]
+    _objectives: tuple[str, ...]
+    _constraints: tuple[str, ...]
     _extras: tuple[_Collector, ...]
     _objective_idxs: tuple[int, ...]
     _constraint_idxs: tuple[int, ...]
@@ -237,12 +276,14 @@ class _ResultsManager:
                     auto_results.append(
                         _CopyCollector(
                             item._filename,
-                            item._kind,
+                            item._objectives,
+                            item._constraints,
                             item._direction,
                             item._bounds,
                         )
                     )
-                    item._kind = "extra"
+                    item._objectives = ()
+                    item._constraints = ()
             results += tuple(auto_results)
 
         for item in results:
@@ -254,8 +295,8 @@ class _ResultsManager:
         self._job_results = tuple(
             result for result in results if result._level == "job"
         )
-        self._clean_patterns = frozenset(normpath(item) for item in clean_patterns)
 
+        self._clean_patterns = frozenset(normpath(item) for item in clean_patterns)
         if any(item.startswith(("..", "/")) for item in self._clean_patterns):
             raise ValueError(
                 f"only files inside the task directory can be cleaned: {tuple(self._clean_patterns)}"
@@ -267,10 +308,12 @@ class _ResultsManager:
 
     def __getattr__(self, name: str) -> tuple[_Collector, ...]:
         # TODO: python/mypy#8203
-        if name not in frozenset({"_objectives", "_constraints", "_extras"}):
+        if name not in frozenset({"_objectives", "_constraints"}):
             raise AttributeError
 
-        return tuple(collector for collector in self if collector._kind == name[1:-1])
+        return tuple(
+            chain.from_iterable(getattr(item, name) for item in self._job_results)
+        )
 
     def _touch_rvi(self, config_directory: Path) -> None:
         for result in self._task_results:
@@ -310,23 +353,25 @@ class _ResultsManager:
                         next(reader)
                     else:  # do this only once (when idx is 0)
                         begin_count = len(headers)
-                        headers += next(reader)[1:]
-                        end_count = len(headers)
+                        result_headers = next(reader)[1:]
+                        headers += result_headers
 
                         if level == "job":
-                            if result._kind == "objective":
+                            if result._objectives:
                                 self._objective_idxs += tuple(
-                                    range(begin_count, end_count)
+                                    begin_count + result_headers.index(item)
+                                    for item in result._objectives
                                 )
-                                self._to_objectives += (result._to_objective,) * (
-                                    end_count - begin_count
+                                self._to_objectives += (result._to_objective,) * len(
+                                    result._objectives
                                 )
-                            elif result._kind == "constraint":
+                            if result._constraints:
                                 self._constraint_idxs += tuple(
-                                    range(begin_count, end_count)
+                                    begin_count + result_headers.index(item)
+                                    for item in result._constraints
                                 )
-                                self._to_constraints += (result._to_constraint,) * (
-                                    end_count - begin_count
+                                self._to_constraints += (result._to_constraint,) * len(
+                                    result._constraints
                                 )
 
                     records[idx] += next(reader)[1:]
