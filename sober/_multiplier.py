@@ -18,6 +18,14 @@ class _LazyCartesianProduct(Generic[_T]):
     # adapted from: https://github.com/tylerburdsall/lazy-cartesian-product-python
     # this allows indexing a Cartesian product without evaluating all
     # which enables super fast sampling
+
+    _tuples: tuple[tuple[_T, ...], ...]
+    _n_tuples: int
+    _n_products: int
+    _divs: tuple[int, ...]
+    _mods: tuple[int, ...]
+    __slots__ = ("_tuples", "_n_tuples", "_n_products", "_divs", "_mods")
+
     def __init__(self, *iterables: Iterable[_T]):
         # self._tuples = tuple(map(tuple, iterables))  # python/mypy#11682
         self._tuples = tuple(tuple(item) for item in iterables)
