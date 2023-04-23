@@ -1,6 +1,9 @@
 pymoo>=0.6
 eppy
 numpy>=1.23
+psutil
 typing_extensions
+mypy
+isort
 pytest
 coverage
