@@ -15,9 +15,9 @@ _T = TypeVar("_T")
 
 
 class _LazyCartesianProduct(Generic[_T]):
-    # adapted from: https://github.com/tylerburdsall/lazy-cartesian-product-python
-    # this allows indexing a Cartesian product without evaluating all
-    # which enables super fast sampling
+    """allows indexing a Cartesian product without evaluating all
+    which enables super fast sampling
+    adapted from: https://github.com/tylerburdsall/lazy-cartesian-product-python"""
 
     _tuples: tuple[tuple[_T, ...], ...]
     _n_tuples: int
@@ -70,6 +70,8 @@ def _multiply(
     sample_size: int,
     seed: int | None,
 ) -> None:
+    """populates parametric runs by subsetting the full search space"""
+
     ns_variations = tuple(parameter._n_variations for parameter in parameters_manager)
     full_search_space = _LazyCartesianProduct(*map(range, ns_variations))
     n_products = full_search_space._n_products
@@ -77,6 +79,8 @@ def _multiply(
     rng = np.random.default_rng(seed)
 
     if sample_size < 0:
+        # brute force
+
         if n_products > 1e7:
             raise NotImplementedError(
                 f"a search space of more than 1e7 candidates is forbidden due to high computing cost: {n_products}."
@@ -85,6 +89,8 @@ def _multiply(
         sample_idxs = tuple(range(n_products))
         search_space = full_search_space[sample_idxs]
     elif sample_size == 0:
+        # test each variation with fewest simulations
+
         max_n_variations = max(ns_variations)
 
         # permute variations of each paramter
@@ -96,6 +102,8 @@ def _multiply(
 
         search_space = tuple(tuple(map(int, row)) for row in filled.T)
     else:
+        # proper subset
+
         sample_idxs_ = rng.choice(n_products, sample_size, replace=False)
         sample_idxs_.sort()
         sample_idxs = tuple(map(int, sample_idxs_))
