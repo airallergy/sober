@@ -55,6 +55,6 @@ Config = TypedDict(
 AnyCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
 
 
-class SubprocessRes(Protocol):
+class SubprocessResult(Protocol):
     returncode: int
     stdout: str

@@ -9,7 +9,7 @@ from typing import Any, Literal, TypeVar, ClassVar
 from contextlib import ContextDecorator, AbstractContextManager
 
 from . import config as cf
-from ._typing import AnyCmdArgs, SubprocessRes
+from ._typing import AnyCmdArgs, SubprocessResult
 
 # this follows the ContextDecorator signature
 # just to make my life easier
@@ -87,6 +87,8 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
     _level: Literal["task", "job", "batch", "epoch"]
     _log_file: Path
     _logger: logging.Logger
+
+    __slots__ = ("_cwd_index", "_is_first", "_name", "_level", "_log_file", "_logger")
 
     def __init__(self, cwd_index: int, is_first: bool = False) -> None:
         self._cwd_index = cwd_index
@@ -170,7 +172,9 @@ class _SubprocessLogger(AbstractContextManager):
 
     _logger: logging.LoggerAdapter
     _cmd: str
-    res: SubprocessRes
+    _result: SubprocessResult
+
+    __slots__ = ("_logger", "_cmd", "_result")
 
     def __init__(self, logger: logging.LoggerAdapter, cmd_args: AnyCmdArgs) -> None:
         self._logger = logger
@@ -181,8 +185,9 @@ class _SubprocessLogger(AbstractContextManager):
         return self
 
     def __exit__(self, *args) -> None:
-        self._logger.debug(self.res.stdout.strip())  # stderr was merged into stdout
-        self._logger.info(f"completed with exit code {self.res.returncode}")
+        result = self._result
+        self._logger.debug(result.stdout.strip("\n"))  # stderr was merged into stdout
+        self._logger.info(f"completed with exit code {result.returncode}")
 
 
 def _rgetattr(obj: object, names: tuple[str, ...]) -> Any:
