@@ -234,6 +234,8 @@ class Problem:
         checkpoint_interval: int,
         seed: int | None,
     ) -> pm.Result:
+        # TODO: write some epoch results - pareto solutions?
+
         if checkpoint_interval <= 0:
             return pm.minimize(
                 problem, algorithm, termination, save_history=save_history, seed=seed
@@ -248,8 +250,6 @@ class Problem:
 
             n_loops = termination.n_max_gen // checkpoint_interval + 1
             for idx in range(n_loops):
-                # FIXME: pymoo0.6 removed has_terminated attribute
-                algorithm.has_terminated = False
                 current_termination = (
                     termination
                     if idx + 1 == n_loops
@@ -264,6 +264,12 @@ class Problem:
                     # for resume
                     # >= is in alignment with pm.MaximumGenerationTermination
                     continue
+
+                # in pymoo0.6
+                # algorithm.setup() is only triggered when algorithm.problem is None
+                # but seed will be reset too
+                # manually change algorithm.termination to avoid resetting seed
+                algorithm.termination = current_termination
 
                 result = pm.minimize(
                     problem,
