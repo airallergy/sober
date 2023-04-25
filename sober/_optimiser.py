@@ -2,11 +2,10 @@ from typing import Literal, TypedDict, overload
 
 from . import _pymoo_namespace as pm
 
+
 #############################################################################
 #######                      OPERATOR FUNCTIONS                       #######
 #############################################################################
-
-
 class Operators(TypedDict):
     sampling: pm.MixedVariableSampling
     mating: pm.MixedVariableMating
@@ -63,8 +62,6 @@ def _operators(
 #############################################################################
 #######                      ALGORITHM FUNCTIONS                      #######
 #############################################################################
-
-
 @overload
 def _algorithm(
     algorithm: Literal["nsga2"],
