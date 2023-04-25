@@ -420,7 +420,7 @@ class _ResultsManager:
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            it = p.starmap_(
+            it = p._starmap(
                 self._collect_job,
                 (
                     (
@@ -458,7 +458,7 @@ class _ResultsManager:
             pairs = tuple(
                 (job_uid, task_uid) for job_uid, tasks in jobs for task_uid, _ in tasks
             )
-            it = p.map_(
+            it = p._map(
                 self._clean_task,
                 (batch_directory / job_uid / task_uid for job_uid, task_uid in pairs),
             )

@@ -6,8 +6,8 @@ from uuid import NAMESPACE_X500, uuid5
 from multiprocessing import get_context
 from subprocess import PIPE, STDOUT, run
 from contextlib import AbstractContextManager
-from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any, TypeVar
+from collections.abc import Callable, Iterable, Iterator
 
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 from typing_extensions import TypeVarTuple  # NOTE: from typing after 3.11
@@ -16,29 +16,48 @@ from ._logger import _log
 from ._typing import AnyCmdArgs
 
 
-def _uuid(*description: str) -> str:
-    return str(uuid5(NAMESPACE_X500, "-".join(description)))
+#############################################################################
+#######                    MISCELLANEOUS FUNCTIONS                    #######
+#############################################################################
+def _uuid(*descriptions: str) -> str:
+    """an uuid generator"""
+
+    return str(uuid5(NAMESPACE_X500, "-".join(descriptions)))
 
 
 def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
+    """a helper function for subprocess.run to enable logging"""
+
+    # resolve any Path objects
     cmd_args = tuple(
         item.resolve(strict=True) if isinstance(item, Path) else item
         for item in cmd_args
     )
+
+    # run subprocess and pass the result object to logging
     with _log(cwd, caller_depth=1, cmd_args=cmd_args) as l:
-        l.res = run(cmd_args, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
+        l._result = run(cmd_args, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
 
 
-# this bit is purely to make mypy happy :(
+#############################################################################
+#######                      PARALLEL FUNCTIONS                       #######
+#############################################################################
+# Common:
+#     1. typing map/imap and starmap/starimap follows multiprocessing
+#     2. chunksize is set to 1 for performance
+#        a larger chunksize drops performance, possibly because the progress tracking
+
+# get multiprocessing context
+# follow the use of sys.platform by multiprocessing, see also python/mypy#8166
+# don't use fork on posix, better safe than sorry
 if sys.platform != "win32":
     _MULTIPROCESSING_CONTEXT = get_context("forkserver")
 else:
     _MULTIPROCESSING_CONTEXT = get_context("spawn")
 
 InitArgs = TypeVarTuple("InitArgs")  # type: ignore[misc] # TODO: after 3.11
-_P = TypeVar("_P")  # TODO: python/mypy#11855, python/typeshed#4827
+_P = TypeVar("_P", contravariant=True)
 _R = TypeVar("_R", covariant=True)
-
 
 # [1] quite a few mypy complaints due to typeshed,
 #     stemmed from the implementation of starmap/starimap
@@ -57,6 +76,9 @@ else:
 
 
 class _Pool(Pool):
+    """a helper class for multiprocessing.Pool
+    this includes setting defaults, unifying method names and implementing starimap"""
+
     if TYPE_CHECKING:  # [1]
         from queue import SimpleQueue
 
@@ -76,13 +98,15 @@ class _Pool(Pool):
             processes, initializer, initargs, context=_MULTIPROCESSING_CONTEXT
         )
 
-    def map_(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> Iterable[_R]:
+    def _map(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> Iterator[_R]:
         return super().imap(func, iterable, 1)
 
-    def starmap_(
+    def _starmap(
         self, func: Callable[..., _R], iterable: Iterable[Iterable[Any]]
-    ) -> Iterable[_R]:
-        # borrowed from https://stackoverflow.com/questions/57354700/starmap-combined-with-tqdm
+    ) -> Iterator[_R]:
+        """an implementation of starimap
+        borrowed from https://stackoverflow.com/a/57364423"""
+
         self._check_running()
 
         task_batches = self._get_tasks(func, iterable, 1)
@@ -97,18 +121,21 @@ class _Pool(Pool):
 
 
 class _Loop(AbstractContextManager):
+    """a helper class for loop
+    this includes making a context manager and unifying method names"""
+
     def __enter__(self) -> "_Loop":  # TODO: use typing.Self after 3.11
         return self
 
     def __exit__(self, *args) -> None:
         pass
 
-    def map_(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> Iterable[_R]:
+    def _map(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> Iterator[_R]:
         return map(func, iterable)
 
-    def starmap_(
+    def _starmap(
         self, func: Callable[..., _R], iterable: Iterable[Iterable[Any]]
-    ) -> Iterable[_R]:
+    ) -> Iterator[_R]:
         return starmap(func, iterable)
 
 
@@ -117,6 +144,10 @@ def _Parallel(
     initializer: Callable[[Unpack[InitArgs]], None] | None = None,  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
     initargs: tuple[Unpack[InitArgs]] = (),  # type: ignore[misc,assignment] # python/mypy#12280 # TODO: Unpack -> * after 3.11
 ) -> _Pool | _Loop:
+    """a helper function to distribute parallel computation
+    based on the requested number of processes"""
+
+    # allows n_processes <= 0 for now
     if n_processes > 1:
         return _Pool(n_processes, initializer, initargs)
     else:

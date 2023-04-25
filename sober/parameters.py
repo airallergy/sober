@@ -647,7 +647,7 @@ class _ParametersManager(Generic[Parameter]):
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            it = p.starmap_(
+            it = p._starmap(
                 self._make_job,
                 ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
             )
@@ -676,7 +676,7 @@ class _ParametersManager(Generic[Parameter]):
             pairs = tuple(
                 (job_uid, task_uid) for job_uid, tasks in jobs for task_uid, _ in tasks
             )
-            it = p.map_(
+            it = p._map(
                 self._simulate_task,
                 (batch_directory / job_uid / task_uid for job_uid, task_uid in pairs),
             )
