@@ -5,19 +5,20 @@ from . import _pymoo_namespace as pm
 #############################################################################
 #######                      OPERATOR FUNCTIONS                       #######
 #############################################################################
-Operators = TypedDict(
-    "Operators",
-    {
-        "sampling": pm.MixedVariableSampling,
-        "mating": pm.MixedVariableMating,
-        "eliminate_duplicates": pm.MixedVariableDuplicateElimination,
-    },
-)
+
+
+class Operators(TypedDict):
+    sampling: pm.MixedVariableSampling
+    mating: pm.MixedVariableMating
+    eliminate_duplicates: pm.MixedVariableDuplicateElimination
 
 
 def _operators(
     algorithm: Literal["nsga2", "nsga3"], p_crossover: float, p_mutation: float
 ) -> Operators:
+    """a pymoo operators constructor"""
+
+    # defaults from respective algoritm classes in pymoo
     selections = {
         "nsga2": pm.TournamentSelection(func_comp=pm.binary_tournament),
         "nsga3": pm.TournamentSelection(func_comp=pm.comp_by_cv_then_random),
@@ -26,6 +27,7 @@ def _operators(
         "nsga2": {"crossover": 15, "mutation": 20},
         "nsga3": {"crossover": 30, "mutation": 20},
     }
+
     return {
         "sampling": pm.MixedVariableSampling(),
         "mating": pm.MixedVariableMating(
@@ -61,6 +63,8 @@ def _operators(
 #############################################################################
 #######                      ALGORITHM FUNCTIONS                      #######
 #############################################################################
+
+
 @overload
 def _algorithm(
     algorithm: Literal["nsga2"],
@@ -89,6 +93,8 @@ def _algorithm(
     p_mutation,
     reference_directions=None,
 ) -> pm.Algorithm:
+    """a pymoo algorithm constructor"""
+
     if algorithm == "nsga2":
         return pm.NSGA2(
             population_size, **_operators(algorithm, p_crossover, p_mutation)
