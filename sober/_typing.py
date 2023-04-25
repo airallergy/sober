@@ -1,5 +1,4 @@
 from os import PathLike
-from pathlib import Path
 from collections.abc import Callable
 from typing import Literal, TypeVar, Protocol, TypeAlias
 
@@ -7,6 +6,8 @@ from typing_extensions import Required, TypedDict
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
 from . import _pymoo_namespace as pm
+
+# TODO: Refactor this module, along with typing in other modules after 3.11
 
 AnyStrPath: TypeAlias = str | PathLike[str]
 AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
