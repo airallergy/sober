@@ -28,12 +28,6 @@ def _uuid(*descriptions: str) -> str:
 def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
     """a helper function for subprocess.run to enable logging"""
 
-    # resolve any Path objects
-    cmd_args = tuple(
-        item.resolve(strict=True) if isinstance(item, Path) else item
-        for item in cmd_args
-    )
-
     # run subprocess and pass the result object to logging
     with _log(cwd, caller_depth=1, cmd_args=cmd_args) as l:
         l._result = run(cmd_args, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
