@@ -147,7 +147,7 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
         self.logger.addHandler(fh)
 
         # create a stream handler at the highest level
-        # the highest level for parametric is batch
+        # the highest level for parametrics is batch
         #                   for optimisation is epoch
         if (self._level == "batch" and not cf._has_batches) or (
             self._level == "epoch" and cf._has_batches

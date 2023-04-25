@@ -13,7 +13,7 @@ class Operators(TypedDict):
 
 
 def _operators(
-    algorithm: Literal["nsga2", "nsga3"], p_crossover: float, p_mutation: float
+    algorithm_name: Literal["nsga2", "nsga3"], p_crossover: float, p_mutation: float
 ) -> Operators:
     """a pymoo operators constructor"""
 
@@ -30,25 +30,25 @@ def _operators(
     return {
         "sampling": pm.MixedVariableSampling(),
         "mating": pm.MixedVariableMating(
-            selection=selections[algorithm],
+            selection=selections[algorithm_name],
             crossover={
                 pm.Real: pm.SimulatedBinaryCrossover(
-                    prob=p_crossover, eta=etas[algorithm]["crossover"]
+                    prob=p_crossover, eta=etas[algorithm_name]["crossover"]
                 ),
                 pm.Integer: pm.SimulatedBinaryCrossover(
                     prob=p_crossover,
-                    eta=etas[algorithm]["crossover"],
+                    eta=etas[algorithm_name]["crossover"],
                     vtype=float,
                     repair=pm.RoundingRepair(),
                 ),
             },
             mutation={
                 pm.Real: pm.PolynomialMutation(
-                    prob=p_mutation, eta=etas[algorithm]["mutation"]
+                    prob=p_mutation, eta=etas[algorithm_name]["mutation"]
                 ),
                 pm.Integer: pm.PolynomialMutation(
                     prob=p_mutation,
-                    eta=etas[algorithm]["mutation"],
+                    eta=etas[algorithm_name]["mutation"],
                     vtype=float,
                     repair=pm.RoundingRepair(),
                 ),
@@ -64,7 +64,7 @@ def _operators(
 #############################################################################
 @overload
 def _algorithm(
-    algorithm: Literal["nsga2"],
+    algorithm_name: Literal["nsga2"],
     population_size: int,
     p_crossover: float,
     p_mutation: float,
@@ -74,7 +74,7 @@ def _algorithm(
 
 @overload
 def _algorithm(
-    algorithm: Literal["nsga3"],
+    algorithm_name: Literal["nsga3"],
     population_size: int,
     p_crossover: float,
     p_mutation: float,
@@ -84,7 +84,7 @@ def _algorithm(
 
 
 def _algorithm(
-    algorithm,
+    algorithm_name,
     population_size,
     p_crossover,
     p_mutation,
@@ -92,13 +92,13 @@ def _algorithm(
 ) -> pm.Algorithm:
     """a pymoo algorithm constructor"""
 
-    if algorithm == "nsga2":
+    if algorithm_name == "nsga2":
         return pm.NSGA2(
-            population_size, **_operators(algorithm, p_crossover, p_mutation)
+            population_size, **_operators(algorithm_name, p_crossover, p_mutation)
         )
     else:
         return pm.NSGA3(
             reference_directions,
             population_size,
-            **_operators(algorithm, p_crossover, p_mutation)
+            **_operators(algorithm_name, p_crossover, p_mutation)
         )

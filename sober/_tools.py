@@ -1,4 +1,5 @@
 import sys
+from math import log10
 from pathlib import Path
 from itertools import starmap
 from multiprocessing.pool import Pool
@@ -19,6 +20,14 @@ from ._typing import AnyCmdArgs
 #############################################################################
 #######                    MISCELLANEOUS FUNCTIONS                    #######
 #############################################################################
+def _natural_width(x: int) -> int:
+    """returns the digit count of a natural number"""
+
+    assert isinstance(x, int) and x > 0
+
+    return int(log10(x)) + 1
+
+
 def _uuid(*descriptions: str) -> str:
     """an uuid generator"""
 

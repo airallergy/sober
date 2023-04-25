@@ -70,7 +70,7 @@ def _multiply(
     sample_size: int,
     seed: int | None,
 ) -> None:
-    """populates parametric runs by subsetting the full search space"""
+    """populates parametrics by subsetting the full search space"""
 
     ns_variations = tuple(parameter._n_variations for parameter in parameters_manager)
     full_search_space = _LazyCartesianProduct(*map(range, ns_variations))

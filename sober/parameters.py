@@ -134,7 +134,7 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
                 self._ns_uncertainty = tuple(map(len, self._uncertainties))
             case _:
                 raise ValueError(
-                    f"The number of uncertainties is different from that of variations: '{len(uncertainties)}', '{self._n_variations}'."
+                    f"the number of uncertainties is different from that of variations: '{len(uncertainties)}', '{self._n_variations}'."
                 )
 
         self._is_uncertain = set(self._ns_uncertainty) != {1}
