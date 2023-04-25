@@ -7,7 +7,7 @@ from ._typing import AnyCmdArgs, AnyStrPath
 
 
 def _run_epmacro(cwd: Path) -> None:
-    cmd_args: AnyCmdArgs = (cf._config["exec.epmacro"],)
+    cmd_args = (cf._config["exec.epmacro"],)
     _run(cmd_args, cwd)
 
     (cwd / "out.idf").rename(cwd / "in.idf")
@@ -19,7 +19,7 @@ def _run_expandobjects(cwd: Path) -> None:
     idd_file = cwd / Path(cf._config["schema.energyplus"]).name
     idd_file.symlink_to(cf._config["schema.energyplus"])
 
-    cmd_args: AnyCmdArgs = (cf._config["exec.expandobjects"],)
+    cmd_args = (cf._config["exec.expandobjects"],)
     _run(cmd_args, cwd)
 
     (cwd / "expanded.idf").rename(cwd / "in.idf")
@@ -29,7 +29,7 @@ def _run_expandobjects(cwd: Path) -> None:
 
 
 def _run_energyplus(cwd: Path) -> None:
-    cmd_args: AnyCmdArgs = (cf._config["exec.energyplus"],)
+    cmd_args = (cf._config["exec.energyplus"],)
     _run(cmd_args, cwd)
 
 

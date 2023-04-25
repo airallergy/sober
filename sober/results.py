@@ -204,7 +204,7 @@ class ScriptCollector(_Collector):
         )
 
     def _collect(self, cwd: Path) -> None:
-        cmd_args: AnyCmdArgs = (
+        cmd_args = (
             cf._config["exec.python"],
             self._script_file,
             cwd,
