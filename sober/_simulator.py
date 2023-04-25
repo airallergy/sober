@@ -16,7 +16,7 @@ def _run_epmacro(cwd: Path) -> None:
 
 def _run_expandobjects(cwd: Path) -> None:
     # TODO: Basement & Slab
-    idd_file = cwd / cf._config["schema.energyplus"].name
+    idd_file = cwd / Path(cf._config["schema.energyplus"]).name
     idd_file.symlink_to(cf._config["schema.energyplus"])
 
     cmd_args: AnyCmdArgs = (cf._config["exec.expandobjects"],)

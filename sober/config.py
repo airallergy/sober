@@ -89,18 +89,20 @@ def config_energyplus(
         )
 
     _config = {
-        "schema.energyplus": Path(schema).resolve(strict=True),
-        "exec.energyplus": Path(energyplus_exec).resolve(strict=True),
+        "schema.energyplus": str(Path(schema).resolve(strict=True)),
+        "exec.energyplus": str(Path(energyplus_exec).resolve(strict=True)),
     }
     if epmacro_exec is not None:
-        _config["exec.epmacro"] = Path(epmacro_exec).resolve(strict=True)
+        _config["exec.epmacro"] = str(Path(epmacro_exec).resolve(strict=True))
     if expandobjects_exec is not None:
-        _config["exec.expandobjects"] = Path(expandobjects_exec).resolve(strict=True)
+        _config["exec.expandobjects"] = str(
+            Path(expandobjects_exec).resolve(strict=True)
+        )
     if readvars_exec is not None:
-        _config["exec.readvars"] = Path(readvars_exec).resolve(strict=True)
+        _config["exec.readvars"] = str(Path(readvars_exec).resolve(strict=True))
 
 
-def check_config_init() -> None:
+def _check_config_init() -> None:
     if "_config" not in globals():
         raise NameError("configure energyplus first.")
 
@@ -108,15 +110,15 @@ def check_config_init() -> None:
 def config_script(python_exec: AnyStrPath | None = None) -> None:
     # TODO: **kwargs from PEP 692/3.12
     global _config
-    check_config_init()
+    _check_config_init()
 
     if python_exec is not None:
-        _config["exec.python"] = Path(python_exec).resolve(strict=True)
+        _config["exec.python"] = str(Path(python_exec).resolve(strict=True))
 
 
 def config_multiprocessing(n_processes: int | None = None) -> None:
     global _config
-    check_config_init()
+    _check_config_init()
 
     _config["n.processes"] = (
         cpu_count(logical=False) - 1 if n_processes is None else n_processes

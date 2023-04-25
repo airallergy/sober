@@ -41,12 +41,12 @@ AnyBatchResults: TypeAlias = tuple[tuple[float, ...], ...]
 Config = TypedDict(
     "Config",
     {
-        "schema.energyplus": Required[Path],
-        "exec.energyplus": Required[Path],
-        "exec.epmacro": Path,
-        "exec.expandobjects": Path,
-        "exec.readvars": Path,
-        "exec.python": Path,
+        "schema.energyplus": Required[str],
+        "exec.energyplus": Required[str],
+        "exec.epmacro": str,
+        "exec.expandobjects": str,
+        "exec.readvars": str,
+        "exec.python": str,
         "n.processes": int,
     },
     total=False,

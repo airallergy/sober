@@ -489,7 +489,7 @@ class _ParametersManager(Generic[Parameter]):
                 regulars = tagger._tagged(regulars)
 
         if hasattr(cf, "_config"):
-            idf = openidf(StringIO(regulars), str(cf._config["schema.energyplus"]))
+            idf = openidf(StringIO(regulars), cf._config["schema.energyplus"])
         else:
             idf = openidf(StringIO(regulars))
             cf.config_energyplus(
