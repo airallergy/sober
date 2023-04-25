@@ -5,15 +5,28 @@ from psutil import cpu_count
 
 from ._typing import Config, AnyStrPath, AnyLanguage, AnyModelType
 
+#############################################################################
+#######                       GLOBAL CONSTANTS                        #######
+#############################################################################
 _TASK_RECORDS_FILENAME: str = "task_records.csv"
 _JOB_RECORDS_FILENAME: str = "job_records.csv"
 
+
+#############################################################################
+#######                       GLOBAL VARIABLES                        #######
+#############################################################################
 _has_batches: bool = True
 
 _config: Config
 
 
+#############################################################################
+#######                    CONFIGURATION FUNCTIONS                    #######
+#############################################################################
 def _update_config(config: Config) -> None:
+    """updates configuration globally in the current python interpreter process
+    this is to copy configuration when using multiprocessing"""
+
     global _config
 
     _config = config
@@ -25,6 +38,8 @@ def _check_config(
     uses_rvi: bool,
     used_languages: set[AnyLanguage],
 ) -> None:
+    """checks the configuration sufficiency"""
+
     if model_type == ".imf":
         assert (
             "exec.epmacro" in _config
@@ -40,7 +55,7 @@ def _check_config(
             "exec.readvars" in _config
         ), f"an RVICollector is used, but the readvars executable is not configured: {_config}."
 
-    # TODO: revision after PEP 675/3.11
+    # TODO: potential revision after PEP 675/3.11
     if "python" in used_languages:
         assert (
             "exec.python" in _config
@@ -48,6 +63,8 @@ def _check_config(
 
 
 def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:
+    """returns the default EnergyPlus installation directory"""
+
     version = "-".join((major, minor, patch))
     match system():
         case "Linux":
@@ -70,6 +87,9 @@ def config_energyplus(
     expandobjects_exec: AnyStrPath | None = None,
     readvars_exec: AnyStrPath | None = None,
 ) -> None:
+    """sets EnergyPlus-related configuration
+    this initialise _config, so needs to happen before all others"""
+
     global _config
 
     if version is not None:
@@ -103,23 +123,34 @@ def config_energyplus(
 
 
 def _check_config_init() -> None:
+    """checks if EnergyPlus-related configuration has completed"""
+
     if "_config" not in globals():
         raise NameError("configure energyplus first.")
 
 
-def config_script(python_exec: AnyStrPath | None = None) -> None:
-    # TODO: **kwargs from PEP 692/3.12
-    global _config
+def config_parallel(*, n_processes: int | None = None) -> None:
+    """sets parallel-related configuration"""
+
     _check_config_init()
 
-    if python_exec is not None:
-        _config["exec.python"] = str(Path(python_exec).resolve(strict=True))
-
-
-def config_multiprocessing(n_processes: int | None = None) -> None:
     global _config
-    _check_config_init()
 
+    # the default number of processes is the number of physical cores - 1
+    # this leaves one physical core idle
     _config["n.processes"] = (
         cpu_count(logical=False) - 1 if n_processes is None else n_processes
     )
+
+
+def config_script(*, python_exec: AnyStrPath | None = None) -> None:
+    """sets script-related configuration
+    only supports python currently"""
+    # TODO: **kwargs from PEP 692/3.12
+
+    _check_config_init()
+
+    global _config
+
+    if python_exec is not None:
+        _config["exec.python"] = str(Path(python_exec).resolve(strict=True))

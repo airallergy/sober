@@ -146,8 +146,8 @@ class Problem:
 
     def _prepare(self, n_processes: int | None, python_exec: AnyStrPath | None) -> None:
         self._mkdir()
-        cf.config_multiprocessing(n_processes)
-        cf.config_script(python_exec)
+        cf.config_parallel(n_processes=n_processes)
+        cf.config_script(python_exec=python_exec)
         self._results_manager._touch_rvi(self._config_directory)
         self._check_config()
 
