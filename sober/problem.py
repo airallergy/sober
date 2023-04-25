@@ -258,11 +258,13 @@ class Problem:
                     )
                 )
 
+                # in pymoo0.6
+                # algorithm.n_gen will increase by one at the end of optimisation
+                # at least when using a MaximumGenerationTermination
                 if algorithm.n_gen and (
-                    algorithm.n_gen >= current_termination.n_max_gen
+                    algorithm.n_gen - 1 >= current_termination.n_max_gen
                 ):
-                    # for resume
-                    # >= is in alignment with pm.MaximumGenerationTermination
+                    # this should only be invoked by resume
                     continue
 
                 # in pymoo0.6
@@ -279,13 +281,17 @@ class Problem:
                     seed=seed,
                 )
 
-                with (cwd / "checkpoint.pickle").open("wb") as fp:
-                    pickle.dump((self, result), fp)
-                _log(
-                    cwd,
-                    f"created checkpoint at generation {current_termination.n_max_gen-1}",
-                )
+                # update algorithm
                 algorithm = result.algorithm
+
+                checkpoint_idx = (idx + 1) * checkpoint_interval - 1
+                if algorithm.n_gen - 1 == checkpoint_idx + 1:
+                    # TODO: explore implementing custom serialisation for self(Problem) via TOML/YAML
+                    with (cwd / "checkpoint.pickle").open("wb") as fp:
+                        pickle.dump((self, result), fp)
+
+                    _log(cwd, f"created checkpoint at generation {checkpoint_idx}")
+
             return result
 
     @staticmethod
@@ -297,6 +303,8 @@ class Problem:
         checkpoint_interval: int = 0,
     ) -> pm.Result:
         """resumes optimisation using checkpoint files"""
+        # NOTE: although seed will not be reset
+        #       randomness is not reproducible when resuming for some unknown reason
         # TODO: explore implementing custom serialisation for Problem via TOML/YAML
         # TODO: also consider moving this func outside Problem to be called directly
         # TODO: termination may not be necessary, as the old one may be reused
