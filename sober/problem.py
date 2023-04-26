@@ -85,7 +85,8 @@ class _PymooProblem(pm.Problem):
         #     x is a list of dicts, each dict is a candidate, whose keys are param uids
         #     out has to be a dict of numpy arrays
 
-        batch_uid = f"B{(algorithm.n_gen - 1):0{self._batch_idx_width}}"
+        batch_idx = algorithm.n_gen - 1
+        batch_uid = f"B{batch_idx:0{self._batch_idx_width}}"
 
         candidates = tuple(tuple(item.values()) for item in x)
 

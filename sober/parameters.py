@@ -1,5 +1,4 @@
 import csv
-from math import log10
 from io import StringIO
 from pathlib import Path
 from shutil import copyfile
@@ -23,8 +22,8 @@ from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
-from ._tools import _uuid, _Parallel
 from ._logger import _log, _LoggerManager
+from ._tools import _uuid, _Parallel, _natural_width
 from ._simulator import _run_epmacro, _split_model, _run_energyplus, _run_expandobjects
 from ._typing import (
     AnyJob,
@@ -504,12 +503,12 @@ class _ParametersManager(Generic[Parameter]):
         return macros + idf.idfstr()
 
     def _jobs(self, *variation_vecs: AnyVariationVec) -> Iterator[AnyJob]:
-        len_job_count = int(log10(len(variation_vecs))) + 1
+        job_idx_width = _natural_width(len(variation_vecs))
         for job_idx, variation_vec in enumerate(variation_vecs):
             # TODO: remove typing after python/mypy#12280 / 3.11
             weather_variation_idx: int = variation_vec[0]
             parameter_variation_vals = variation_vec[1:]
-            job_uid = f"J{job_idx:0{len_job_count}}"
+            job_uid = f"J{job_idx:0{job_idx_width}}"
 
             # TODO: mypy infers uncertainty_vecs incorrectly, might be resolved after python/mypy#12280
             # NOTE: there may be a better way than cast()
@@ -528,10 +527,10 @@ class _ParametersManager(Generic[Parameter]):
             )
             uncertainty_vecs = cast(tuple[AnyUncertaintyVec, ...], uncertainty_vecs)
 
-            len_task_count = int(log10(len(uncertainty_vecs))) + 1
+            task_idx_width = _natural_width(len(uncertainty_vecs))
             tasks = tuple(
                 (
-                    f"T{task_idx:0{len_task_count}}",
+                    f"T{task_idx:0{task_idx_width}}",
                     tuple(zip(variation_vec, uncertainty_vec)),
                 )
                 for task_idx, uncertainty_vec in enumerate(uncertainty_vecs)
