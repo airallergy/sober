@@ -7,11 +7,11 @@ import numpy as np
 
 from . import config as cf
 from ._multiplier import _multiply
-from ._optimiser import _algorithm
 from ._tools import _natural_width
 from . import _pymoo_namespace as pm
 from ._evaluator import _pymoo_evaluate
 from ._logger import _log, _LoggerManager
+from ._optimiser import _sampling, _algorithm
 from ._typing import AnyStrPath, AnyCallback, AnyVariationMap
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
@@ -347,6 +347,7 @@ class Problem:
         *,
         p_crossover: float = 1.0,
         p_mutation: float = 0.2,
+        init_population_size: int = -1,
         callback: AnyCallback = None,
         saves_history: bool = True,
         saves_batches: bool = True,
@@ -361,7 +362,13 @@ class Problem:
 
         problem = self._to_pymoo(callback, saves_batches, expected_max_n_generations)
 
-        algorithm = _algorithm("nsga2", population_size, p_crossover, p_mutation)
+        if init_population_size <= 0:
+            init_population_size = population_size
+        sampling = _sampling(problem, init_population_size)
+
+        algorithm = _algorithm(
+            "nsga2", population_size, p_crossover, p_mutation, sampling
+        )
 
         return self._optimise_epoch(
             self._evaluation_directory,
@@ -382,6 +389,7 @@ class Problem:
         *,
         p_crossover: float = 1.0,
         p_mutation: float = 0.2,
+        init_population_size: int = -1,
         callback: AnyCallback = None,
         saves_history: bool = True,
         saves_batches: bool = True,
@@ -396,13 +404,22 @@ class Problem:
 
         problem = self._to_pymoo(callback, saves_batches, expected_max_n_generations)
 
+        if init_population_size <= 0:
+            init_population_size = population_size
+        sampling = _sampling(problem, init_population_size)
+
         if not reference_directions:
             reference_directions = pm.RieszEnergyReferenceDirectionFactory(
                 problem.n_obj, population_size, seed=seed
             ).do()
 
         algorithm = _algorithm(
-            "nsga3", population_size, p_crossover, p_mutation, reference_directions
+            "nsga3",
+            population_size,
+            p_crossover,
+            p_mutation,
+            sampling,
+            reference_directions,
         )
 
         return self._optimise_epoch(

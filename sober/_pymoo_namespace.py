@@ -3,6 +3,7 @@ from pymoo.core.result import Result
 from pymoo.core.problem import Problem
 from pymoo.core.callback import Callback
 from pymoo.core.algorithm import Algorithm
+from pymoo.core.population import Population
 from pymoo.core.variable import Real, Integer
 from pymoo.core.termination import Termination
 from pymoo.operators.mutation.pm import PolynomialMutation

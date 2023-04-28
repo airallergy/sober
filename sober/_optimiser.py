@@ -7,13 +7,22 @@ from . import _pymoo_namespace as pm
 #######                      OPERATOR FUNCTIONS                       #######
 #############################################################################
 class Operators(TypedDict):
-    sampling: pm.MixedVariableSampling
+    sampling: pm.Population
     mating: pm.MixedVariableMating
     eliminate_duplicates: pm.MixedVariableDuplicateElimination
 
 
+def _sampling(problem: pm.Problem, init_population_size: int) -> pm.Population:
+    """samples the initial generation"""
+
+    return pm.MixedVariableSampling()(problem, init_population_size)
+
+
 def _operators(
-    algorithm_name: Literal["nsga2", "nsga3"], p_crossover: float, p_mutation: float
+    algorithm_name: Literal["nsga2", "nsga3"],
+    p_crossover: float,
+    p_mutation: float,
+    sampling: pm.Population,
 ) -> Operators:
     """a pymoo operators constructor"""
 
@@ -39,7 +48,7 @@ def _operators(
     )
 
     return {
-        "sampling": pm.MixedVariableSampling(),
+        "sampling": sampling,
         "mating": pm.MixedVariableMating(
             selection=selections[algorithm_name],
             crossover={
@@ -69,6 +78,7 @@ def _algorithm(
     population_size: int,
     p_crossover: float,
     p_mutation: float,
+    sampling: pm.Population,
 ) -> pm.Algorithm:
     ...
 
@@ -79,6 +89,7 @@ def _algorithm(
     population_size: int,
     p_crossover: float,
     p_mutation: float,
+    sampling: pm.Population,
     reference_directions: pm.ReferenceDirectionFactory,
 ) -> pm.Algorithm:
     ...
@@ -89,17 +100,19 @@ def _algorithm(
     population_size,
     p_crossover,
     p_mutation,
+    sampling,
     reference_directions=None,
 ) -> pm.Algorithm:
     """a pymoo algorithm constructor"""
 
     if algorithm_name == "nsga2":
         return pm.NSGA2(
-            population_size, **_operators(algorithm_name, p_crossover, p_mutation)
+            population_size,
+            **_operators(algorithm_name, p_crossover, p_mutation, sampling)
         )
     else:
         return pm.NSGA3(
             reference_directions,
             population_size,
-            **_operators(algorithm_name, p_crossover, p_mutation)
+            **_operators(algorithm_name, p_crossover, p_mutation, sampling)
         )
