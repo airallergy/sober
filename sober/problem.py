@@ -153,7 +153,7 @@ class Problem:
             if evaluation_directory is None
             else Path(evaluation_directory)
         )
-        self._config_directory = self._model_directory / (
+        self._config_directory = self._evaluation_directory / (
             "." + __package__.split(".")[-1]
         )
 
