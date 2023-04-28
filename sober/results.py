@@ -251,7 +251,6 @@ class _ResultsManager:
     _clean_patterns: frozenset[str]
     _objectives: tuple[str, ...]
     _constraints: tuple[str, ...]
-    _extras: tuple[_Collector, ...]
     _objective_idxs: tuple[int, ...]
     _constraint_idxs: tuple[int, ...]
     _to_objectives: tuple[AnyConverter, ...]

@@ -31,10 +31,10 @@ from ._typing import (
     AnyVUMat,
     AnyVURow,
     AnyStrPath,
-    AnyIntVURow,
     AnyModelType,
     AnyRealVURow,
     AnyVariationVec,
+    AnyIntegralVURow,
     AnyUncertaintyVec,
 )
 
@@ -49,9 +49,9 @@ class _Tagger(ABC):
     _tags: tuple[str, ...]
 
     @abstractmethod
-    def __init__(self, *uuid_descriptions: tuple[str, ...]) -> None:
+    def __init__(self, *feature_groups: tuple[str, ...]) -> None:
         self._tags = tuple(
-            _uuid(self.__class__.__name__, *item) for item in uuid_descriptions
+            _uuid(self.__class__.__name__, *item) for item in feature_groups
         )
 
     @abstractmethod
@@ -71,20 +71,20 @@ class _TextTagger(_Tagger):
         ...
 
 
-class _Parameter(ABC):
+class _Modifier(ABC):
     _low: float
     _high: float
     _idx: int
 
 
-class _ModelParameterMixin(ABC):
+class _ModelModifierMixin(ABC):
     _tagger: _Tagger
 
     @abstractmethod
     def __init__(self, tagger: _Tagger, *args, **kwargs) -> None:
         self._tagger = tagger
 
-        super().__init__(*args, **kwargs)  # NOTE: to _RealParameter/_IntParameter
+        super().__init__(*args, **kwargs)  # NOTE: to _RealModifier/_IntegralModifier
 
     @abstractmethod
     def _detagged(
@@ -93,14 +93,14 @@ class _ModelParameterMixin(ABC):
         ...
 
 
-class _RealParameter(_Parameter):
+class _RealModifier(_Modifier):
     @abstractmethod
     def __init__(self, low: float, high: float) -> None:
         self._low = low
         self._high = high
 
 
-class _IntParameter(_Parameter, Generic[_V, _U]):
+class _IntegralModifier(_Modifier, Generic[_V, _U]):
     _low: int
     _high: int
     _variations: tuple[_V, ...]
@@ -166,7 +166,7 @@ class _IntParameter(_Parameter, Generic[_V, _U]):
 #######                        TAGGER CLASSES                         #######
 #############################################################################
 class NoneTagger(_Tagger):
-    """Tagger for intermediate parameters, usually associated with FunctionalParameter."""
+    """Tagger for intermediate parameters, usually associated with FunctionalModifier."""
 
     def __init__(self) -> None:
         pass
@@ -250,7 +250,7 @@ class StringTagger(_TextTagger):
 #############################################################################
 #######                       PARAMETER CLASSES                       #######
 #############################################################################
-class WeatherParameter(_IntParameter[Path | str, Path]):
+class WeatherModifier(_IntegralModifier[Path | str, Path]):
     _variations: tuple[Path | str, ...]
     _uncertainties: tuple[tuple[Path, ...], ...]
 
@@ -274,7 +274,7 @@ class WeatherParameter(_IntParameter[Path | str, Path]):
             )
 
 
-class ContinuousParameter(_ModelParameterMixin, _RealParameter):
+class ContinuousModifier(_ModelModifierMixin, _RealModifier):
     def __init__(self, tagger: _Tagger, low: float, high: float) -> None:
         super().__init__(tagger, low, high)
 
@@ -293,7 +293,7 @@ class ContinuousParameter(_ModelParameterMixin, _RealParameter):
         return tagged_model
 
 
-class DiscreteParameter(_ModelParameterMixin, _IntParameter[float, float]):
+class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float, float]):
     _variations: tuple[float, ...]
     _uncertainties: tuple[tuple[float, ...], ...]
 
@@ -308,7 +308,7 @@ class DiscreteParameter(_ModelParameterMixin, _IntParameter[float, float]):
     def _detagged(
         self,
         tagged_model: str,
-        parameter_vu_row: AnyIntVURow,
+        parameter_vu_row: AnyIntegralVURow,
         task_parameter_vals: list[Any],
     ) -> str:
         val = self[parameter_vu_row]
@@ -320,7 +320,7 @@ class DiscreteParameter(_ModelParameterMixin, _IntParameter[float, float]):
         return tagged_model
 
 
-class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
+class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str, str]):
     _variations: tuple[str, ...]
     _uncertainties: tuple[tuple[str, ...], ...]
 
@@ -335,7 +335,7 @@ class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
     def _detagged(
         self,
         tagged_model: str,
-        parameter_vu_row: AnyIntVURow,
+        parameter_vu_row: AnyIntegralVURow,
         task_parameter_vals: list[Any],
     ) -> str:
         val = self[parameter_vu_row]
@@ -347,7 +347,7 @@ class CategoricalParameter(_ModelParameterMixin, _IntParameter[str, str]):
         return tagged_model
 
 
-class FunctionalParameter(_ModelParameterMixin, _IntParameter[_V, _U]):
+class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[_V, _U]):
     _func: Callable[..., _V | Iterable[_V]]
     _parameter_indices: tuple[int, ...]
     _args: tuple[str, ...]
@@ -385,7 +385,7 @@ class FunctionalParameter(_ModelParameterMixin, _IntParameter[_V, _U]):
     def _detagged(
         self,
         tagged_model: str,
-        parameter_vu_row: AnyIntVURow,
+        parameter_vu_row: AnyIntegralVURow,
         task_parameter_vals: list[Any],
     ) -> str:
         if self._is_scalar:
@@ -416,11 +416,11 @@ class FunctionalParameter(_ModelParameterMixin, _IntParameter[_V, _U]):
         return tagged_model
 
 
-AnyIntParameter: TypeAlias = (
-    DiscreteParameter | CategoricalParameter | FunctionalParameter
+AnyIntegralModifier: TypeAlias = (
+    DiscreteModifier | CategoricalModifier | FunctionalModifier
 )
-AnyParameter: TypeAlias = ContinuousParameter | AnyIntParameter
-Parameter = TypeVar("Parameter", AnyParameter, AnyIntParameter)
+AnyModifier: TypeAlias = ContinuousModifier | AnyIntegralModifier
+Modifier = TypeVar("Modifier", AnyModifier, AnyIntegralModifier)
 # this TypeVar definition is so to differ a parameter manager with mixed parameter types from one that only has integers
 
 #############################################################################
@@ -429,9 +429,9 @@ Parameter = TypeVar("Parameter", AnyParameter, AnyIntParameter)
 MODEL_TYPES: frozenset[AnyModelType] = frozenset({".idf", ".imf"})
 
 
-class _ParametersManager(Generic[Parameter]):
-    _weather: WeatherParameter
-    _parameters: tuple[Parameter, ...]
+class _ParametersManager(Generic[Modifier]):
+    _weather: WeatherModifier
+    _parameters: tuple[Modifier, ...]
     _model_type: AnyModelType
     _tagged_model: str
     _has_templates: bool
@@ -439,8 +439,8 @@ class _ParametersManager(Generic[Parameter]):
 
     def __init__(
         self,
-        weather: WeatherParameter,
-        parameters: Iterable[Parameter],
+        weather: WeatherModifier,
+        parameters: Iterable[Modifier],
         model_file: Path,
         has_templates: bool,
     ) -> None:
@@ -459,10 +459,10 @@ class _ParametersManager(Generic[Parameter]):
         self._tagged_model = self._tagged(model_file)
         self._has_templates = has_templates
         self._has_uncertainties = any(
-            item._is_uncertain for item in self if isinstance(item, _IntParameter)
+            item._is_uncertain for item in self if isinstance(item, _IntegralModifier)
         )
 
-    def __iter__(self) -> Iterator[WeatherParameter | Parameter]:
+    def __iter__(self) -> Iterator[WeatherModifier | Modifier]:
         for parameter in chain((self._weather,), self._parameters):
             yield parameter
 
@@ -517,7 +517,7 @@ class _ParametersManager(Generic[Parameter]):
                     range(self._weather._ns_uncertainty[weather_variation_idx]),
                     *(
                         (cast(float, val),)
-                        if isinstance(parameter, ContinuousParameter)
+                        if isinstance(parameter, ContinuousModifier)
                         else range(parameter._ns_uncertainty[cast(int, val)])
                         for val, parameter in zip(
                             parameter_variation_vals, self._parameters
@@ -545,7 +545,7 @@ class _ParametersManager(Generic[Parameter]):
         task_parameter_vals: list[Any],
     ) -> str:
         for parameter_vu_row, parameter in zip(parameter_vu_mat, self._parameters):
-            if isinstance(parameter, ContinuousParameter):
+            if isinstance(parameter, ContinuousModifier):
                 tagged_model = parameter._detagged(
                     tagged_model,
                     cast(AnyRealVURow, parameter_vu_row),  # NOTE: cast
@@ -554,7 +554,7 @@ class _ParametersManager(Generic[Parameter]):
             else:
                 tagged_model = parameter._detagged(
                     tagged_model,
-                    cast(AnyIntVURow, parameter_vu_row),  # NOTE: cast
+                    cast(AnyIntegralVURow, parameter_vu_row),  # NOTE: cast
                     task_parameter_vals,
                 )
         return tagged_model
@@ -626,7 +626,7 @@ class _ParametersManager(Generic[Parameter]):
                         self._weather[vu_mat[0][0]],
                         *(
                             val
-                            if isinstance(parameter, ContinuousParameter)
+                            if isinstance(parameter, ContinuousModifier)
                             else parameter[val]
                             for (val, _), parameter in zip(vu_mat[1:], self._parameters)  # type: ignore[has-type] # might be resolved after python/mypy#12280
                         ),
@@ -685,9 +685,9 @@ class _ParametersManager(Generic[Parameter]):
 
 
 def _all_int_parameters(
-    parameters_manager: _ParametersManager[AnyParameter],
-) -> TypeGuard[_ParametersManager[AnyIntParameter]]:
+    parameters_manager: _ParametersManager[AnyModifier],
+) -> TypeGuard[_ParametersManager[AnyIntegralModifier]]:
     return not any(
-        isinstance(parameter, ContinuousParameter)
+        isinstance(parameter, ContinuousModifier)
         for parameter in parameters_manager._parameters
     )

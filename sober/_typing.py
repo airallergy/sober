@@ -17,22 +17,22 @@ AnyLanguage: TypeAlias = Literal["python"]
 
 _S = TypeVar("_S", int, float)
 AnyVURow: TypeAlias = tuple[_S, _S]  # TODO: double check this for float params
-AnyIntVURow: TypeAlias = AnyVURow[int]
+AnyIntegralVURow: TypeAlias = AnyVURow[int]
 AnyRealVURow: TypeAlias = AnyVURow[float]
 AnyVariationMap: TypeAlias = dict[str, _S]
 AnyVariationVec: TypeAlias = tuple[int, Unpack[tuple[_S, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
 AnyUncertaintyVec: TypeAlias = tuple[int, Unpack[tuple[_S, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
 AnyVUMat: TypeAlias = tuple[
-    AnyIntVURow, Unpack[tuple[AnyVURow, ...]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
+    AnyIntegralVURow, Unpack[tuple[AnyVURow, ...]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
 ]
 AnyTask: TypeAlias = tuple[str, AnyVUMat]
 AnyJob: TypeAlias = tuple[str, tuple[AnyTask, ...]]
 ## TODO: the following may be generalised after python/mypy#12280 ##
-AnyIntVariationVec: TypeAlias = tuple[int, ...]
-AnyIntUncertaintyVec: TypeAlias = tuple[int, ...]
-AnyIntVUMat: TypeAlias = tuple[AnyIntVURow, ...]
-AnyIntTask: TypeAlias = tuple[str, AnyIntVUMat]
-AnyIntJob: TypeAlias = tuple[str, tuple[AnyIntTask, ...]]
+AnyIntegralVariationVec: TypeAlias = tuple[int, ...]
+AnyIntegralUncertaintyVec: TypeAlias = tuple[int, ...]
+AnyIntegralVUMat: TypeAlias = tuple[AnyIntegralVURow, ...]
+AnyIntegralTask: TypeAlias = tuple[str, AnyIntegralVUMat]
+AnyIntegralJob: TypeAlias = tuple[str, tuple[AnyIntegralTask, ...]]
 ####################################################################
 
 AnyUIDs: TypeAlias = tuple[str, ...]

@@ -15,9 +15,9 @@ from ._optimiser import _sampling, _algorithm
 from ._typing import AnyStrPath, AnyCallback, AnyVariationMap
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
-    AnyParameter,
-    WeatherParameter,
-    ContinuousParameter,
+    AnyModifier,
+    WeatherModifier,
+    ContinuousModifier,
     _ParametersManager,
     _all_int_parameters,
 )
@@ -54,8 +54,8 @@ class _PymooProblem(pm.Problem):
         variables = {
             f"x{idx:0{_natural_width(n_parameters)}}": (
                 pm.Real(bounds=(parameter._low, parameter._high))
-                if isinstance(parameter, ContinuousParameter)
-                else pm.Integer(bounds=(parameter._low, parameter._high))
+                if isinstance(parameter, ContinuousModifier)
+                else pm.Integral(bounds=(parameter._low, parameter._high))
             )
             for idx, parameter in enumerate(parameters_manager)
         }
@@ -112,7 +112,7 @@ class _PymooProblem(pm.Problem):
 class Problem:
     """defines the parametrics/optimisation problem"""
 
-    _parameters_manager: _ParametersManager[AnyParameter]
+    _parameters_manager: _ParametersManager[AnyModifier]
     _results_manager: _ResultsManager
     _model_directory: Path
     _evaluation_directory: Path
@@ -129,9 +129,9 @@ class Problem:
     def __init__(
         self,
         model_file: AnyStrPath,
-        weather: WeatherParameter,
+        weather: WeatherModifier,
         /,
-        parameters: Iterable[AnyParameter] = (),
+        parameters: Iterable[AnyModifier] = (),
         results: Iterable[_Collector] = (),
         *,
         evaluation_directory: AnyStrPath | None = None,  # empty string means cwd

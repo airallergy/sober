@@ -6,11 +6,11 @@ from .parameters import (
     NoneTagger,
     IndexTagger,
     StringTagger,
-    WeatherParameter,
-    DiscreteParameter,
-    ContinuousParameter,
-    FunctionalParameter,
-    CategoricalParameter,
+    WeatherModifier,
+    DiscreteModifier,
+    ContinuousModifier,
+    FunctionalModifier,
+    CategoricalModifier,
 )
 
 __all__ = (
@@ -24,9 +24,9 @@ __all__ = (
     "NoneTagger",
     "IndexTagger",
     "StringTagger",
-    "WeatherParameter",
-    "DiscreteParameter",
-    "ContinuousParameter",
-    "FunctionalParameter",
-    "CategoricalParameter",
+    "WeatherModifier",
+    "DiscreteModifier",
+    "ContinuousModifier",
+    "FunctionalModifier",
+    "CategoricalModifier",
 )

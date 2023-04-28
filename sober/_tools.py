@@ -28,10 +28,10 @@ def _natural_width(x: int) -> int:
     return int(log10(x)) + 1
 
 
-def _uuid(*descriptions: str) -> str:
+def _uuid(*feature_group: str) -> str:
     """an uuid generator"""
 
-    return str(uuid5(NAMESPACE_X500, "-".join(descriptions)))
+    return str(uuid5(NAMESPACE_X500, "-".join(feature_group)))
 
 
 def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:

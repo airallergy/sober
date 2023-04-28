@@ -53,13 +53,13 @@ def _operators(
             selection=selections[algorithm_name],
             crossover={
                 pm.Real: pm.SimulatedBinaryCrossover(**crossover_kwargs),
-                pm.Integer: pm.SimulatedBinaryCrossover(
+                pm.Integral: pm.SimulatedBinaryCrossover(
                     **crossover_kwargs, vtype=float, repair=pm.RoundingRepair()
                 ),
             },
             mutation={
                 pm.Real: pm.PolynomialMutation(**mutation_kwargs),
-                pm.Integer: pm.PolynomialMutation(
+                pm.Integral: pm.PolynomialMutation(
                     **mutation_kwargs, vtype=float, repair=pm.RoundingRepair()
                 ),
             },
