@@ -44,6 +44,7 @@ class _Collector(ABC):
     _direction: AnyDirection
     _bounds: AnyBounds
     _is_final: bool
+    _is_copied: bool
 
     @abstractmethod
     def __init__(
@@ -63,9 +64,10 @@ class _Collector(ABC):
         self._direction = direction
         self._bounds = bounds
         self._is_final = is_final
+        self._is_copied = False
 
     def _check_args(self) -> None:
-        if self._objectives:
+        if self._objectives and not self._is_copied:
             assert (
                 self._level == "job"
             ), f"a collector containing objectives needs to be at the 'job' level: {self._filename}."
@@ -73,7 +75,7 @@ class _Collector(ABC):
                 self._is_final == True
             ), f"a collector containing objectives needs to be final: {self._filename}."
 
-        if self._constraints:
+        if self._constraints and not self._is_copied:
             assert (
                 self._level == "job"
             ), f"a collector containing constraints needs to be at the 'job' level: {self._filename}."
@@ -281,8 +283,7 @@ class _ResultsManager:
                             item._bounds,
                         )
                     )
-                    item._objectives = ()
-                    item._constraints = ()
+                    item._is_copied = True
             results += tuple(auto_results)
 
         for item in results:
