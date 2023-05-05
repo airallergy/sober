@@ -3,7 +3,6 @@ from .results import RVICollector, ScriptCollector
 from ._pymoo_namespace import MaximumGenerationTermination
 from .config import config_script, config_parallel, config_energyplus
 from .parameters import (
-    NoneTagger,
     IndexTagger,
     StringTagger,
     WeatherModifier,
@@ -21,7 +20,6 @@ __all__ = (
     "config_script",
     "config_parallel",
     "config_energyplus",
-    "NoneTagger",
     "IndexTagger",
     "StringTagger",
     "WeatherModifier",

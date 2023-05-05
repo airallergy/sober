@@ -8,8 +8,10 @@ from ._typing import Config, AnyStrPath, AnyLanguage, AnyModelType
 #############################################################################
 #######                       GLOBAL CONSTANTS                        #######
 #############################################################################
-_TASK_RECORDS_FILENAME: str = "task_records.csv"
-_JOB_RECORDS_FILENAME: str = "job_records.csv"
+_RECORDS_FILENAMES: dict[str, str] = {
+    "task": "task_records.csv",
+    "job": "job_records.csv",
+}
 
 
 #############################################################################

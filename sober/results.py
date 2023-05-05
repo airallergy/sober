@@ -183,14 +183,14 @@ class RVICollector(_Collector):
 class ScriptCollector(_Collector):
     _script_file: Path
     _language: cf.AnyLanguage
-    _script_args: tuple[str, ...]
+    _extra_args: tuple[str, ...]
 
     def __init__(
         self,
         script_file: AnyStrPath,
         language: cf.AnyLanguage,
         filename: str,
-        script_args: str | Iterable[str] = (),
+        extra_args: str | Iterable[str] = (),
         level: AnyLevel = "task",
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
@@ -200,7 +200,7 @@ class ScriptCollector(_Collector):
     ) -> None:
         self._script_file = Path(script_file)
         self._language = language
-        self._script_args = _rectified_iterable_str(script_args)
+        self._extra_args = _rectified_iterable_str(extra_args)
         super().__init__(
             filename, level, objectives, constraints, direction, bounds, is_final
         )
@@ -212,7 +212,7 @@ class ScriptCollector(_Collector):
             cwd,
             self._filename,
             ",".join(self._objectives) + ";" + ",".join(self._constraints),
-            ",".join(self._script_args),
+            ",".join(self._extra_args),
         )
 
         _run(cmd_args, cwd)
@@ -253,8 +253,8 @@ class _ResultsManager:
     _clean_patterns: frozenset[str]
     _objectives: tuple[str, ...]
     _constraints: tuple[str, ...]
-    _objective_idxs: tuple[int, ...]
-    _constraint_idxs: tuple[int, ...]
+    _objective_indices: tuple[int, ...]
+    _constraint_indices: tuple[int, ...]
     _to_objectives: tuple[AnyConverter, ...]
     _to_constraints: tuple[AnyConverter, ...]
 
@@ -324,17 +324,15 @@ class _ResultsManager:
         self, level: AnyLevel, record_directory: Path, uids: tuple[str, ...]
     ) -> None:
         # only final results
-        with (
-            record_directory / getattr(cf, f"_{level.upper()}_RECORDS_FILENAME")
-        ).open("rt") as fp:
+        with (record_directory / cf._RECORDS_FILENAMES[level]).open("rt") as fp:
             reader = csv.reader(fp, dialect="excel")
 
             headers = ["#"] + next(reader)
             records = list(reader)
 
         if level == "job":
-            self._objective_idxs = ()
-            self._constraint_idxs = ()
+            self._objective_indices = ()
+            self._constraint_indices = ()
             self._to_objectives = ()
             self._to_constraints = ()
 
@@ -358,7 +356,7 @@ class _ResultsManager:
 
                         if level == "job":
                             if result._objectives:
-                                self._objective_idxs += tuple(
+                                self._objective_indices += tuple(
                                     begin_count + result_headers.index(item)
                                     for item in result._objectives
                                 )
@@ -366,7 +364,7 @@ class _ResultsManager:
                                     result._objectives
                                 )
                             if result._constraints:
-                                self._constraint_idxs += tuple(
+                                self._constraint_indices += tuple(
                                     begin_count + result_headers.index(item)
                                     for item in result._constraints
                                 )
@@ -386,9 +384,7 @@ class _ResultsManager:
                                 f"multiple result lines found in '{result._filename}', only the first collected."
                             )
 
-        with (
-            record_directory / getattr(cf, f"_{level.upper()}_RECORDS_FILENAME")
-        ).open("wt") as fp:
+        with (record_directory / cf._RECORDS_FILENAMES[level]).open("wt") as fp:
             writer = csv.writer(fp, dialect="excel")
 
             writer.writerow(headers)
@@ -420,7 +416,7 @@ class _ResultsManager:
             initializer=cf._update_config,
             initargs=(cf._config,),
         ) as p:
-            it = p._starmap(
+            scheduled = p._starmap(
                 self._collect_job,
                 (
                     (
@@ -431,7 +427,7 @@ class _ResultsManager:
                 ),
             )
 
-            for (job_uid, _), _ in zip(jobs, it):
+            for (job_uid, _), _ in zip(jobs, scheduled, strict=True):
                 _log(batch_directory, f"collected {job_uid}")
 
         self._record("job", batch_directory, tuple(job_uid for job_uid, _ in jobs))
@@ -458,17 +454,17 @@ class _ResultsManager:
             pairs = tuple(
                 (job_uid, task_uid) for job_uid, tasks in jobs for task_uid, _ in tasks
             )
-            it = p._map(
+            scheduled = p._map(
                 self._clean_task,
                 (batch_directory / job_uid / task_uid for job_uid, task_uid in pairs),
             )
 
-            for pair, _ in zip(pairs, it):
+            for pair, _ in zip(pairs, scheduled, strict=True):
                 _log(batch_directory, f"cleaned {'-'.join(pair)}")
 
     @cache
     def _recorded_batch(self, batch_directory: Path) -> tuple[list[str], ...]:
-        with (batch_directory / cf._JOB_RECORDS_FILENAME).open("rt") as fp:
+        with (batch_directory / cf._RECORDS_FILENAMES["job"]).open("rt") as fp:
             reader = csv.reader(fp, dialect="excel")
 
             next(reader)
@@ -478,7 +474,9 @@ class _ResultsManager:
         return tuple(
             tuple(
                 func(float(job_vals[idx]))
-                for idx, func in zip(self._objective_idxs, self._to_objectives)
+                for idx, func in zip(
+                    self._objective_indices, self._to_objectives, strict=True
+                )
             )
             for job_vals in self._recorded_batch(batch_directory)
         )
@@ -487,7 +485,9 @@ class _ResultsManager:
         return tuple(
             tuple(
                 func(float(job_vals[idx]))
-                for idx, func in zip(self._constraint_idxs, self._to_constraints)
+                for idx, func in zip(
+                    self._constraint_indices, self._to_constraints, strict=True
+                )
             )
             for job_vals in self._recorded_batch(batch_directory)
         )

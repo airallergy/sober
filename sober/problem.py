@@ -15,8 +15,8 @@ from ._optimiser import _sampling, _algorithm
 from ._typing import AnyStrPath, AnyCallback, AnyVariationMap
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
-    AnyModifier,
     WeatherModifier,
+    AnyModelModifier,
     ContinuousModifier,
     _ParametersManager,
     _all_int_parameters,
@@ -46,18 +46,14 @@ class _PymooProblem(pm.Problem):
         saves_batches: bool,
         expected_max_n_generations: int,
     ) -> None:
-        n_parameters = len(parameters_manager)
-
         # pymoo0.6 asks for a map from parameter uids to pymoo variable types
-        # TODO: label parameters and results internally
-        #       and allow user-defined
         variables = {
-            f"x{idx:0{_natural_width(n_parameters)}}": (
+            parameter._label: (
                 pm.Real(bounds=(parameter._low, parameter._high))
                 if isinstance(parameter, ContinuousModifier)
                 else pm.Integral(bounds=(parameter._low, parameter._high))
             )
-            for idx, parameter in enumerate(parameters_manager)
+            for parameter in parameters_manager
         }
 
         super().__init__(
@@ -112,7 +108,7 @@ class _PymooProblem(pm.Problem):
 class Problem:
     """defines the parametrics/optimisation problem"""
 
-    _parameters_manager: _ParametersManager[AnyModifier]
+    _parameters_manager: _ParametersManager[AnyModelModifier]
     _results_manager: _ResultsManager
     _model_directory: Path
     _evaluation_directory: Path
@@ -131,7 +127,7 @@ class Problem:
         model_file: AnyStrPath,
         weather: WeatherModifier,
         /,
-        parameters: Iterable[AnyModifier] = (),
+        parameters: Iterable[AnyModelModifier] = (),
         results: Iterable[_Collector] = (),
         *,
         evaluation_directory: AnyStrPath | None = None,  # empty string means cwd

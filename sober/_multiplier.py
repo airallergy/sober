@@ -9,7 +9,7 @@ import numpy as np
 
 from ._evaluator import _evaluate
 from .results import _ResultsManager
-from .parameters import AnyIntegralModifier, _ParametersManager
+from .parameters import AnyIntegralModelModifier, _ParametersManager
 
 _T = TypeVar("_T")
 
@@ -65,7 +65,7 @@ class _LazyCartesianProduct(Generic[_T]):
 
 
 def _multiply(
-    parameters_manager: _ParametersManager[AnyIntegralModifier],
+    parameters_manager: _ParametersManager[AnyIntegralModelModifier],
     results_manager: _ResultsManager,
     evaluation_directory: Path,
     sample_size: int,
