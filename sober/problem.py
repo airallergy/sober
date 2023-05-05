@@ -46,7 +46,7 @@ class _PymooProblem(pm.Problem):
         saves_batches: bool,
         expected_max_n_generations: int,
     ) -> None:
-        # pymoo0.6 asks for a map from parameter uids to pymoo variable types
+        # NOTE: pymoo0.6 asks for a map from parameter uids to pymoo variable types
         variables = {
             parameter._label: (
                 pm.Real(bounds=(parameter._low, parameter._high))
@@ -76,18 +76,20 @@ class _PymooProblem(pm.Problem):
         algorithm: pm.Algorithm,
         **kwargs,
     ) -> None:
-        # in pymoo0.6
-        #     n_gen follows 1, 2, 3, ...
-        #     x is a list of dicts, each dict is a candidate, whose keys are param uids
-        #     out has to be a dict of numpy arrays
+        # NOTE: in pymoo0.6
+        #           n_gen follows 1, 2, 3, ...
+        #           x is a list of dicts, each dict is a candidate
+        #               whose keys are parameter labels
+        #                     values are variation vectors
+        #           out has to be a dict of numpy arrays
 
         batch_idx = algorithm.n_gen - 1
         batch_uid = f"B{batch_idx:0{self._batch_idx_width}}"
 
-        candidates = tuple(tuple(item.values()) for item in x)
+        variation_vecs = tuple(tuple(item.values()) for item in x)
 
         objectives, constraints = _pymoo_evaluate(
-            *candidates,  # type:ignore[arg-type] # python/mypy#12280
+            *variation_vecs,  # type:ignore[arg-type] # python/mypy#12280
             parameters_manager=self._parameters_manager,
             results_manager=self._results_manager,
             batch_directory=self._evaluation_directory / batch_uid,
@@ -265,19 +267,19 @@ class Problem:
                     )
                 )
 
-                # in pymoo0.6
-                # algorithm.n_gen will increase by one at the end of optimisation
-                # at least when using a MaximumGenerationTermination
+                # NOTE: in pymoo0.6
+                #           algorithm.n_gen will increase by one at the end of optimisation
+                #           at least when using a MaximumGenerationTermination
                 if algorithm.n_gen and (
                     algorithm.n_gen - 1 >= current_termination.n_max_gen
                 ):
                     # this should only be invoked by resume
                     continue
 
-                # in pymoo0.6
-                # algorithm.setup() is only triggered when algorithm.problem is None
-                # but seed will be reset too
-                # manually change algorithm.termination to avoid resetting seed
+                # NOTE: in pymoo0.6
+                #           algorithm.setup() is only triggered when algorithm.problem is None
+                #           but seed will be reset too
+                #           manually change algorithm.termination to avoid resetting seed
                 algorithm.termination = current_termination
 
                 result = pm.minimize(

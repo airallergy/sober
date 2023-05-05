@@ -38,11 +38,11 @@ def _operators(
 
     crossover_kwargs = dict(prob=p_crossover, eta=etas[algorithm_name]["crossover"])
 
-    # in pymoo0.6 mutation,
-    # prob (0.5) -> prob_var, controlling mutation for each gene/variable
-    # prob controls the whole mutation operation
-    # see https://github.com/anyoptimization/pymoo/discussions/360
-    # though the answer is not entirely correct
+    # NOTE: in pymoo0.6 mutation
+    #           prob (0.5) -> prob_var, controlling mutation for each gene/variable
+    #           prob controls the whole mutation operation
+    #           see https://github.com/anyoptimization/pymoo/discussions/360
+    #           though the answer is not entirely correct
     mutation_kwargs = dict(
         prob=1.0, prob_var=p_mutation, eta=etas[algorithm_name]["mutation"]
     )

@@ -74,8 +74,8 @@ def _multiply(
     """populates parametrics by subsetting the full search space"""
 
     ns_variations = tuple(parameter._n_variations for parameter in parameters_manager)
-    full_search_space = _LazyCartesianProduct(*map(range, ns_variations))
-    n_products = full_search_space._n_products
+    search_space = _LazyCartesianProduct(*map(range, ns_variations))
+    n_products = search_space._n_products
 
     rng = np.random.default_rng(seed)
 
@@ -88,7 +88,7 @@ def _multiply(
             )
 
         sample_idxs = tuple(range(n_products))
-        search_space = full_search_space[sample_idxs]
+        variation_vecs = search_space[sample_idxs]
     elif sample_size == 0:
         # test each variation with fewest simulations
 
@@ -101,17 +101,17 @@ def _multiply(
             tuple(np.resize(row, max_n_variations) for row in permuted), dtype=np.int_
         )
 
-        search_space = tuple(tuple(map(int, row)) for row in filled.T)
+        variation_vecs = tuple(tuple(map(int, row)) for row in filled.T)
     else:
         # proper subset
 
         sample_idxs_ = rng.choice(n_products, sample_size, replace=False)
         sample_idxs_.sort()
         sample_idxs = tuple(map(int, sample_idxs_))
-        search_space = full_search_space[sample_idxs]
+        variation_vecs = search_space[sample_idxs]
 
     _evaluate(
-        *search_space,
+        *variation_vecs,
         parameters_manager=parameters_manager,
         results_manager=results_manager,
         batch_directory=evaluation_directory,
