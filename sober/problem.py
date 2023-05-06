@@ -71,7 +71,7 @@ class _PymooProblem(pm.Problem):
     def _evaluate(
         self,
         x: tuple[AnyVariationMap, ...],
-        out,  # TODO: typing
+        out: dict[str, None | np.ndarray],  # pymoo0.6 passes in {"F": None, "G": None}
         *args,
         algorithm: pm.Algorithm,
         **kwargs,
@@ -96,7 +96,8 @@ class _PymooProblem(pm.Problem):
         )
 
         out["F"] = np.asarray(objectives, dtype=np.float_)
-        out["G"] = np.asarray(constraints, dtype=np.float_)
+        if self._results_manager._constraints:
+            out["G"] = np.asarray(constraints, dtype=np.float_)
 
         if not self._saves_batches:
             rmtree(self._evaluation_directory / batch_uid)
