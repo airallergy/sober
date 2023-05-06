@@ -221,7 +221,7 @@ class Problem:
         expected_max_n_generations: int,
     ) -> _PymooProblem:
         if not len(self._results_manager._objectives):
-            raise ValueError("optimisation needs at least one objective")
+            raise ValueError("optimisation needs at least one objective.")
 
         return _PymooProblem(
             self._parameters_manager,

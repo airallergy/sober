@@ -42,27 +42,26 @@ def _check_config(
 ) -> None:
     """checks the configuration sufficiency"""
 
-    if model_type == ".imf":
-        assert (
-            "exec.epmacro" in _config
-        ), f"a macro model is input, but the epmacro executable is not configured: {_config}."
+    if model_type == ".imf" and ("exec.epmacro" not in _config):
+        raise ValueError(
+            f"a macro model is input, but the epmacro executable is not configured: {_config}."
+        )
 
-    if has_templates:
-        assert (
-            "exec.expandobjects" in _config
-        ), f"hvac templates are used, but the expandobjects executable is not configured: {_config}."
+    if has_templates and ("exec.expandobjects" not in _config):
+        raise ValueError(
+            f"hvac templates are used, but the expandobjects executable is not configured: {_config}."
+        )
 
-    if uses_rvi:
-        assert (
-            "exec.readvars" in _config
-        ), f"an RVICollector is used, but the readvars executable is not configured: {_config}."
+    if uses_rvi and ("exec.readvars" not in _config):
+        raise ValueError(
+            f"an RVICollector is used, but the readvars executable is not configured: {_config}."
+        )
 
-    # TODO: potential revision after PEP 675/3.11, python/mypy#12554
-    assert set(("python",)) >= used_languages
-    if "python" in used_languages:
-        assert (
-            "exec.python" in _config
-        ), f"an ScriptCollector of {'python'} is used, but the {'python'} executable is not configured: {_config}."
+    for language in used_languages:
+        if "exec." + language not in _config:
+            raise ValueError(
+                f"an ScriptCollector of {language} is used, but the {language} executable is not configured: {_config}."
+            )
 
 
 def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:

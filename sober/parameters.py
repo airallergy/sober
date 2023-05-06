@@ -61,15 +61,16 @@ class _Tagger(ABC, Generic[_T]):
         ...
 
     def _detagged(self, tagged_model: str, *values: _T) -> str:
-        assert len(values)
-
-        if len(values) == 1:
-            value = values[0]
-            for tag in self._tags:
-                tagged_model = tagged_model.replace(tag, str(value))
-        else:
-            for tag, value in zip(self._tags, values, strict=True):
-                tagged_model = tagged_model.replace(tag, str(value))
+        match len(values):
+            case 0:
+                raise ValueError("no values for detagging.")
+            case 1:
+                value = values[0]
+                for tag in self._tags:
+                    tagged_model = tagged_model.replace(tag, str(value))
+            case _:
+                for tag, value in zip(self._tags, values, strict=True):
+                    tagged_model = tagged_model.replace(tag, str(value))
 
         return tagged_model
 

@@ -67,35 +67,38 @@ class _Collector(ABC):
 
     def _check_args(self) -> None:
         if self._objectives:
-            if not self._is_copied:
-                assert (
-                    self._level == "job"
-                ), f"a collector containing objectives needs to be at the 'job' level: {self._filename}."
+            if (self._level != "job") and (not self._is_copied):
+                raise ValueError(
+                    f"a collector containing objectives needs to be at the 'job' level: {self._filename}."
+                )
 
-            assert (
-                self._is_final == True
-            ), f"a collector containing objectives needs to be final: {self._filename}."
+            if not self._is_final:
+                raise ValueError(
+                    f"a collector containing objectives needs to be final: {self._filename}."
+                )
 
         if self._constraints:
-            if not self._is_copied:
-                assert (
-                    self._level == "job"
-                ), f"a collector containing constraints needs to be at the 'job' level: {self._filename}."
+            if (self._level != "job") and (not self._is_copied):
+                raise ValueError(
+                    f"a collector containing constraints needs to be at the 'job' level: {self._filename}."
+                )
 
-            assert (
-                self._is_final == True
-            ), f"a collector containing constraints needs to be final: {self._filename}."
+            if not self._is_final:
+                raise ValueError(
+                    f"a collector containing constraints needs to be final: {self._filename}."
+                )
 
-            if self._bounds[0] and self._bounds[1]:
-                # TODO: add support for equality after pymoo 0.60
-                assert (
-                    self._bounds[0] < self._bounds[1]
-                ), f"the lower bound should be less than the upper bound for constraints: {self._filename}."
+            if (self._bounds[0] and self._bounds[1]) and (
+                self._bounds[0] >= self._bounds[1]
+            ):
+                raise ValueError(
+                    f"the lower bound should be less than the upper bound for constraints: {self._filename}."
+                )
 
-        if self._is_final:
-            assert (
-                self._filename.split(".")[-1] == "csv"
-            ), f"a final result needs to be a csv file: {self._filename}."
+        if self._is_final and (self._filename.split(".")[-1] != "csv"):
+            raise ValueError(
+                f"a final result needs to be a csv file: {self._filename}."
+            )
 
     @abstractmethod
     def _collect(self, cwd: Path) -> None:
@@ -120,7 +123,7 @@ class _Collector(ABC):
                 # ==> abs(2 < value - (upper + lower) / 2) <= (upper - lower) / 2
                 return abs(value - (upper + lower) / 2) - (upper - lower) / 2
             case _:
-                raise ValueError(f"bounds not recognised: {self._filename}")
+                raise ValueError(f"bounds not recognised: {self._bounds}.")
 
 
 #############################################################################
@@ -164,12 +167,12 @@ class RVICollector(_Collector):
     def _check_args(self) -> None:
         super()._check_args()
 
-        assert (
-            self._filename.split(".")[-1] == "csv"
-        ), f"a RVICollector result needs to be a csv file: {self._filename}."
-        assert (
-            self._level == "task"
-        ), f"a RVICollector result needs to be on the task level."
+        if self._filename.split(".")[-1] != "csv":
+            raise ValueError(
+                f"a RVICollector result needs to be a csv file: {self._filename}."
+            )
+        if self._level != "task":
+            raise ValueError(f"a RVICollector result needs to be on the task level.")
 
     def _touch(self, config_directory: Path) -> None:
         rvi_str = f"eplusout.{self.SUFFIXES[self._output_type]}\n{self._filename}\n"
