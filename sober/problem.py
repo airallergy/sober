@@ -86,7 +86,9 @@ class _PymooProblem(pm.Problem):
         batch_idx = algorithm.n_gen - 1
         batch_uid = f"B{batch_idx:0{self._batch_idx_width}}"
 
-        variation_vecs = tuple(tuple(item.values()) for item in x)
+        variation_vecs = tuple(
+            tuple(value.item() for value in item.values()) for item in x
+        )
 
         objectives, constraints = _pymoo_evaluate(
             *variation_vecs,  # type:ignore[arg-type] # python/mypy#12280
