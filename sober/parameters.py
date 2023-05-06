@@ -7,10 +7,10 @@ from itertools import chain, product
 from collections.abc import Callable, Iterable, Iterator
 from typing import (
     Any,
+    Final,
     Generic,
     Literal,
     TypeVar,
-    ClassVar,
     TypeAlias,
     TypeGuard,
     cast,
@@ -29,7 +29,6 @@ from ._typing import (
     AnyJob,
     AnyTask,
     AnyVUMat,
-    AnyVURow,
     AnyStrPath,
     AnyModelType,
     AnyRealVURow,
@@ -101,8 +100,6 @@ class _Modifier(ABC):
     _is_uncertain: bool
 
     def _check_args(self) -> None:
-        # this is only used by FunctionalModifier for now
-
         pass
 
     @abstractmethod
@@ -219,7 +216,7 @@ class IndexTagger(_IDFTagger):
 
     _index_trios: tuple[tuple[str, str, str], ...]
 
-    def __init__(self, *index_trios: Iterable[str]) -> None:
+    def __init__(self, /, *index_trios: Iterable[str]) -> None:
         _index_trios = tuple(tuple(item) for item in index_trios)  # mypy bug with map
 
         if any(len(item) != 3 for item in _index_trios):
@@ -253,7 +250,7 @@ class StringTagger(_TextTagger):
 
     _string_trios: tuple[tuple[str, str, str], ...]
 
-    def __init__(self, *string_trios: Iterable[str]) -> None:
+    def __init__(self, /, *string_trios: Iterable[str]) -> None:
         _string_trios = tuple(tuple(item) for item in string_trios)  # mypy bug with map
 
         if any(len(item) == 0 for item in _string_trios):
@@ -300,16 +297,16 @@ class WeatherModifier(_IntegralModifier[Path | str, Path]):
     _uncertainties: tuple[tuple[Path, ...], ...]
 
     @overload
-    def __init__(self, variations: Iterable[AnyStrPath]) -> None:
+    def __init__(self, variations: Iterable[AnyStrPath], /) -> None:
         ...
 
     @overload
     def __init__(
-        self, variations: Iterable[str], *uncertainties: Iterable[AnyStrPath]
+        self, variations: Iterable[str], /, *uncertainties: Iterable[AnyStrPath]
     ) -> None:
         ...
 
-    def __init__(self, variations, *uncertainties):
+    def __init__(self, variations, /, *uncertainties):
         super().__init__(variations, *uncertainties)
 
         # resolve weather file paths
@@ -331,7 +328,7 @@ class WeatherModifier(_IntegralModifier[Path | str, Path]):
 class ContinuousModifier(_ModelModifierMixin[float], _RealModifier):
     """modifies continuous parameters"""
 
-    def __init__(self, tagger: _Tagger, low: float, high: float) -> None:
+    def __init__(self, tagger: _Tagger, low: float, high: float, /) -> None:
         # TODO: uncertainty of continuous parameters
         super().__init__(tagger, low, high)
 
@@ -352,6 +349,7 @@ class DiscreteModifier(_ModelModifierMixin[float], _IntegralModifier[float, floa
         self,
         tagger: _Tagger,
         variations: Iterable[float],
+        /,
         *uncertainties: Iterable[float],
     ) -> None:
         super().__init__(tagger, variations, *uncertainties)
@@ -373,6 +371,7 @@ class CategoricalModifier(_ModelModifierMixin[str], _IntegralModifier[str, str])
         self,
         tagger: _Tagger,
         variations: Iterable[str],
+        /,
         *uncertainties: Iterable[str],
     ) -> None:
         super().__init__(tagger, variations, *uncertainties)
@@ -389,7 +388,7 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
 
     _func: Callable[..., _V | Iterable[_V]]
     _parameter_indices: tuple[int, ...]
-    _extra_args: tuple[str, ...]
+    _extra_args: tuple[Any, ...]
     _is_scalar: bool
 
     @overload
@@ -398,6 +397,7 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         tagger: _Tagger,
         func: Callable[..., _V],
         parameter_indices: Iterable[int],
+        /,
         *extra_args: Any,
         is_scalar: Literal[True],
     ) -> None:
@@ -409,13 +409,14 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         tagger: _Tagger,
         func: Callable[..., Iterable[_V]],
         parameter_indices: Iterable[int],
+        /,
         *extra_args: Any,
         is_scalar: Literal[False],
     ) -> None:
         ...
 
     def __init__(
-        self, tagger, func, parameter_indices, *extra_args, is_scalar=True
+        self, tagger, func, parameter_indices, /, *extra_args, is_scalar=True
     ) -> None:
         super().__init__(tagger, (1,), *())
         self._func = func
@@ -424,6 +425,8 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         self._is_scalar = is_scalar
 
     def _check_args(self) -> None:
+        super()._check_args()
+
         if any(item >= self._index for item in self._parameter_indices):
             raise ValueError(
                 f"only previous parameters can be referred to: {self._index}, {self._parameter_indices}."
@@ -463,7 +466,7 @@ ModelModifier = TypeVar("ModelModifier", AnyModelModifier, AnyIntegralModelModif
 class _ParametersManager(Generic[ModelModifier]):
     """manages parameters modification"""
 
-    MODEL_TYPES: ClassVar[frozenset[AnyModelType]] = frozenset({".idf", ".imf"})
+    MODEL_TYPES: Final = frozenset({".idf", ".imf"})
 
     _weather: WeatherModifier
     _parameters: tuple[ModelModifier, ...]
@@ -503,17 +506,17 @@ class _ParametersManager(Generic[ModelModifier]):
 
         self._check_args()
 
-    def _check_args(self) -> None:
-        # check each parameter
-        for parameter in self:
-            parameter._check_args()
-
     def __iter__(self) -> Iterator[WeatherModifier | ModelModifier]:
         for parameter in chain((self._weather,), self._parameters):
             yield parameter
 
     def __len__(self) -> int:
         return 1 + len(self._parameters)
+
+    def _check_args(self) -> None:
+        # check each parameter
+        for parameter in self:
+            parameter._check_args()
 
     def _tagged(self, model_file: Path) -> str:
         # read the model file as str
@@ -742,6 +745,8 @@ class _ParametersManager(Generic[ModelModifier]):
 def _all_int_parameters(
     parameters_manager: _ParametersManager[AnyModelModifier],
 ) -> TypeGuard[_ParametersManager[AnyIntegralModelModifier]]:
+    """checks if all integral modifiers"""
+
     return not any(
         isinstance(parameter, ContinuousModifier)
         for parameter in parameters_manager._parameters

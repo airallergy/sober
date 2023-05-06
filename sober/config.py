@@ -57,7 +57,7 @@ def _check_config(
             "exec.readvars" in _config
         ), f"an RVICollector is used, but the readvars executable is not configured: {_config}."
 
-    # TODO: potential revision after PEP 675/3.11
+    # TODO: potential revision after PEP 675/3.11, python/mypy#12554
     assert set(("python",)) >= used_languages
     if "python" in used_languages:
         assert (

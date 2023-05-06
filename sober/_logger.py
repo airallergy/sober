@@ -5,7 +5,7 @@ from platform import node
 from inspect import currentframe
 from functools import wraps, reduce
 from collections.abc import Callable
-from typing import Any, Literal, TypeVar, ClassVar
+from typing import Any, Final, Literal, TypeVar
 from contextlib import ContextDecorator, AbstractContextManager
 
 from . import config as cf
@@ -54,10 +54,10 @@ class _Formatter(logging.Formatter):
     currently DEBUG means stdout/stderr
               INFO means high-level progress"""
 
-    _FMT_DEFAULT: ClassVar[
-        str
-    ] = f"%(asctime)s {HOST_STEM} %(caller_name)s[%(process)d]: %(message)s"
-    _FMT_DEBUG: ClassVar[str] = "%(message)s"
+    _FMT_DEFAULT: Final = (
+        f"%(asctime)s {HOST_STEM} %(caller_name)s[%(process)d]: %(message)s"
+    )
+    _FMT_DEBUG: Final = "%(message)s"
 
     def __init__(self, fmt: str = _FMT_DEFAULT) -> None:
         super().__init__(fmt, datefmt="%c", style="%")

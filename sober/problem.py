@@ -134,7 +134,7 @@ class Problem:
         *,
         evaluation_directory: AnyStrPath | None = None,  # empty string means cwd
         has_templates: bool = False,
-        clean_patterns: Iterable[str] = _ResultsManager._DEFAULT_CLEAN_PATTERNS,
+        clean_patterns: str | Iterable[str] = _ResultsManager._DEFAULT_CLEAN_PATTERNS,
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
     ) -> None:
