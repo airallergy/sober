@@ -613,14 +613,12 @@ class _ParametersManager(Generic[ModelModifier]):
         self,
         level: Literal["task", "job"],
         record_directory: Path,
-        rows: list[list[Any]],
+        record_rows: list[list[Any]],
     ) -> None:
         header_row = (
             f"{level.capitalize()}UID",
             *(parameter._label for parameter in self),
         )
-
-        record_rows = (map(str, row) for row in rows)
 
         # write records
         _write_records(
@@ -671,14 +669,14 @@ class _ParametersManager(Generic[ModelModifier]):
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_job(self, job_directory: Path, tasks: tuple[AnyTask, ...]) -> list[Any]:
         # record tasks parameter values
-        task_rows = []
+        task_record_rows = []
         for task_uid, vu_mat in tasks:
             task_parameter_values = self._make_task(job_directory / task_uid, vu_mat)
-            task_rows.append([task_uid] + task_parameter_values)
+            task_record_rows.append([task_uid] + task_parameter_values)
 
             _log(job_directory, f"made {task_uid}")
 
-        self._record_final("task", job_directory, task_rows)
+        self._record_final("task", job_directory, task_record_rows)
 
         _log(job_directory, "recorded parameters")
 
@@ -706,14 +704,14 @@ class _ParametersManager(Generic[ModelModifier]):
                 ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
             )
 
-            job_rows = []
+            job_record_rows = []
             for (job_uid, _), job_parameter_values in zip(jobs, scheduled, strict=True):
-                job_rows.append([job_uid] + job_parameter_values)
+                job_record_rows.append([job_uid] + job_parameter_values)
 
                 _log(batch_directory, f"made {job_uid}")
 
         # record job parameter values
-        self._record_final("job", batch_directory, job_rows)
+        self._record_final("job", batch_directory, job_record_rows)
 
         _log(batch_directory, "recorded parameters")
 
