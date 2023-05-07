@@ -45,6 +45,17 @@ class _Collector(ABC):
     _is_final: bool
     _is_copied: bool
 
+    __slots__ = (
+        "_filename",
+        "_level",
+        "_objectives",
+        "_constraints",
+        "_direction",
+        "_bounds",
+        "_is_final",
+        "_is_copied",
+    )
+
     @abstractmethod
     def __init__(
         self,
@@ -136,8 +147,11 @@ class RVICollector(_Collector):
 
     _output_names: tuple[str, ...]
     _output_type: AnyOutputType
-    _rvi_file: Path
+    _keys: tuple[str, ...]
     _frequency: str
+    _rvi_file: Path
+
+    __slots__ = ("_output_names", "_output_type", "_keys", "_frequency", "_rvi_file")
 
     def __init__(
         self,
@@ -210,6 +224,8 @@ class ScriptCollector(_Collector):
     _script_file: Path
     _language: cf.AnyLanguage
     _extra_args: tuple[str, ...]
+
+    __slots__ = ("_script_file", "_language", "_extra_args")
 
     def __init__(
         self,
@@ -294,6 +310,18 @@ class _ResultsManager:
     _constraint_indices: tuple[int, ...]
     _to_objectives: tuple[AnyConverter, ...]
     _to_constraints: tuple[AnyConverter, ...]
+
+    __slots__ = (
+        "_task_results",
+        "_job_results",
+        "_clean_patterns",
+        "_objectives",
+        "_constraints",
+        "_objective_indices",
+        "_constraint_indices",
+        "_to_objectives",
+        "_to_constraints",
+    )
 
     def __init__(
         self,

@@ -39,8 +39,6 @@ class _PymooProblem(pm.Problem):
     _saves_batches: bool
     _batch_idx_width: int
 
-    # NOTE: adding __slots__ somehow breaks the checkpoint function
-
     def __init__(
         self,
         parameters_manager: _ParametersManager,
