@@ -1,11 +1,9 @@
 from os import PathLike
-from collections.abc import Callable
 from typing import Literal, TypeVar, Protocol, TypeAlias
 
+import numpy as np
 from typing_extensions import Required, TypedDict
 from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
-
-from . import _pymoo_namespace as pm
 
 # TODO: Refactor this module, along with typing in other modules after 3.11
 
@@ -19,7 +17,7 @@ _S = TypeVar("_S", int, float)
 AnyVURow: TypeAlias = tuple[_S, _S]  # TODO: double check this for float params
 AnyIntegralVURow: TypeAlias = AnyVURow[int]
 AnyRealVURow: TypeAlias = AnyVURow[float]
-AnyVariationMap: TypeAlias = dict[str, _S]
+AnyVariationMap: TypeAlias = dict[str, np.integer | np.floating]
 AnyVariationVec: TypeAlias = tuple[int, Unpack[tuple[_S, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
 AnyUncertaintyVec: TypeAlias = tuple[int, Unpack[tuple[_S, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
 AnyVUMat: TypeAlias = tuple[
@@ -52,8 +50,6 @@ Config = TypedDict(
     },
     total=False,
 )
-
-AnyCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
 
 
 class SubprocessResult(Protocol):

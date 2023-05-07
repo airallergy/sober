@@ -1,18 +1,20 @@
 import pickle
 from pathlib import Path
 from shutil import rmtree
-from collections.abc import Iterable
+from itertools import chain
+from typing import Literal, TypeAlias
+from collections.abc import Callable, Iterable
 
 import numpy as np
 
 from . import config as cf
 from ._multiplier import _multiply
-from ._tools import _natural_width
 from . import _pymoo_namespace as pm
 from ._evaluator import _pymoo_evaluate
 from ._logger import _log, _LoggerManager
-from ._optimiser import _sampling, _algorithm
-from ._typing import AnyStrPath, AnyCallback, AnyVariationMap
+from ._typing import AnyStrPath, AnyVariationMap
+from ._tools import _natural_width, _write_records
+from ._optimiser import _sampling, _survival, _algorithm
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
     WeatherModifier,
@@ -21,6 +23,8 @@ from .parameters import (
     _ParametersManager,
     _all_int_parameters,
 )
+
+AnyCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
 
 
 #############################################################################
@@ -87,7 +91,8 @@ class _PymooProblem(pm.Problem):
         batch_uid = f"B{batch_idx:0{self._batch_idx_width}}"
 
         variation_vecs = tuple(
-            tuple(value.item() for value in item.values()) for item in x
+            tuple(variation.item() for variation in variation_map.values())
+            for variation_map in x
         )
 
         objectives, constraints = _pymoo_evaluate(
@@ -135,7 +140,7 @@ class Problem:
         parameters: Iterable[AnyModelModifier] = (),
         results: Iterable[_Collector] = (),
         *,
-        evaluation_directory: AnyStrPath | None = None,  # empty string means cwd
+        evaluation_directory: AnyStrPath | None = None,
         has_templates: bool = False,
         clean_patterns: str | Iterable[str] = _ResultsManager._DEFAULT_CLEAN_PATTERNS,
         n_processes: int | None = None,
@@ -235,10 +240,70 @@ class Problem:
             expected_max_n_generations,
         )
 
+    def _record_survival(
+        self, level: Literal["batch"], record_directory: Path, result: pm.Result
+    ) -> None:
+        # get evaluated individuals
+        if result.algorithm.save_history:
+            # from all generations
+            _individuals = tuple(
+                chain.from_iterable(item.pop for item in result.history)
+            )
+        else:
+            # from the last generation
+            _individuals = tuple(result.pop)
+
+        # re-evaluate survival of individuals
+        individuals = pm.Population.create(
+            *sorted(_individuals, key=lambda x: tuple(x.X.values()))
+        )
+        individuals = _survival(individuals, result.algorithm)
+
+        # create header row
+        header_row = (
+            tuple(individuals[0].X.keys())
+            + tuple(self._results_manager._objectives)
+            + tuple(self._results_manager._constraints)
+            + ("is_pareto", "is_feasible")
+        )
+
+        # convert pymoo variations to actual values
+        variation_vecs = tuple(
+            tuple(variation.item() for variation in individual.X.values())
+            for individual in individuals
+        )
+        value_vecs = tuple(
+            tuple(
+                variation
+                if isinstance(parameter, ContinuousModifier)
+                else parameter[variation]
+                for parameter, variation in zip(
+                    self._parameters_manager, variation_vec, strict=True
+                )
+            )
+            for variation_vec in variation_vecs
+        )
+
+        # create record rows
+        # NOTE: pymoo sums cvs of all constraints
+        #       hence all(individual.FEAS) == individual.FEAS[0]
+        record_rows = [
+            value_vec
+            + tuple(individual.F)
+            + tuple(individual.G)
+            + (individual.get("rank") == 0, all(individual.FEAS))
+            for individual, value_vec in zip(individuals, value_vecs, strict=True)
+        ]
+
+        # write records
+        _write_records(
+            record_directory / cf._RECORDS_FILENAMES[level], header_row, *record_rows
+        )
+
     @_LoggerManager(cwd_index=1, is_first=True)
     def _optimise_epoch(
         self,
-        cwd: Path,
+        epoch_directory: Path,
         problem: _PymooProblem,
         algorithm: pm.Algorithm,
         termination: pm.Termination,
@@ -246,8 +311,6 @@ class Problem:
         checkpoint_interval: int,
         seed: int | None,
     ) -> pm.Result:
-        # TODO: write some epoch results - pareto solutions?
-
         if checkpoint_interval <= 0:
             result = pm.minimize(
                 problem, algorithm, termination, save_history=save_history, seed=seed
@@ -299,10 +362,15 @@ class Problem:
                 checkpoint_idx = (idx + 1) * checkpoint_interval - 1
                 if algorithm.n_gen - 1 == checkpoint_idx + 1:
                     # TODO: explore implementing custom serialisation for self(Problem) via TOML/YAML
-                    with (cwd / "checkpoint.pickle").open("wb") as fp:
+                    with (epoch_directory / "checkpoint.pickle").open("wb") as fp:
                         pickle.dump((self, result), fp)
 
-                    _log(cwd, f"created checkpoint at generation {checkpoint_idx}")
+                    _log(
+                        epoch_directory,
+                        f"created checkpoint at generation {checkpoint_idx}",
+                    )
+
+        self._record_survival("batch", epoch_directory, result)
 
         return result
 

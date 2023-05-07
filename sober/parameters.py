@@ -1,4 +1,3 @@
-import csv
 from io import StringIO
 from pathlib import Path
 from shutil import copyfile
@@ -416,9 +415,7 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
     ) -> None:
         ...
 
-    def __init__(
-        self, tagger, func, parameter_indices, /, *extra_args, is_scalar=True
-    ) -> None:
+    def __init__(self, tagger, func, parameter_indices, /, *extra_args, is_scalar=True):
         super().__init__(tagger, (1,), *())
         self._func = func
         self._parameter_indices = tuple(parameter_indices)

@@ -79,7 +79,7 @@ def _algorithm(
     p_crossover: float,
     p_mutation: float,
     sampling: pm.Population,
-) -> pm.Algorithm:
+) -> pm.NSGA2:
     ...
 
 
@@ -91,7 +91,7 @@ def _algorithm(
     p_mutation: float,
     sampling: pm.Population,
     reference_directions: pm.ReferenceDirectionFactory,
-) -> pm.Algorithm:
+) -> pm.NSGA3:
     ...
 
 
@@ -102,7 +102,7 @@ def _algorithm(
     p_mutation,
     sampling,
     reference_directions=None,
-) -> pm.Algorithm:
+):
     """a pymoo algorithm constructor"""
 
     if algorithm_name == "nsga2":
@@ -116,3 +116,20 @@ def _algorithm(
             population_size,
             **_operators(algorithm_name, p_crossover, p_mutation, sampling)
         )
+
+
+#############################################################################
+#######                      SURVIVAL FUNCTIONS                       #######
+#############################################################################
+def _survival(
+    individuals: pm.Population, algorithm: pm.GeneticAlgorithm
+) -> pm.Population:
+    """evaluates survival of individuals"""
+    # remove duplicates
+    individuals = pm.MixedVariableDuplicateElimination().do(individuals)
+
+    # runs survival
+    # this resets the value of Individual().data["rank"] for each individual
+    algorithm.survival.do(algorithm.problem, individuals, algorithm=algorithm)
+
+    return individuals

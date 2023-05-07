@@ -11,6 +11,7 @@ from ._typing import Config, AnyStrPath, AnyLanguage, AnyModelType
 _RECORDS_FILENAMES: dict[str, str] = {
     "task": "task_records.csv",
     "job": "job_records.csv",
+    "batch": "batch_records.csv",
 }
 
 
