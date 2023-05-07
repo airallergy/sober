@@ -1,3 +1,4 @@
+import csv
 import sys
 from math import log10
 from pathlib import Path
@@ -40,6 +41,18 @@ def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
     # run subprocess and pass the result object to logging
     with _log(cwd, caller_depth=1, cmd_args=cmd_args) as l:
         l._result = run(cmd_args, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
+
+
+def _write_records(
+    record_file: Path, header_row: Iterable[Any], *record_rows: Iterable[Any]
+) -> None:
+    with record_file.open("wt") as fp:
+        writer = csv.writer(fp, dialect="excel")
+
+        # write header
+        writer.writerow(header_row)
+        # write values
+        writer.writerows(record_rows)
 
 
 #############################################################################

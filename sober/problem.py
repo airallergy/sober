@@ -249,7 +249,7 @@ class Problem:
         # TODO: write some epoch results - pareto solutions?
 
         if checkpoint_interval <= 0:
-            return pm.minimize(
+            result = pm.minimize(
                 problem, algorithm, termination, save_history=save_history, seed=seed
             )
         else:
@@ -304,7 +304,7 @@ class Problem:
 
                     _log(cwd, f"created checkpoint at generation {checkpoint_idx}")
 
-            return result
+        return result
 
     @staticmethod
     def resume(

@@ -23,7 +23,7 @@ from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
 from ._logger import _log, _LoggerManager
-from ._tools import _uuid, _Parallel, _natural_width
+from ._tools import _uuid, _Parallel, _natural_width, _write_records
 from ._simulator import _run_epmacro, _split_model, _run_energyplus, _run_expandobjects
 from ._typing import (
     AnyJob,
@@ -612,21 +612,23 @@ class _ParametersManager(Generic[ModelModifier]):
                 tagged_model = parameter._detagged(tagged_model, value)
         return tagged_model
 
-    def _record(
+    def _record_final(
         self,
         level: Literal["task", "job"],
         record_directory: Path,
         rows: list[list[Any]],
     ) -> None:
-        with (record_directory / cf._RECORDS_FILENAMES[level]).open("wt") as fp:
-            writer = csv.writer(fp, dialect="excel")
+        header_row = (
+            f"{level.capitalize()}UID",
+            *(parameter._label for parameter in self),
+        )
 
-            # write header
-            writer.writerow(
-                (f"{level.capitalize()}UID", *(parameter._label for parameter in self))
-            )
-            # write values
-            writer.writerows(map(str, row) for row in rows)
+        record_rows = (map(str, row) for row in rows)
+
+        # write records
+        _write_records(
+            record_directory / cf._RECORDS_FILENAMES[level], header_row, *record_rows
+        )
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_task(self, task_directory: Path, vu_mat: AnyVUMat) -> list[Any]:
@@ -679,7 +681,7 @@ class _ParametersManager(Generic[ModelModifier]):
 
             _log(job_directory, f"made {task_uid}")
 
-        self._record("task", job_directory, task_rows)
+        self._record_final("task", job_directory, task_rows)
 
         _log(job_directory, "recorded parameters")
 
@@ -714,7 +716,7 @@ class _ParametersManager(Generic[ModelModifier]):
                 _log(batch_directory, f"made {job_uid}")
 
         # record job parameter values
-        self._record("job", batch_directory, job_rows)
+        self._record_final("job", batch_directory, job_rows)
 
         _log(batch_directory, "recorded parameters")
 

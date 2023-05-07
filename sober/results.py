@@ -12,7 +12,7 @@ from collections.abc import Callable, Iterable, Iterator
 from . import config as cf
 from ._simulator import _run_readvars
 from ._logger import _log, _LoggerManager
-from ._tools import _run, _uuid, _Parallel
+from ._tools import _run, _uuid, _Parallel, _write_records
 from ._typing import AnyJob, AnyUIDs, AnyStrPath, AnyBatchResults
 
 AnyLevel: TypeAlias = Literal["task", "job"]
@@ -379,15 +379,15 @@ class _ResultsManager:
             if isinstance(result, RVICollector):
                 result._touch(config_directory)
 
-    def _record(
+    def _record_final(
         self, level: AnyLevel, record_directory: Path, uids: tuple[str, ...]
     ) -> None:
         # only final results
         with (record_directory / cf._RECORDS_FILENAMES[level]).open("rt") as fp:
             reader = csv.reader(fp, dialect="excel")
 
-            headers = next(reader)
-            records = list(reader)
+            header_row = next(reader)
+            record_rows = list(reader)
 
         # store objective and contraint indices and conversion funcs
         # [1] this only happens once on the batch level
@@ -399,9 +399,9 @@ class _ResultsManager:
             self._to_constraints = ()
 
         for idx, uid in enumerate(uids):
-            # TODO: consider change this assert to using a dict with uid as keys
-            #       this may somewhat unify the _record func for parameters and results
-            assert uid == records[idx][0]
+            # TODO: consider changing this assert to using a dict with uid as keys
+            #       this may somewhat unify the _record_final func for parameters and results
+            assert uid == record_rows[idx][0]
 
             for result in getattr(self, f"_{level}_results"):
                 if not result._is_final:
@@ -419,11 +419,11 @@ class _ResultsManager:
 
                         # append result headers
                         result_headers = next(reader)[1:]
-                        headers += result_headers
+                        header_row += result_headers
 
                         # append objective and constraint indices and conversion funcs
                         if level == "job":  # [1]
-                            begin_count = len(headers) - len(result_headers)
+                            begin_count = len(header_row) - len(result_headers)
 
                             # NOTE: use of .index() relies heavily on uniqueness of labels for final results
                             #       uniqueness of objectives/constraints within an individual result is checked via _check_args
@@ -446,7 +446,7 @@ class _ResultsManager:
                                 )
 
                     # append final results values
-                    records[idx] += next(reader)[1:]
+                    record_rows[idx] += next(reader)[1:]
 
                     # check if any final result is no scalar
                     if __debug__:
@@ -460,13 +460,9 @@ class _ResultsManager:
                             )
 
         # write records
-        with (record_directory / cf._RECORDS_FILENAMES[level]).open("wt") as fp:
-            writer = csv.writer(fp, dialect="excel")
-
-            # write header
-            writer.writerow(headers)
-            # write values
-            writer.writerows(records)
+        _write_records(
+            record_directory / cf._RECORDS_FILENAMES[level], header_row, *record_rows
+        )
 
     @_LoggerManager(cwd_index=1)
     def _collect_task(self, task_directory: Path) -> None:
@@ -483,7 +479,7 @@ class _ResultsManager:
             _log(job_directory, f"collected {task_uid}")
 
         # record task result values
-        self._record("task", job_directory, task_uids)
+        self._record_final("task", job_directory, task_uids)
 
         _log(job_directory, "recorded final results")
 
@@ -513,7 +509,9 @@ class _ResultsManager:
                 _log(batch_directory, f"collected {job_uid}")
 
         # record job result values
-        self._record("job", batch_directory, tuple(job_uid for job_uid, _ in jobs))
+        self._record_final(
+            "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
+        )
 
         _log(batch_directory, "recorded final results")
 
