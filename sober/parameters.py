@@ -49,6 +49,8 @@ class _Tagger(ABC, Generic[_T]):
 
     _tags: tuple[str, ...]
 
+    __slots__ = ("_tags",)
+
     @abstractmethod
     def __init__(self, *feature_groups: tuple[str, ...]) -> None:
         self._tags = tuple(
@@ -99,6 +101,8 @@ class _Modifier(ABC):
     _label: str
     _is_uncertain: bool
 
+    __slots__ = ("_low", "_high", "_index", "_label", "_is_uncertain")
+
     def _check_args(self) -> None:
         pass
 
@@ -114,6 +118,8 @@ class _ModelModifierMixin(ABC, Generic[_T]):
     (as opposed to the weather modifier)"""
 
     _tagger: _Tagger[_T]
+
+    # __slots__ = ("_tagger",)  # a slots/mixin issue
 
     @abstractmethod
     def __init__(self, tagger: _Tagger[_T], *args, **kwargs) -> None:
@@ -144,6 +150,15 @@ class _IntegralModifier(_Modifier, Generic[_V, _U]):
     _uncertainties: tuple[tuple[_U, ...], ...]
     _n_variations: int
     _ns_uncertainties: tuple[int, ...]
+
+    __slots__ = (
+        "_low",
+        "_high",
+        "_variations",
+        "_uncertainties",
+        "_n_variations",
+        "_ns_uncertainties",
+    )
 
     @abstractmethod
     def __init__(
@@ -216,6 +231,8 @@ class IndexTagger(_IDFTagger):
 
     _index_trios: tuple[tuple[str, str, str], ...]
 
+    __slots__ = ("_index_trios",)
+
     def __init__(self, /, *index_trios: Iterable[str]) -> None:
         _index_trios = tuple(tuple(item) for item in index_trios)  # mypy bug with map
 
@@ -249,6 +266,8 @@ class StringTagger(_TextTagger):
     """
 
     _string_trios: tuple[tuple[str, str, str], ...]
+
+    __slots__ = ("_string_trios",)
 
     def __init__(self, /, *string_trios: Iterable[str]) -> None:
         _string_trios = tuple(tuple(item) for item in string_trios)  # mypy bug with map
@@ -295,6 +314,8 @@ class WeatherModifier(_IntegralModifier[Path | str, Path]):
 
     _variations: tuple[Path | str, ...]
     _uncertainties: tuple[tuple[Path, ...], ...]
+
+    __slots__ = ("_variations", "_uncertainties")
 
     @overload
     def __init__(self, variations: Iterable[AnyStrPath], /) -> None:
@@ -345,6 +366,8 @@ class DiscreteModifier(_ModelModifierMixin[float], _IntegralModifier[float, floa
     _variations: tuple[float, ...]
     _uncertainties: tuple[tuple[float, ...], ...]
 
+    __slots__ = ("_variations", "_uncertainties")
+
     def __init__(
         self,
         tagger: _Tagger,
@@ -366,6 +389,8 @@ class CategoricalModifier(_ModelModifierMixin[str], _IntegralModifier[str, str])
 
     _variations: tuple[str, ...]
     _uncertainties: tuple[tuple[str, ...], ...]
+
+    __slots__ = ("_variations", "_uncertainties")
 
     def __init__(
         self,
@@ -390,6 +415,8 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
     _parameter_indices: tuple[int, ...]
     _extra_args: tuple[Any, ...]
     _is_scalar: bool
+
+    __slots__ = ("_func", "_parameter_indices", "_extra_args", "_is_scalar")
 
     @overload
     def __init__(
@@ -472,6 +499,15 @@ class _ParametersManager(Generic[ModelModifier]):
     _tagged_model: str
     _has_templates: bool
     _has_uncertainties: bool
+
+    __slots__ = (
+        "_weather",
+        "_parameters",
+        "_model_type",
+        "_tagged_model",
+        "_has_templates",
+        "_has_uncertainties",
+    )
 
     def __init__(
         self,
