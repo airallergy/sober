@@ -94,8 +94,8 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
         self._cwd_index = cwd_index
         self._is_first = is_first
 
-    def __call__(self, f: _F) -> _F:
-        @wraps(f)
+    def __call__(self, func: _F) -> _F:
+        @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
             # get the cwd of the decorated func
             cwd = args[self._cwd_index]
@@ -112,13 +112,13 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
 
             # get the level from the func name
             # the func name should follow the pattern of _{action}_{level}
-            level = f.__code__.co_name.split("_")[-1]
+            level = func.__code__.co_name.split("_")[-1]
             assert level in (
                 "task",
                 "job",
                 "batch",
                 "epoch",
-            ), f"the func name pattern is not recognised: {f.__code__.co_name}."
+            ), f"the func name pattern is not recognised: {func.__code__.co_name}."
             self._level = level  # type:ignore[assignment] # python/mypy#12535
 
             # set the log filename
@@ -130,7 +130,7 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
             with self._recreate_cm():  # type: ignore[attr-defined] # no idea why
                 # not entirely sure why
                 # but nothing will be logged without this context
-                return f(*args, **kwargs)
+                return func(*args, **kwargs)
 
         return wrapper  # type:ignore[return-value] # python/mypy#1927 says solved, but
 

@@ -184,7 +184,7 @@ class _IntegralModifier(_Modifier, Generic[_V, _U]):
                     len(self._uncertainties[0]),
                 ) * self._n_variations
             case self._n_variations:
-                # each variation has the same uncertainties
+                # each variation has different uncertainties
                 self._uncertainties = tuple(map(tuple, uncertainties))
                 self._ns_uncertainties = tuple(map(len, self._uncertainties))
             case _:
@@ -443,7 +443,10 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         ...
 
     def __init__(self, tagger, func, parameter_indices, /, *extra_args, is_scalar=True):
-        super().__init__(tagger, (1,), *())
+        # TODO: change co_name to co_qualname after 3.11, see python/cpython#88696
+        func_name = f"<function {func.__module__ + '.' + func.__code__.co_name}>"
+        super().__init__(tagger, (func_name,))
+
         self._func = func
         self._parameter_indices = tuple(parameter_indices)
         self._extra_args = extra_args
@@ -598,6 +601,8 @@ class _ParametersManager(Generic[ModelModifier]):
     def _jobs(self, *variation_vecs: AnyVariationVec) -> Iterator[AnyJob]:
         # NOTE: variation is a realisation on pymoo side
         #       value is a realisation on ep side
+        # NOTE: variation/uncertainty is also used inside parameter classess
+        #       consider changing **outside** parameter classess
 
         job_idx_width = _natural_width(len(variation_vecs))
 
