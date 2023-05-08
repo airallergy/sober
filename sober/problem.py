@@ -372,40 +372,6 @@ class Problem:
 
         return result
 
-    @staticmethod
-    def resume(
-        checkpoint_file: AnyStrPath,
-        termination: pm.Termination,
-        /,
-        *,
-        checkpoint_interval: int = 0,
-    ) -> pm.Result:
-        """resumes optimisation using checkpoint files"""
-        # NOTE: although seed will not be reset
-        #       randomness is not reproducible when resuming for some unknown reason
-        # TODO: explore implementing custom serialisation for Problem via TOML/YAML
-        # TODO: also consider moving this func outside Problem to be called directly
-        # TODO: termination may not be necessary, as the old one may be reused
-
-        checkpoint_file = Path(checkpoint_file).resolve(True)
-        with checkpoint_file.open("rb") as fp:
-            problem, result = pickle.load(fp)
-
-        # checks validity of the check point file
-        # currently only checks the object type, but there might be better checks
-        if not (isinstance(problem, Problem) and isinstance(result, pm.Result)):
-            raise TypeError(f"invalid checkpoint file: {checkpoint_file.resolve()}.")
-
-        return problem._optimise_epoch(
-            problem._evaluation_directory,
-            result.problem,
-            result.algorithm,
-            termination,
-            result.algorithm.save_history,  # void
-            checkpoint_interval,
-            result.algorithm.seed,  # void
-        )  # void: only termination will be updated in algorithm
-
     def run_nsga2(
         self,
         population_size: int,
@@ -498,3 +464,37 @@ class Problem:
             checkpoint_interval,
             seed,
         )
+
+    @staticmethod
+    def resume(
+        checkpoint_file: AnyStrPath,
+        termination: pm.Termination,
+        /,
+        *,
+        checkpoint_interval: int = 0,
+    ) -> pm.Result:
+        """resumes optimisation using checkpoint files"""
+        # NOTE: although seed will not be reset
+        #       randomness is not reproducible when resuming for some unknown reason
+        # TODO: explore implementing custom serialisation for Problem via TOML/YAML
+        # TODO: also consider moving this func outside Problem to be called directly
+        # TODO: termination may not be necessary, as the old one may be reused
+
+        checkpoint_file = Path(checkpoint_file).resolve(True)
+        with checkpoint_file.open("rb") as fp:
+            problem, result = pickle.load(fp)
+
+        # checks validity of the check point file
+        # currently only checks the object type, but there might be better checks
+        if not (isinstance(problem, Problem) and isinstance(result, pm.Result)):
+            raise TypeError(f"invalid checkpoint file: {checkpoint_file.resolve()}.")
+
+        return problem._optimise_epoch(
+            problem._evaluation_directory,
+            result.problem,
+            result.algorithm,
+            termination,
+            result.algorithm.save_history,  # void
+            checkpoint_interval,
+            result.algorithm.seed,  # void
+        )  # void: only termination will be updated in algorithm
