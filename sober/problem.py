@@ -116,16 +116,16 @@ class _PymooProblem(pm.Problem):
 class Problem:
     """defines the parametrics/optimisation problem"""
 
+    _model_file: Path
     _parameters_manager: _ParametersManager[AnyModelModifier]
     _results_manager: _ResultsManager
-    _model_directory: Path
     _evaluation_directory: Path
     _config_directory: Path
 
     __slots__ = (
+        "_model_file",
         "_parameters_manager",
         "_results_manager",
-        "_model_directory",
         "_evaluation_directory",
         "_config_directory",
     )
@@ -144,16 +144,15 @@ class Problem:
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
     ) -> None:
-        model_file = Path(model_file).resolve(strict=True)
+        self._model_file = Path(model_file).resolve(strict=True)
         self._parameters_manager = _ParametersManager(
-            weather, parameters, model_file, has_templates
+            weather, parameters, self._model_file, has_templates
         )
         self._results_manager = _ResultsManager(
             results, clean_patterns, self._parameters_manager._has_uncertainties
         )
-        self._model_directory = model_file.parent
         self._evaluation_directory = (
-            self._model_directory / "evaluation"
+            self._model_file.parent / "evaluation"
             if evaluation_directory is None
             else Path(evaluation_directory)
         )

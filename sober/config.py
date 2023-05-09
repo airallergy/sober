@@ -1,4 +1,5 @@
 from pathlib import Path
+from warnings import warn
 from platform import system
 
 from psutil import cpu_count
@@ -139,6 +140,11 @@ def config_parallel(*, n_processes: int | None = None) -> None:
 
     global _config
 
+    if "n.processes" in _config:
+        warn(
+            f"n_processes has been configured, and will be overriden: {_config['n.processes']}, {n_processes}."
+        )
+
     # the default number of processes is the number of physical cores - 1
     # this leaves one physical core idle
     _config["n.processes"] = (
@@ -154,6 +160,11 @@ def config_script(*, python_exec: AnyStrPath | None = None) -> None:
     _check_config_init()
 
     global _config
+
+    if "exec.python" in _config:
+        warn(
+            f"python_exec has been configured, and will be overriden: {_config['exec.python']}, {python_exec}."
+        )
 
     if python_exec is not None:
         _config["exec.python"] = str(Path(python_exec).resolve(strict=True))
