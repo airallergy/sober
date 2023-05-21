@@ -503,16 +503,16 @@ class _ParametersManager(Generic[ModelModifier]):
 
     MODEL_TYPES: Final = frozenset({".idf", ".imf"})
 
-    _weather: WeatherModifier
-    _parameters: tuple[ModelModifier, ...]  # TODO: clarify name
+    _weather_parameter: WeatherModifier
+    _model_parameters: tuple[ModelModifier, ...]
     _model_type: AnyModelType
     _tagged_model: str
     _has_templates: bool
     _has_uncertainties: bool
 
     __slots__ = (
-        "_weather",
-        "_parameters",  # TODO: clarify name
+        "_weather_parameter",
+        "_model_parameters",
         "_model_type",
         "_tagged_model",
         "_has_templates",
@@ -521,13 +521,13 @@ class _ParametersManager(Generic[ModelModifier]):
 
     def __init__(
         self,
-        weather: WeatherModifier,
-        parameters: Iterable[ModelModifier],  # TODO: clarify name
+        weather_parameter: WeatherModifier,
+        model_parameters: Iterable[ModelModifier],
         model_file: Path,
         has_templates: bool,
     ) -> None:
-        self._weather = weather
-        self._parameters = tuple(parameters)  # TODO: clarify name
+        self._weather_parameter = weather_parameter
+        self._model_parameters = tuple(model_parameters)
 
         # add index and label to each parameter
         for idx, parameter in enumerate(self):
@@ -551,13 +551,11 @@ class _ParametersManager(Generic[ModelModifier]):
         self._check_args()
 
     def __iter__(self) -> Iterator[WeatherModifier | ModelModifier]:
-        for parameter in chain(
-            (self._weather,), self._parameters  # TODO: clarify name
-        ):
+        for parameter in chain((self._weather_parameter,), self._model_parameters):
             yield parameter
 
     def __len__(self) -> int:
-        return 1 + len(self._parameters)  # TODO: clarify name
+        return 1 + len(self._model_parameters)
 
     def _check_args(self) -> None:
         # check each parameter
@@ -583,7 +581,7 @@ class _ParametersManager(Generic[ModelModifier]):
         # tag all parameters with a _TextTagger
         # this has to happen first
         # as eppy changes the format, which affects string matching
-        for parameter in self._parameters:  # TODO: clarify name
+        for parameter in self._model_parameters:
             tagger = parameter._tagger
             if isinstance(tagger, _TextTagger):
                 macros = tagger._tagged(macros)
@@ -600,7 +598,7 @@ class _ParametersManager(Generic[ModelModifier]):
             )
 
         # tag all parameters with a _IDFTagger
-        for parameter in self._parameters:  # TODO: clarify name
+        for parameter in self._model_parameters:
             tagger = parameter._tagger
             if isinstance(tagger, _IDFTagger):
                 idf = tagger._tagged(idf)
@@ -643,9 +641,8 @@ class _ParametersManager(Generic[ModelModifier]):
             yield job_uid, tasks
 
     def _detagged(self, tagged_model: str, task_parameter_values: list[Any]) -> str:
-        # TODO: clarify name
         for parameter, value in zip(
-            self._parameters, task_parameter_values[1:], strict=True
+            self._model_parameters, task_parameter_values[1:], strict=True
         ):
             if isinstance(parameter, FunctionalModifier) and not parameter._is_scalar:
                 # each tag has its own value
@@ -792,6 +789,5 @@ def _all_integral_modifiers(
     """checks if all integral modifiers"""
 
     return not any(
-        isinstance(parameter, _RealModifier)
-        for parameter in parameters_manager._parameters
+        isinstance(parameter, _RealModifier) for parameter in parameters_manager
     )

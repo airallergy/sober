@@ -131,9 +131,9 @@ class Problem:
     def __init__(
         self,
         model_file: AnyStrPath,
-        weather: WeatherModifier,
+        weather_parameter: WeatherModifier,
         /,
-        parameters: Iterable[AnyModelModifier] = (),  # TODO: clarify name
+        model_parameters: Iterable[AnyModelModifier] = (),
         results: Iterable[_Collector] = (),
         *,
         evaluation_directory: AnyStrPath | None = None,
@@ -144,7 +144,7 @@ class Problem:
     ) -> None:
         self._model_file = Path(model_file).resolve(strict=True)
         self._parameters_manager = _ParametersManager(
-            weather, parameters, self._model_file, has_templates  # TODO: clarify name
+            weather_parameter, model_parameters, self._model_file, has_templates
         )
         self._results_manager = _ResultsManager(
             results, clean_patterns, self._parameters_manager._has_uncertainties
