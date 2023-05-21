@@ -6,28 +6,22 @@ from shutil import copyfile
 from abc import ABC, abstractmethod
 from os.path import isabs, normpath
 from itertools import chain, product
-from typing import Final, Literal, TypeAlias, cast
+from typing import Final, Literal, TypeAlias
 from collections.abc import Callable, Iterable, Iterator
 
 from . import config as cf
 from ._simulator import _run_readvars
 from ._logger import _log, _LoggerManager
-from ._tools import _run, _uuid, _Parallel, _write_records
 from ._typing import AnyJob, AnyUIDs, AnyStrPath, AnyBatchResults
+from ._tools import _run, _uuid, _Parallel, _write_records, _rectified_str_iterable
 
-AnyLevel: TypeAlias = Literal["task", "job"]
-AnyDirection: TypeAlias = Literal["minimise", "maximise"]
-AnyBounds: TypeAlias = tuple[None, float] | tuple[float, None] | tuple[float, float]
-AnyConverter: TypeAlias = Callable[[float], float]
-AnyOutputType: TypeAlias = Literal["variable", "meter"]
-
-
-def _rectified_iterable_str(s: str | Iterable[str]) -> tuple[str, ...]:
-    """converts str or an iterable of str to a tuple of str"""
-    if isinstance(s, str):
-        return (s,)
-    else:
-        return tuple(s)
+##############################  module typing  ##############################
+_AnyLevel: TypeAlias = Literal["task", "job"]
+_AnyDirection: TypeAlias = Literal["minimise", "maximise"]
+_AnyBounds: TypeAlias = tuple[None, float] | tuple[float, None] | tuple[float, float]
+_AnyConverter: TypeAlias = Callable[[float], float]
+_AnyOutputType: TypeAlias = Literal["variable", "meter"]
+#############################################################################
 
 
 #############################################################################
@@ -37,11 +31,11 @@ class _Collector(ABC):
     """an abstract base class for result collector"""
 
     _filename: str
-    _level: AnyLevel
+    _level: _AnyLevel
     _objectives: tuple[str, ...]
     _constraints: tuple[str, ...]
-    _direction: AnyDirection
-    _bounds: AnyBounds
+    _direction: _AnyDirection
+    _bounds: _AnyBounds
     _is_final: bool
     _is_copied: bool
 
@@ -60,17 +54,17 @@ class _Collector(ABC):
     def __init__(
         self,
         filename: str,
-        level: AnyLevel,
+        level: _AnyLevel,
         objectives: str | Iterable[str],
         constraints: str | Iterable[str],
-        direction: AnyDirection,
-        bounds: AnyBounds,
+        direction: _AnyDirection,
+        bounds: _AnyBounds,
         is_final: bool,
     ) -> None:
         self._filename = filename
         self._level = level
-        self._objectives = _rectified_iterable_str(objectives)
-        self._constraints = _rectified_iterable_str(constraints)
+        self._objectives = _rectified_str_iterable(objectives)
+        self._constraints = _rectified_str_iterable(constraints)
         self._direction = direction
         self._bounds = bounds
         self._is_final = is_final
@@ -146,7 +140,7 @@ class RVICollector(_Collector):
     SUFFIXES: Final = {"variable": "eso", "meter": "mtr"}
 
     _output_names: tuple[str, ...]
-    _output_type: AnyOutputType
+    _output_type: _AnyOutputType
     _keys: tuple[str, ...]
     _frequency: str
     _rvi_file: Path
@@ -156,22 +150,22 @@ class RVICollector(_Collector):
     def __init__(
         self,
         output_names: str | Iterable[str],
-        output_type: AnyOutputType,
+        output_type: _AnyOutputType,
         filename: str,
         /,
         keys: str | Iterable[str] = (),
         frequency: str = "",
         *,
-        level: AnyLevel = "task",
+        level: _AnyLevel = "task",
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
-        direction: AnyDirection = "minimise",
-        bounds: AnyBounds = (None, 0),
+        direction: _AnyDirection = "minimise",
+        bounds: _AnyBounds = (None, 0),
         is_final: bool = True,
     ) -> None:
-        self._output_names = _rectified_iterable_str(output_names)
+        self._output_names = _rectified_str_iterable(output_names)
         self._output_type = output_type
-        self._keys = _rectified_iterable_str(keys)
+        self._keys = _rectified_str_iterable(keys)
         self._frequency = frequency
 
         super().__init__(
@@ -233,18 +227,17 @@ class ScriptCollector(_Collector):
         language: cf.AnyLanguage,
         filename: str,
         /,
-        extra_args: str | Iterable[str] = (),
-        *,
-        level: AnyLevel = "task",
+        *extra_args: str,
+        level: _AnyLevel = "task",
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
-        direction: AnyDirection = "minimise",
-        bounds: AnyBounds = (None, 0),
+        direction: _AnyDirection = "minimise",
+        bounds: _AnyBounds = (None, 0),
         is_final: bool = True,
     ) -> None:
         self._script_file = Path(script_file)
         self._language = language
-        self._extra_args = _rectified_iterable_str(extra_args)
+        self._extra_args = extra_args
 
         super().__init__(
             filename, level, objectives, constraints, direction, bounds, is_final
@@ -255,7 +248,6 @@ class ScriptCollector(_Collector):
         language_exec = cf._config[
             "exec." + self._language  # type:ignore[literal-required]
         ]
-        language_exec = cast(Path, language_exec)
 
         cmd_args = (
             language_exec,
@@ -278,8 +270,8 @@ class _CopyCollector(_Collector):
         filename: str,
         objectives: str | Iterable[str],
         constraints: str | Iterable[str],
-        direction: AnyDirection,
-        bounds: AnyBounds,
+        direction: _AnyDirection,
+        bounds: _AnyBounds,
     ) -> None:
         super().__init__(
             filename, "job", objectives, constraints, direction, bounds, True
@@ -308,8 +300,8 @@ class _ResultsManager:
     _constraints: tuple[str, ...]
     _objective_indices: tuple[int, ...]
     _constraint_indices: tuple[int, ...]
-    _to_objectives: tuple[AnyConverter, ...]
-    _to_constraints: tuple[AnyConverter, ...]
+    _to_objectives: tuple[_AnyConverter, ...]
+    _to_constraints: tuple[_AnyConverter, ...]
 
     __slots__ = (
         "_task_results",
@@ -364,7 +356,7 @@ class _ResultsManager:
 
         # parse clean patterns without duplicates
         self._clean_patterns = frozenset(
-            normpath(item) for item in _rectified_iterable_str(clean_patterns)
+            normpath(item) for item in _rectified_str_iterable(clean_patterns)
         )
 
         # gather objective and constraint labels
@@ -408,7 +400,7 @@ class _ResultsManager:
                 result._touch(config_directory)
 
     def _record_final(
-        self, level: AnyLevel, record_directory: Path, uids: tuple[str, ...]
+        self, level: _AnyLevel, record_directory: Path, uids: AnyUIDs
     ) -> None:
         # only final results
         with (record_directory / cf._RECORDS_FILENAMES[level]).open("rt") as fp:

@@ -1,17 +1,12 @@
-from typing import Literal, TypedDict, overload
+from typing import Literal, overload
 
+from ._typing import PymooOperators
 from . import _pymoo_namespace as pm
 
 
 #############################################################################
 #######                      OPERATOR FUNCTIONS                       #######
 #############################################################################
-class Operators(TypedDict):
-    sampling: pm.Population
-    mating: pm.MixedVariableMating
-    eliminate_duplicates: pm.MixedVariableDuplicateElimination
-
-
 def _sampling(problem: pm.Problem, init_population_size: int) -> pm.Population:
     """samples the initial generation"""
 
@@ -23,7 +18,7 @@ def _operators(
     p_crossover: float,
     p_mutation: float,
     sampling: pm.Population,
-) -> Operators:
+) -> PymooOperators:
     """a pymoo operators constructor"""
 
     # defaults from respective algoritm classes in pymoo

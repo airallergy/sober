@@ -27,18 +27,20 @@ from ._simulator import _run_epmacro, _split_model, _run_energyplus, _run_expand
 from ._typing import (
     AnyJob,
     AnyTask,
-    AnyVUMat,
+    AnyDuoVec,
+    AnyRealDuo,
     AnyStrPath,
     AnyModelType,
-    AnyRealVURow,
-    AnyVariationVec,
-    AnyIntegralVURow,
-    AnyUncertaintyVec,
+    AnyIntegralDuo,
+    AnyScenarioVec,
+    AnyCandidateVec,
 )
 
+##############################  module typing  ##############################
 _T = TypeVar("_T")  # AnyValueToTag # python/typing#548
-_V = TypeVar("_V")  # AnyVariation
-_U = TypeVar("_U")  # AnyUncertaintyVar
+_V = TypeVar("_V")  # AnyVariationValue
+_U = TypeVar("_U")  # AnyUncertaintyValue
+#############################################################################
 
 
 #############################################################################
@@ -107,7 +109,7 @@ class _Modifier(ABC):
         pass
 
     @abstractmethod
-    def _value(self, vu_row: Any, *args) -> Any:
+    def _value(self, duo: Any, *args) -> Any:
         # *args is only used by FunctionalModifier for now
 
         ...
@@ -310,7 +312,7 @@ class StringTagger(_TextTagger):
 #######                       PARAMETER CLASSES                       #######
 #############################################################################
 class WeatherModifier(_IntegralModifier[Path | str, Path]):
-    """modifies weather data"""
+    """modifies the weather parameter"""
 
     _variations: tuple[Path | str, ...]
     _uncertainties: tuple[tuple[Path, ...], ...]
@@ -341,9 +343,10 @@ class WeatherModifier(_IntegralModifier[Path | str, Path]):
             self._variations = tuple(
                 Path(item).resolve(True) for item in self._variations
             )
+            assert not hasattr(self, "_uncertainties")
 
-    def _value(self, vu_row: AnyIntegralVURow, *args) -> Path:
-        return self[vu_row]
+    def _value(self, duo: AnyIntegralDuo, *args) -> Path:
+        return self[duo]
 
 
 class ContinuousModifier(_ModelModifierMixin[float], _RealModifier):
@@ -353,8 +356,8 @@ class ContinuousModifier(_ModelModifierMixin[float], _RealModifier):
         # TODO: uncertainty of continuous parameters
         super().__init__(tagger, low, high)
 
-    def _value(self, vu_row: AnyRealVURow, *args) -> float:
-        return vu_row[0]
+    def _value(self, duo: AnyRealDuo, *args) -> float:
+        return duo[0]
 
     def _detagged(self, tagged_model: str, *values: float) -> str:
         return super()._detagged(tagged_model, *values)
@@ -377,8 +380,8 @@ class DiscreteModifier(_ModelModifierMixin[float], _IntegralModifier[float, floa
     ) -> None:
         super().__init__(tagger, variations, *uncertainties)
 
-    def _value(self, vu_row: AnyIntegralVURow, *args) -> float:
-        return self[vu_row]
+    def _value(self, duo: AnyIntegralDuo, *args) -> float:
+        return self[duo]
 
     def _detagged(self, tagged_model: str, *values: float) -> str:
         return super()._detagged(tagged_model, *values)
@@ -401,8 +404,8 @@ class CategoricalModifier(_ModelModifierMixin[str], _IntegralModifier[str, str])
     ) -> None:
         super().__init__(tagger, variations, *uncertainties)
 
-    def _value(self, vu_row: AnyIntegralVURow, *args) -> str:
-        return self[vu_row]
+    def _value(self, duo: AnyIntegralDuo, *args) -> str:
+        return self[duo]
 
     def _detagged(self, tagged_model: str, *values: str) -> str:
         return super()._detagged(tagged_model, *values)
@@ -425,7 +428,7 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         func: Callable[..., _V],
         parameter_indices: Iterable[int],
         /,
-        *extra_args: Any,
+        *extra_args: Any,  # TODO: restrict this for serialisation
         is_scalar: Literal[True],
     ) -> None:
         ...
@@ -443,8 +446,7 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         ...
 
     def __init__(self, tagger, func, parameter_indices, /, *extra_args, is_scalar=True):
-        # TODO: change co_name to co_qualname after 3.11, see python/cpython#88696
-        func_name = f"<function {func.__module__ + '.' + func.__code__.co_name}>"
+        func_name = f"<function {func.__module__ + '.' + func.__code__.co_qualname}>"
         super().__init__(tagger, (func_name,))
 
         self._func = func
@@ -460,7 +462,7 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
                 f"only previous parameters can be referred to: {self._index}, {self._parameter_indices}."
             )
 
-    def _value(self, vu_row: AnyIntegralVURow, *args) -> _V | tuple[_V, ...]:
+    def _value(self, duo: AnyIntegralDuo, *args) -> _V | tuple[_V, ...]:
         # NOTE: args are values for referenced parameters
         #       args are passed as tuple whilst _extra_args unpacked
         #       this is to align their corresponding arguments in __init__
@@ -482,13 +484,18 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
 #############################################################################
 #######                  PARAMETERS MANAGER CLASSES                   #######
 #############################################################################
+
+##############################  module typing  ##############################
+# this technically belongs to _typing.py, but put here to avoid circular import
 AnyIntegralModelModifier: TypeAlias = (
     DiscreteModifier | CategoricalModifier | FunctionalModifier
 )
-AnyModelModifier: TypeAlias = ContinuousModifier | AnyIntegralModelModifier
+AnyRealModelModifier: TypeAlias = ContinuousModifier
+AnyModelModifier: TypeAlias = AnyRealModelModifier | AnyIntegralModelModifier
 # this TypeVar is defined this way
 # to differ a parameter manager with mixed parameter types from one that only has integers
 ModelModifier = TypeVar("ModelModifier", AnyModelModifier, AnyIntegralModelModifier)
+#############################################################################
 
 
 class _ParametersManager(Generic[ModelModifier]):
@@ -497,7 +504,7 @@ class _ParametersManager(Generic[ModelModifier]):
     MODEL_TYPES: Final = frozenset({".idf", ".imf"})
 
     _weather: WeatherModifier
-    _parameters: tuple[ModelModifier, ...]
+    _parameters: tuple[ModelModifier, ...]  # TODO: clarify name
     _model_type: AnyModelType
     _tagged_model: str
     _has_templates: bool
@@ -505,7 +512,7 @@ class _ParametersManager(Generic[ModelModifier]):
 
     __slots__ = (
         "_weather",
-        "_parameters",
+        "_parameters",  # TODO: clarify name
         "_model_type",
         "_tagged_model",
         "_has_templates",
@@ -515,19 +522,19 @@ class _ParametersManager(Generic[ModelModifier]):
     def __init__(
         self,
         weather: WeatherModifier,
-        parameters: Iterable[ModelModifier],
+        parameters: Iterable[ModelModifier],  # TODO: clarify name
         model_file: Path,
         has_templates: bool,
     ) -> None:
         self._weather = weather
-        self._parameters = tuple(parameters)
+        self._parameters = tuple(parameters)  # TODO: clarify name
 
         # add index and label to each parameter
         for idx, parameter in enumerate(self):
             parameter._index = idx
 
             if isinstance(parameter, WeatherModifier):
-                parameter._label = "W"
+                parameter._label = "W"  # P0
             else:
                 parameter._label = f"P{parameter._index}"
 
@@ -544,11 +551,13 @@ class _ParametersManager(Generic[ModelModifier]):
         self._check_args()
 
     def __iter__(self) -> Iterator[WeatherModifier | ModelModifier]:
-        for parameter in chain((self._weather,), self._parameters):
+        for parameter in chain(
+            (self._weather,), self._parameters  # TODO: clarify name
+        ):
             yield parameter
 
     def __len__(self) -> int:
-        return 1 + len(self._parameters)
+        return 1 + len(self._parameters)  # TODO: clarify name
 
     def _check_args(self) -> None:
         # check each parameter
@@ -574,7 +583,7 @@ class _ParametersManager(Generic[ModelModifier]):
         # tag all parameters with a _TextTagger
         # this has to happen first
         # as eppy changes the format, which affects string matching
-        for parameter in self._parameters:
+        for parameter in self._parameters:  # TODO: clarify name
             tagger = parameter._tagger
             if isinstance(tagger, _TextTagger):
                 macros = tagger._tagged(macros)
@@ -591,54 +600,50 @@ class _ParametersManager(Generic[ModelModifier]):
             )
 
         # tag all parameters with a _IDFTagger
-        for parameter in self._parameters:
+        for parameter in self._parameters:  # TODO: clarify name
             tagger = parameter._tagger
             if isinstance(tagger, _IDFTagger):
                 idf = tagger._tagged(idf)
 
         return macros + idf.idfstr()
 
-    def _jobs(self, *variation_vecs: AnyVariationVec) -> Iterator[AnyJob]:
-        # NOTE: variation is a realisation on pymoo side
-        #       value is a realisation on ep side
-        # NOTE: variation/uncertainty is also used inside parameter classess
-        #       consider changing **outside** parameter classess
+    def _jobs(self, *candidate_vecs: AnyCandidateVec) -> Iterator[AnyJob]:
+        job_idx_width = _natural_width(len(candidate_vecs))
 
-        job_idx_width = _natural_width(len(variation_vecs))
-
-        for job_idx, variation_vec in enumerate(variation_vecs):
+        for job_idx, candidate_vec in enumerate(candidate_vecs):
             job_uid = f"J{job_idx:0{job_idx_width}}"
 
-            # TODO: mypy infers uncertainty_vecs incorrectly, might be resolved after python/mypy#12280
+            # TODO: mypy infers scenario_vecs incorrectly, might be resolved after python/mypy#12280
             # NOTE: there may be a better way than cast()
-            uncertainty_vecs = tuple(
+            scenario_vecs = tuple(
                 product(
                     *(
-                        (cast(float, variation),)
+                        (cast(float, component),)
                         if isinstance(parameter, ContinuousModifier)
-                        else range(parameter._ns_uncertainties[cast(int, variation)])
-                        for parameter, variation in zip(
-                            self, variation_vec, strict=True
+                        else range(parameter._ns_uncertainties[cast(int, component)])
+                        for parameter, component in zip(
+                            self, candidate_vec, strict=True
                         )
                     ),
                 )
             )
-            uncertainty_vecs = cast(tuple[AnyUncertaintyVec, ...], uncertainty_vecs)
+            scenario_vecs = cast(tuple[AnyScenarioVec, ...], scenario_vecs)
 
-            task_idx_width = _natural_width(len(uncertainty_vecs))
+            task_idx_width = _natural_width(len(scenario_vecs))
 
             tasks = tuple(
                 (
                     f"T{task_idx:0{task_idx_width}}",
-                    tuple(zip(variation_vec, uncertainty_vec, strict=True)),
+                    tuple(zip(candidate_vec, scenario_vec, strict=True)),
                 )
-                for task_idx, uncertainty_vec in enumerate(uncertainty_vecs)
+                for task_idx, scenario_vec in enumerate(scenario_vecs)
             )
-            tasks = cast(tuple[tuple[str, AnyVUMat], ...], tasks)
+            tasks = cast(tuple[tuple[str, AnyDuoVec], ...], tasks)
 
             yield job_uid, tasks
 
     def _detagged(self, tagged_model: str, task_parameter_values: list[Any]) -> str:
+        # TODO: clarify name
         for parameter, value in zip(
             self._parameters, task_parameter_values[1:], strict=True
         ):
@@ -667,19 +672,19 @@ class _ParametersManager(Generic[ModelModifier]):
         )
 
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _make_task(self, task_directory: Path, vu_mat: AnyVUMat) -> list[Any]:
+    def _make_task(self, task_directory: Path, duo_vec: AnyDuoVec) -> list[Any]:
         # create an empty list to store task parameter values
         parameter_values: list[Any] = [None] * len(self)
 
-        # convert vu_row to value and store for each parameter
-        for idx, (parameter, vu_row) in enumerate(zip(self, vu_mat, strict=True)):
+        # convert duo to value and store for each parameter
+        for idx, (parameter, duo) in enumerate(zip(self, duo_vec, strict=True)):
             if isinstance(parameter, FunctionalModifier):
                 parameter_values[idx] = parameter._value(
-                    vu_row,
+                    duo,
                     *(parameter_values[jdx] for jdx in parameter._parameter_indices),
                 )
             else:
-                parameter_values[idx] = parameter._value(vu_row)
+                parameter_values[idx] = parameter._value(duo)
 
         # copy the task weather file
         task_epw_file = task_directory / "in.epw"
@@ -711,8 +716,8 @@ class _ParametersManager(Generic[ModelModifier]):
     def _make_job(self, job_directory: Path, tasks: tuple[AnyTask, ...]) -> list[Any]:
         # record tasks parameter values
         task_record_rows = []
-        for task_uid, vu_mat in tasks:
-            task_parameter_values = self._make_task(job_directory / task_uid, vu_mat)
+        for task_uid, duo_vec in tasks:
+            task_parameter_values = self._make_task(job_directory / task_uid, duo_vec)
             task_record_rows.append([task_uid] + task_parameter_values)
 
             _log(job_directory, f"made {task_uid}")
@@ -722,12 +727,12 @@ class _ParametersManager(Generic[ModelModifier]):
         _log(job_directory, "recorded parameters")
 
         # curate job parameter value
-        # NOTE: use vu_mat from the last loop
+        # NOTE: use duo_vec from the last loop
         parameter_values = list(
-            variation
+            component
             if isinstance(parameter, ContinuousModifier)
-            else parameter[variation]
-            for parameter, (variation, _) in zip(self, vu_mat, strict=True)
+            else parameter[component]
+            for parameter, (component, _) in zip(self, duo_vec, strict=True)
         )
 
         return parameter_values
@@ -781,12 +786,12 @@ class _ParametersManager(Generic[ModelModifier]):
                 _log(batch_directory, f"simulated {'-'.join(pair)}")
 
 
-def _all_int_parameters(
+def _all_integral_modifiers(
     parameters_manager: _ParametersManager[AnyModelModifier],
 ) -> TypeGuard[_ParametersManager[AnyIntegralModelModifier]]:
     """checks if all integral modifiers"""
 
     return not any(
-        isinstance(parameter, ContinuousModifier)
+        isinstance(parameter, _RealModifier)
         for parameter in parameters_manager._parameters
     )

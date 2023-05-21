@@ -1,9 +1,9 @@
 import pickle
 from pathlib import Path
 from shutil import rmtree
+from typing import Literal
 from itertools import chain
-from typing import Literal, TypeAlias
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -12,19 +12,17 @@ from ._multiplier import _multiply
 from . import _pymoo_namespace as pm
 from ._evaluator import _pymoo_evaluate
 from ._logger import _log, _LoggerManager
-from ._typing import AnyStrPath, AnyVariationMap
 from ._tools import _natural_width, _write_records
 from ._optimiser import _sampling, _survival, _algorithm
+from ._typing import PymooOut, AnyStrPath, AnyCandidateMap, AnyPymooCallback
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
     WeatherModifier,
     AnyModelModifier,
     ContinuousModifier,
     _ParametersManager,
-    _all_int_parameters,
+    _all_integral_modifiers,
 )
-
-AnyCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
 
 
 #############################################################################
@@ -44,7 +42,7 @@ class _PymooProblem(pm.Problem):
         parameters_manager: _ParametersManager,
         results_manager: _ResultsManager,
         evaluation_directory: Path,
-        callback: AnyCallback,
+        callback: AnyPymooCallback,
         saves_batches: bool,
         expected_max_n_generations: int,
     ) -> None:
@@ -72,29 +70,29 @@ class _PymooProblem(pm.Problem):
 
     def _evaluate(
         self,
-        x: tuple[AnyVariationMap, ...],
-        out: dict[str, None | np.ndarray],  # pymoo0.6 passes in {"F": None, "G": None}
+        x: Iterable[AnyCandidateMap],
+        out: PymooOut,
         *args,
         algorithm: pm.Algorithm,
         **kwargs,
     ) -> None:
         # NOTE: in pymoo0.6
         #           n_gen follows 1, 2, 3, ...
-        #           x is a list of dicts, each dict is a candidate
+        #           x is a numpy array of dicts, each dict is a candidate map
         #               whose keys are parameter labels
-        #                     values are variation vectors
+        #                     values are candidate vectors
         #           out has to be a dict of numpy arrays
 
         batch_idx = algorithm.n_gen - 1
         batch_uid = f"B{batch_idx:0{self._batch_idx_width}}"
 
-        variation_vecs = tuple(
-            tuple(variation.item() for variation in variation_map.values())
-            for variation_map in x
+        candidate_vecs = tuple(
+            tuple(component.item() for component in candidate_map.values())
+            for candidate_map in x
         )
 
         objectives, constraints = _pymoo_evaluate(
-            *variation_vecs,  # type:ignore[arg-type] # python/mypy#12280
+            *candidate_vecs,  # type:ignore[arg-type] # python/mypy#12280
             parameters_manager=self._parameters_manager,
             results_manager=self._results_manager,
             batch_directory=self._evaluation_directory / batch_uid,
@@ -135,7 +133,7 @@ class Problem:
         model_file: AnyStrPath,
         weather: WeatherModifier,
         /,
-        parameters: Iterable[AnyModelModifier] = (),
+        parameters: Iterable[AnyModelModifier] = (),  # TODO: clarify name
         results: Iterable[_Collector] = (),
         *,
         evaluation_directory: AnyStrPath | None = None,
@@ -146,7 +144,7 @@ class Problem:
     ) -> None:
         self._model_file = Path(model_file).resolve(strict=True)
         self._parameters_manager = _ParametersManager(
-            weather, parameters, self._model_file, has_templates
+            weather, parameters, self._model_file, has_templates  # TODO: clarify name
         )
         self._results_manager = _ResultsManager(
             results, clean_patterns, self._parameters_manager._has_uncertainties
@@ -191,7 +189,7 @@ class Problem:
 
         cf._has_batches = False
 
-        if _all_int_parameters(self._parameters_manager):
+        if _all_integral_modifiers(self._parameters_manager):
             _multiply(
                 self._parameters_manager,
                 self._results_manager,
@@ -205,7 +203,7 @@ class Problem:
     def run_brute_force(self) -> None:
         """runs the full search space"""
 
-        if _all_int_parameters(self._parameters_manager):
+        if _all_integral_modifiers(self._parameters_manager):
             self.run_sample(-1)
         else:
             raise ValueError("with continous parameters cannot run brute force.")
@@ -214,14 +212,14 @@ class Problem:
         """runs a minimum sample of the full search space that contains all parameter variations
         this helps check the validity of each variation"""
 
-        if _all_int_parameters(self._parameters_manager):
+        if _all_integral_modifiers(self._parameters_manager):
             self.run_sample(0, seed=seed)
         else:
             raise ValueError("with continous parameters cannot run each variation.")
 
     def _to_pymoo(
         self,
-        callback: AnyCallback,
+        callback: AnyPymooCallback,
         saves_batches: bool,
         expected_max_n_generations: int,
     ) -> _PymooProblem:
@@ -264,21 +262,21 @@ class Problem:
             + ("is_pareto", "is_feasible")
         )
 
-        # convert pymoo variations to actual values
-        variation_vecs = tuple(
-            tuple(variation.item() for variation in individual.X.values())
+        # convert pymoo candidates to actual values
+        candidate_vecs = tuple(
+            tuple(component.item() for component in individual.X.values())
             for individual in individuals
         )
         value_vecs = tuple(
             tuple(
-                variation
+                component
                 if isinstance(parameter, ContinuousModifier)
-                else parameter[variation]
-                for parameter, variation in zip(
-                    self._parameters_manager, variation_vec, strict=True
+                else parameter[component]
+                for parameter, component in zip(
+                    self._parameters_manager, candidate_vec, strict=True
                 )
             )
-            for variation_vec in variation_vecs
+            for candidate_vec in candidate_vecs
         )
 
         # create record rows
@@ -380,7 +378,7 @@ class Problem:
         p_crossover: float = 1.0,
         p_mutation: float = 0.2,
         init_population_size: int = -1,
-        callback: AnyCallback = None,
+        callback: AnyPymooCallback = None,
         saves_history: bool = True,
         saves_batches: bool = True,
         checkpoint_interval: int = 0,
@@ -422,7 +420,7 @@ class Problem:
         p_crossover: float = 1.0,
         p_mutation: float = 0.2,
         init_population_size: int = -1,
-        callback: AnyCallback = None,
+        callback: AnyPymooCallback = None,
         saves_history: bool = True,
         saves_batches: bool = True,
         checkpoint_interval: int = 0,

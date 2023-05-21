@@ -5,16 +5,11 @@ from platform import node
 from inspect import currentframe
 from functools import wraps, reduce
 from collections.abc import Callable
-from typing import Any, Final, Literal, TypeVar
 from contextlib import ContextDecorator, AbstractContextManager
+from typing import TYPE_CHECKING, Any, Self, Final, Literal, TypeVar, ParamSpec
 
 from . import config as cf
 from ._typing import AnyCmdArgs, SubprocessResult
-
-# this follows the ContextDecorator signature
-# just to make my life easier
-_F = TypeVar("_F", bound=Callable[..., Any])
-
 
 HOST_STEM = node().split(".")[0]
 
@@ -66,13 +61,20 @@ class _Formatter(logging.Formatter):
         assert record.levelno in (logging.DEBUG, logging.INFO)
 
         if record.levelno == logging.DEBUG:
-            _Formatter.__init__(self, self._FMT_DEBUG)  # python/mypy#13173
+            # needs to use explicit _Formatter, see python/mypy#13173
+            _Formatter.__init__(self, self._FMT_DEBUG)
             fmted = super().format(record)
-            _Formatter.__init__(self, self._FMT_DEFAULT)  # python/mypy#13173
+            _Formatter.__init__(self, self._FMT_DEFAULT)
         else:
             fmted = super().format(record)
 
         return fmted
+
+
+##############################  module typing  ##############################
+_P = ParamSpec("_P")
+_R = TypeVar("_R", covariant=True)
+#############################################################################
 
 
 class _LoggerManager(AbstractContextManager, ContextDecorator):
@@ -90,13 +92,16 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
 
     __slots__ = ("_cwd_index", "_is_first", "_name", "_level", "_log_file", "_logger")
 
+    if TYPE_CHECKING:
+        _recreate_cm: Callable
+
     def __init__(self, cwd_index: int, is_first: bool = False) -> None:
         self._cwd_index = cwd_index
         self._is_first = is_first
 
-    def __call__(self, func: _F) -> _F:
+    def __call__(self, func: Callable[_P, _R]) -> Callable[_P, _R]:  # type: ignore[override]
         @wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
             # get the cwd of the decorated func
             cwd = args[self._cwd_index]
             assert isinstance(
@@ -127,14 +132,12 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
             if self._is_first:
                 self._log_file.unlink(missing_ok=True)
 
-            with self._recreate_cm():  # type: ignore[attr-defined] # no idea why
-                # not entirely sure why
-                # but nothing will be logged without this context
+            with self._recreate_cm():
                 return func(*args, **kwargs)
 
-        return wrapper  # type:ignore[return-value] # python/mypy#1927 says solved, but
+        return wrapper
 
-    def __enter__(self) -> "_LoggerManager":  # TODO: use typing.Self after 3.11
+    def __enter__(self) -> Self:
         # create a logger
         self.logger = logging.getLogger(self._name)
         self.logger.setLevel(logging.DEBUG)
@@ -180,7 +183,7 @@ class _SubprocessLogger(AbstractContextManager):
         self._logger = logger
         self._cmd = " ".join(str(cmd_arg) for cmd_arg in cmd_args)
 
-    def __enter__(self) -> "_SubprocessLogger":  # TODO: use typing.Self after 3.11
+    def __enter__(self) -> Self:
         self._logger.info(f"started '{self._cmd}'")
         return self
 
@@ -209,7 +212,6 @@ def _log(
 
     # get the name of the function that calls this _log function
     # caller_depth + 1, as this _log function always adds one more depth
-    # TODO: change co_name to co_qualname after 3.11, see python/cpython#88696
     caller_name = _rgetattr(
         currentframe(), ("f_back",) * (caller_depth + 1) + ("f_code", "co_name")
     )

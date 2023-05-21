@@ -1,17 +1,15 @@
-from collections.abc import Iterator
-
 from pymoo.optimize import minimize
 from pymoo.core.result import Result
 from pymoo.core.variable import Real
 from pymoo.core.problem import Problem
 from pymoo.core.callback import Callback
 from pymoo.core.algorithm import Algorithm
+from pymoo.core.individual import Individual
+from pymoo.core.population import Population
 from pymoo.core.termination import Termination
 from pymoo.algorithms.base.genetic import GeneticAlgorithm
 from pymoo.operators.mutation.pm import PolynomialMutation
 from pymoo.operators.repair.rounding import RoundingRepair
-from pymoo.core.individual import Individual as Individual_
-from pymoo.core.population import Population as Population_
 from pymoo.algorithms.moo.nsga2 import NSGA2, binary_tournament
 from pymoo.operators.crossover.sbx import SimulatedBinaryCrossover
 from pymoo.termination.max_gen import MaximumGenerationTermination
@@ -25,17 +23,3 @@ from pymoo.core.mixed import (
     MixedVariableSampling,
     MixedVariableDuplicateElimination,
 )
-
-from ._typing import AnyVariationMap
-
-
-#############################################################################
-#######                        TYPING PATCHES                         #######
-#############################################################################
-class Individual(Individual_):
-    X: AnyVariationMap
-
-
-class Population(Population_):
-    def __iter__(self) -> Iterator[Individual]:
-        return super().__iter__()

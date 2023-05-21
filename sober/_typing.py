@@ -1,42 +1,17 @@
 from os import PathLike
-from typing import Literal, TypeVar, Protocol, TypeAlias
+from collections.abc import Callable
+from typing import Literal, TypeVar, Protocol, Required, TypeAlias, TypedDict
 
 import numpy as np
-from typing_extensions import Required, TypedDict
-from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
 
-# TODO: Refactor this module, along with typing in other modules after 3.11
+from . import _pymoo_namespace as pm
 
+# generic
 AnyStrPath: TypeAlias = str | PathLike[str]
 AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
 
-AnyModelType: TypeAlias = Literal[".idf", ".imf"]
-AnyLanguage: TypeAlias = Literal["python"]
 
-_S = TypeVar("_S", int, float)
-AnyVURow: TypeAlias = tuple[_S, _S]  # TODO: double check this for float params
-AnyIntegralVURow: TypeAlias = AnyVURow[int]
-AnyRealVURow: TypeAlias = AnyVURow[float]
-AnyVariationMap: TypeAlias = dict[str, np.integer | np.floating]
-AnyVariationVec: TypeAlias = tuple[int, Unpack[tuple[_S, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
-AnyUncertaintyVec: TypeAlias = tuple[int, Unpack[tuple[_S, ...]]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
-AnyVUMat: TypeAlias = tuple[
-    AnyIntegralVURow, Unpack[tuple[AnyVURow, ...]]  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
-]
-AnyTask: TypeAlias = tuple[str, AnyVUMat]
-AnyJob: TypeAlias = tuple[str, tuple[AnyTask, ...]]
-## TODO: the following may be generalised after python/mypy#12280 ##
-AnyIntegralVariationVec: TypeAlias = tuple[int, ...]
-AnyIntegralUncertaintyVec: TypeAlias = tuple[int, ...]
-AnyIntegralVUMat: TypeAlias = tuple[AnyIntegralVURow, ...]
-AnyIntegralTask: TypeAlias = tuple[str, AnyIntegralVUMat]
-AnyIntegralJob: TypeAlias = tuple[str, tuple[AnyIntegralTask, ...]]
-####################################################################
-
-AnyUIDs: TypeAlias = tuple[str, ...]
-AnyUIDsPair: TypeAlias = tuple[str, AnyUIDs]
-AnyBatchResults: TypeAlias = tuple[tuple[float, ...], ...]
-
+# config
 Config = TypedDict(
     "Config",
     {
@@ -50,8 +25,47 @@ Config = TypedDict(
     },
     total=False,
 )
+AnyModelType: TypeAlias = Literal[".idf", ".imf"]
+AnyLanguage: TypeAlias = Literal["python"]
 
 
+# parameters
+_S = TypeVar("_S", int, float)
+
+AnyDuo: TypeAlias = tuple[_S, _S]  # TODO: double check this for float params
+AnyIntegralDuo: TypeAlias = AnyDuo[int]
+AnyRealDuo: TypeAlias = AnyDuo[float]
+AnyDuoVec: TypeAlias = tuple[  # type: ignore[valid-type,misc] # python/mypy#12280
+    AnyIntegralDuo, *tuple[AnyDuo, ...]  # type: ignore[misc] # python/mypy#12280
+]
+
+AnyCandidateVec: TypeAlias = tuple[int, *tuple[_S, ...]]  # type: ignore[valid-type,misc] # python/mypy#12280
+AnyScenarioVec: TypeAlias = tuple[int, *tuple[_S, ...]]  # type: ignore[valid-type,misc] # python/mypy#12280
+
+AnyTask: TypeAlias = tuple[str, AnyDuoVec]
+AnyJob: TypeAlias = tuple[str, tuple[AnyTask, ...]]
+
+
+# results
+AnyUIDs: TypeAlias = tuple[str, ...]
+AnyBatchResults: TypeAlias = tuple[tuple[float, ...], ...]
+
+
+# pymoo
+AnyPymooCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
+AnyCandidateMap: TypeAlias = dict[str, np.integer | np.floating]
+PymooOut = TypedDict("PymooOut", {"F": None | np.ndarray, "G": None | np.ndarray})
+PymooOperators = TypedDict(
+    "PymooOperators",
+    {
+        "sampling": pm.Population,
+        "mating": pm.MixedVariableMating,
+        "eliminate_duplicates": pm.MixedVariableDuplicateElimination,
+    },
+)
+
+
+# logger
 class SubprocessResult(Protocol):
     returncode: int
     stdout: str

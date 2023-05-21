@@ -2,16 +2,16 @@ from pathlib import Path
 
 from .results import _ResultsManager
 from .parameters import _ParametersManager
-from ._typing import AnyBatchResults, AnyVariationVec
+from ._typing import AnyBatchResults, AnyCandidateVec
 
 
 def _evaluate(
-    *variation_vecs: AnyVariationVec,
+    *candidate_vecs: AnyCandidateVec,
     parameters_manager: _ParametersManager,
     results_manager: _ResultsManager,
     batch_directory: Path,
 ) -> None:
-    jobs = tuple(parameters_manager._jobs(*variation_vecs))
+    jobs = tuple(parameters_manager._jobs(*candidate_vecs))
 
     parameters_manager._make_batch(batch_directory, jobs)
 
@@ -23,13 +23,13 @@ def _evaluate(
 
 
 def _pymoo_evaluate(
-    *variation_vecs: AnyVariationVec,
+    *candidate_vecs: AnyCandidateVec,
     parameters_manager: _ParametersManager,
     results_manager: _ResultsManager,
     batch_directory: Path,
 ) -> tuple[AnyBatchResults, AnyBatchResults]:
     _evaluate(
-        *variation_vecs,
+        *candidate_vecs,
         parameters_manager=parameters_manager,
         results_manager=results_manager,
         batch_directory=batch_directory,

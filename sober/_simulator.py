@@ -1,9 +1,9 @@
 from pathlib import Path, PurePath
-from collections.abc import Iterable
+from collections.abc import Sequence
 
 from ._tools import _run
 from . import config as cf
-from ._typing import AnyCmdArgs, AnyStrPath
+from ._typing import AnyStrPath
 
 
 #############################################################################
@@ -47,14 +47,13 @@ def _run_energyplus(cwd: Path) -> None:
 def _run_readvars(cwd: Path, rvi_file: Path, frequency: str) -> None:
     """runs ReadVarsESO"""
 
-    cmd_args: AnyCmdArgs = (
+    cmd_args = (
         cf._config["exec.readvars"],
         rvi_file,
         "Unlimited",
         "FixHeader",
+        frequency,  # ReadVarsESO will ignore empty string
     )
-    if frequency:
-        cmd_args += (frequency,)
     _run(cmd_args, cwd)
 
 
@@ -71,7 +70,7 @@ def _resolved_path(path: AnyStrPath, default_parent: Path) -> Path:
         return (default_parent / pure_path).resolve(strict=True)
 
 
-def _resolved_macros(macro_lines: Iterable[str], model_directory: Path) -> list[str]:
+def _resolved_macros(macro_lines: Sequence[str], model_directory: Path) -> list[str]:
     """resolves paths in macro commands used to incorporate external files
     macro lines should have been trimmed before passed in"""
 

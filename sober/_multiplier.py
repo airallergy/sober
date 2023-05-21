@@ -3,7 +3,7 @@ import operator
 from pathlib import Path
 from itertools import accumulate
 from typing import Generic, TypeVar, overload
-from collections.abc import Iterable, Collection
+from collections.abc import Iterable, Sequence
 
 import numpy as np
 
@@ -44,7 +44,7 @@ class _LazyCartesianProduct(Generic[_T]):
         ...
 
     @overload
-    def __getitem__(self, key: Collection[int]) -> tuple[tuple[_T, ...], ...]:
+    def __getitem__(self, key: Sequence[int]) -> tuple[tuple[_T, ...], ...]:
         ...
 
     def __getitem__(self, key):
@@ -58,7 +58,7 @@ class _LazyCartesianProduct(Generic[_T]):
                 self._tuples[idx][key // self._divs[idx] % self._mods[idx]]
                 for idx in range(self._n_tuples)
             )
-        elif isinstance(key, Collection) and all(isinstance(item, int) for item in key):
+        elif isinstance(key, Sequence) and all(isinstance(item, int) for item in key):
             return tuple(self[item] for item in key)
         else:
             raise TypeError("index must be integers or a collection of integers.")
@@ -88,7 +88,7 @@ def _multiply(
             )
 
         sample_idxs = tuple(range(n_products))
-        variation_vecs = search_space[sample_idxs]
+        candidate_vecs = search_space[sample_idxs]
     elif sample_size == 0:
         # test each variation with fewest simulations
 
@@ -101,17 +101,17 @@ def _multiply(
             tuple(np.resize(row, max_n_variations) for row in permuted), dtype=np.int_
         )
 
-        variation_vecs = tuple(tuple(map(int, row)) for row in filled.T)
+        candidate_vecs = tuple(tuple(map(int, row)) for row in filled.T)
     else:
         # proper subset
 
         sample_idxs_ = rng.choice(n_products, sample_size, replace=False)
         sample_idxs_.sort()
         sample_idxs = tuple(map(int, sample_idxs_))
-        variation_vecs = search_space[sample_idxs]
+        candidate_vecs = search_space[sample_idxs]
 
     _evaluate(
-        *variation_vecs,
+        *candidate_vecs,
         parameters_manager=parameters_manager,
         results_manager=results_manager,
         batch_directory=evaluation_directory,

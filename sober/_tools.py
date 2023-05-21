@@ -8,11 +8,8 @@ from uuid import NAMESPACE_X500, uuid5
 from multiprocessing import get_context
 from subprocess import PIPE, STDOUT, run
 from contextlib import AbstractContextManager
-from typing import TYPE_CHECKING, Any, TypeVar
 from collections.abc import Callable, Iterable, Iterator
-
-from typing_extensions import Unpack  # TODO: remove Unpack after 3.11
-from typing_extensions import TypeVarTuple  # NOTE: from typing after 3.11
+from typing import TYPE_CHECKING, Any, Self, TypeVar, TypeVarTuple
 
 from ._logger import _log
 from ._typing import AnyCmdArgs
@@ -55,6 +52,14 @@ def _write_records(
         writer.writerows(record_rows)
 
 
+def _rectified_str_iterable(s: str | Iterable[str]) -> tuple[str, ...]:
+    """converts str or an iterable of str to a tuple of str"""
+    if isinstance(s, str):
+        return (s,)
+    else:
+        return tuple(s)
+
+
 #############################################################################
 #######                      PARALLEL FUNCTIONS                       #######
 #############################################################################
@@ -71,10 +76,6 @@ if sys.platform != "win32":
 else:
     _MULTIPROCESSING_CONTEXT = get_context("spawn")
 
-InitArgs = TypeVarTuple("InitArgs")  # type: ignore[misc] # TODO: after 3.11
-_P = TypeVar("_P", contravariant=True)
-_R = TypeVar("_R", covariant=True)
-
 # [1] quite a few mypy complaints due to typeshed,
 #     stemmed from the implementation of starmap/starimap
 #     (related but stale: python/cpython#72567),
@@ -89,6 +90,12 @@ if TYPE_CHECKING:  # [1]
 
 else:
     from multiprocessing.pool import IMapIterator, starmapstar
+
+##############################  module typing  ##############################
+_InitArgs = TypeVarTuple("_InitArgs")  # type: ignore[misc] # python/mypy#12280
+_P = TypeVar("_P", contravariant=True)
+_R = TypeVar("_R", covariant=True)
+#############################################################################
 
 
 class _Pool(Pool):
@@ -107,8 +114,8 @@ class _Pool(Pool):
     def __init__(
         self,
         processes: int,
-        initializer: Callable[[Unpack[InitArgs]], None] | None,  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
-        initargs: tuple[Unpack[InitArgs]],  # type: ignore[misc, assignment] # python/mypy#12280 # TODO: Unpack -> * after 3.11
+        initializer: Callable[[*_InitArgs], None] | None,  # type: ignore[valid-type] # python/mypy#12280
+        initargs: tuple[*_InitArgs],  # type: ignore[valid-type] # python/mypy#12280
     ) -> None:
         super().__init__(
             processes, initializer, initargs, context=_MULTIPROCESSING_CONTEXT
@@ -140,7 +147,7 @@ class _Loop(AbstractContextManager):
     """a helper class for loop
     this includes making a context manager and unifying method names"""
 
-    def __enter__(self) -> "_Loop":  # TODO: use typing.Self after 3.11
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *args) -> None:
@@ -157,8 +164,8 @@ class _Loop(AbstractContextManager):
 
 def _Parallel(
     n_processes: int,
-    initializer: Callable[[Unpack[InitArgs]], None] | None = None,  # type: ignore[misc] # python/mypy#12280 # TODO: Unpack -> * after 3.11
-    initargs: tuple[Unpack[InitArgs]] = (),  # type: ignore[misc,assignment] # python/mypy#12280 # TODO: Unpack -> * after 3.11
+    initializer: Callable[[*_InitArgs], None] | None = None,  # type: ignore[valid-type] # python/mypy#12280
+    initargs: tuple[*_InitArgs] = (),  # type: ignore[valid-type,assignment] # python/mypy#12280
 ) -> _Pool | _Loop:
     """a helper function to distribute parallel computation
     based on the requested number of processes"""
