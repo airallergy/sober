@@ -113,9 +113,7 @@ class _Collector(ABC):
         # convert each objective to minimise
         return value * {"minimise": 1, "maximise": -1}[self._direction]
 
-    def _to_constraint(  # type:ignore[return] # python/mypy#12534
-        self, value: float
-    ) -> float:
+    def _to_constraint(self, value: float) -> float:
         # convert each constraint to <= 0
         match self._bounds:
             case (None, float() as upper):

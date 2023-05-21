@@ -79,7 +79,7 @@ else:
 # [1] quite a few mypy complaints due to typeshed,
 #     stemmed from the implementation of starmap/starimap
 #     (related but stale: python/cpython#72567),
-#     a lot of private involved, so not likely to be PRed to typeshed
+#     a lot of private involved, so not likely to be PRed into typeshed
 if TYPE_CHECKING:  # [1]
     starmapstar: Callable
     from multiprocessing.pool import IMapIterator as IMapIterator_

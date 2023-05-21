@@ -236,7 +236,7 @@ class IndexTagger(_IDFTagger):
     __slots__ = ("_index_trios",)
 
     def __init__(self, /, *index_trios: Iterable[str]) -> None:
-        _index_trios = tuple(tuple(item) for item in index_trios)  # mypy bug with map
+        _index_trios = tuple(tuple(item) for item in index_trios)  # python/mypy#11682
 
         if any(len(item) != 3 for item in _index_trios):
             raise ValueError(
@@ -272,7 +272,7 @@ class StringTagger(_TextTagger):
     __slots__ = ("_string_trios",)
 
     def __init__(self, /, *string_trios: Iterable[str]) -> None:
-        _string_trios = tuple(tuple(item) for item in string_trios)  # mypy bug with map
+        _string_trios = tuple(tuple(item) for item in string_trios)  # python/mypy#11682
 
         if any(len(item) == 0 for item in _string_trios):
             raise ValueError(

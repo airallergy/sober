@@ -92,7 +92,7 @@ class _PymooProblem(pm.Problem):
         )
 
         objectives, constraints = _pymoo_evaluate(
-            *candidate_vecs,  # type:ignore[arg-type] # python/mypy#12280
+            *candidate_vecs,
             parameters_manager=self._parameters_manager,
             results_manager=self._results_manager,
             batch_directory=self._evaluation_directory / batch_uid,
