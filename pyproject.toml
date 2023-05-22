@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "sober"
+version = "0.0.1-alpha.0"
+description = "sober optimises built environment robustly"
+authors = ["Cheng Cui <cheng.cui.95@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pymoo = "^0.6"
+eppy = "^0.5.63"
+numpy = "^1.23"
+psutil = "^5.9.5"
+
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.2.0"
+isort = "^5.12.0"
+black = "^23.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
