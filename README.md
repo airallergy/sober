@@ -8,4 +8,4 @@
 
 ---
 
-Pre-alpha phase, subject to change.
+Alpha phase, in development.
