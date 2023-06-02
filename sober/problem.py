@@ -1,20 +1,16 @@
 import pickle
 from pathlib import Path
-from shutil import rmtree
 from typing import Literal
 from itertools import chain
 from collections.abc import Iterable
 
-import numpy as np
-
 from . import config as cf
 from ._multiplier import _multiply
+from ._tools import _write_records
 from . import _pymoo_namespace as pm
-from ._evaluator import _pymoo_evaluate
 from ._logger import _log, _LoggerManager
-from ._tools import _natural_width, _write_records
-from ._optimiser import _sampling, _survival, _algorithm
-from ._typing import PymooOut, AnyStrPath, AnyCandidateMap, AnyPymooCallback
+from ._typing import AnyStrPath, AnyPymooCallback
+from ._optimiser import _sampling, _survival, _algorithm, _PymooProblem
 from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 from .parameters import (
     WeatherModifier,
@@ -23,89 +19,6 @@ from .parameters import (
     _ParametersManager,
     _all_integral_modifiers,
 )
-
-
-#############################################################################
-#######                   PYMOO PROBLEM CHILD CLASS                   #######
-#############################################################################
-class _PymooProblem(pm.Problem):
-    """interfaces the pymoo problem"""
-
-    _parameters_manager: _ParametersManager
-    _results_manager: _ResultsManager
-    _evaluation_directory: Path
-    _saves_batches: bool
-    _batch_idx_width: int
-
-    def __init__(
-        self,
-        parameters_manager: _ParametersManager,
-        results_manager: _ResultsManager,
-        evaluation_directory: Path,
-        callback: AnyPymooCallback,
-        saves_batches: bool,
-        expected_max_n_generations: int,
-    ) -> None:
-        # NOTE: pymoo0.6 asks for a map from parameter uids to pymoo variable types
-        variables = {
-            parameter._label: (
-                pm.Real(bounds=(parameter._low, parameter._high))
-                if isinstance(parameter, ContinuousModifier)
-                else pm.Integral(bounds=(parameter._low, parameter._high))
-            )
-            for parameter in parameters_manager
-        }
-
-        super().__init__(
-            n_obj=len(results_manager._objectives),
-            n_ieq_constr=len(results_manager._constraints),
-            vars=variables,
-            callback=callback,
-        )
-        self._parameters_manager = parameters_manager
-        self._results_manager = results_manager
-        self._evaluation_directory = evaluation_directory
-        self._saves_batches = saves_batches
-        self._batch_idx_width = _natural_width(expected_max_n_generations)
-
-    def _evaluate(
-        self,
-        x: Iterable[AnyCandidateMap],
-        out: PymooOut,
-        *args,
-        algorithm: pm.Algorithm,
-        **kwargs,
-    ) -> None:
-        # NOTE: in pymoo0.6
-        #           n_gen follows 1, 2, 3, ...
-        #           x is a numpy array of dicts, each dict is a candidate map
-        #               whose keys are parameter labels
-        #                     values are candidate vectors
-        #           out has to be a dict of numpy arrays
-
-        batch_idx = algorithm.n_gen - 1
-        batch_uid = f"B{batch_idx:0{self._batch_idx_width}}"
-
-        candidate_vecs = tuple(
-            tuple(component.item() for component in candidate_map.values())
-            for candidate_map in x
-        )
-
-        objectives, constraints = _pymoo_evaluate(
-            *candidate_vecs,
-            parameters_manager=self._parameters_manager,
-            results_manager=self._results_manager,
-            batch_directory=self._evaluation_directory / batch_uid,
-        )
-
-        out["F"] = np.asarray(objectives, dtype=np.float_)
-        if self._results_manager._constraints:
-            out["G"] = np.asarray(constraints, dtype=np.float_)
-
-        if not self._saves_batches:
-            rmtree(self._evaluation_directory / batch_uid)
-
-        _log(self._evaluation_directory, f"evaluated {batch_uid}")
 
 
 #############################################################################
