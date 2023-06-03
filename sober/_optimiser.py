@@ -33,7 +33,7 @@ class _PymooProblem(pm.Problem):
         evaluation_directory: Path,
         callback: AnyPymooCallback,
         saves_batches: bool,
-        expected_max_n_generations: int,
+        expected_n_generations: int,
     ) -> None:
         # NOTE: pymoo0.6 asks for a map from parameter uids to pymoo variable types
         variables = {
@@ -55,7 +55,7 @@ class _PymooProblem(pm.Problem):
         self._results_manager = results_manager
         self._evaluation_directory = evaluation_directory
         self._saves_batches = saves_batches
-        self._batch_idx_width = _natural_width(expected_max_n_generations)
+        self._batch_idx_width = _natural_width(expected_n_generations)
 
     def _evaluate(
         self,

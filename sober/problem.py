@@ -134,7 +134,7 @@ class Problem:
         self,
         callback: AnyPymooCallback,
         saves_batches: bool,
-        expected_max_n_generations: int,
+        expected_n_generations: int,
     ) -> _PymooProblem:
         if not len(self._results_manager._objectives):
             raise ValueError("optimisation needs at least one objective.")
@@ -145,7 +145,7 @@ class Problem:
             self._evaluation_directory,
             callback,
             saves_batches,
-            expected_max_n_generations,
+            expected_n_generations,
         )
 
     def _record_survival(
@@ -295,15 +295,15 @@ class Problem:
         saves_history: bool = True,
         saves_batches: bool = True,
         checkpoint_interval: int = 0,
-        expected_max_n_generations: int = 9999,
+        expected_n_generations: int = 9999,
         seed: int | None = None,
     ) -> pm.Result:
         """runs optimisation using the NSGA2 algorithm"""
 
         if isinstance(termination, pm.MaximumGenerationTermination):
-            expected_max_n_generations = termination.n_max_gen
+            expected_n_generations = termination.n_max_gen
 
-        problem = self._to_pymoo(callback, saves_batches, expected_max_n_generations)
+        problem = self._to_pymoo(callback, saves_batches, expected_n_generations)
 
         if init_population_size <= 0:
             init_population_size = population_size
@@ -337,15 +337,15 @@ class Problem:
         saves_history: bool = True,
         saves_batches: bool = True,
         checkpoint_interval: int = 0,
-        expected_max_n_generations: int = 9999,
+        expected_n_generations: int = 9999,
         seed: int | None = None,
     ) -> pm.Result:
         """runs optimisation using the NSGA3 algorithm"""
 
         if isinstance(termination, pm.MaximumGenerationTermination):
-            expected_max_n_generations = termination.n_max_gen
+            expected_n_generations = termination.n_max_gen
 
-        problem = self._to_pymoo(callback, saves_batches, expected_max_n_generations)
+        problem = self._to_pymoo(callback, saves_batches, expected_n_generations)
 
         if init_population_size <= 0:
             init_population_size = population_size
