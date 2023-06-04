@@ -368,8 +368,8 @@ class _ResultsManager:
         self._check_args()
 
     def __iter__(self) -> Iterator[_Collector]:
-        for collector in chain(self._task_results, self._job_results):
-            yield collector
+        yield from self._task_results
+        yield from self._job_results
 
     def __len__(self) -> int:
         return len(self._task_results) + len(self._job_results)

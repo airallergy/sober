@@ -551,8 +551,8 @@ class _ParametersManager(Generic[ModelModifier]):
         self._check_args()
 
     def __iter__(self) -> Iterator[WeatherModifier | ModelModifier]:
-        for parameter in chain((self._weather_parameter,), self._model_parameters):
-            yield parameter
+        yield self._weather_parameter
+        yield from self._model_parameters
 
     def __len__(self) -> int:
         return 1 + len(self._model_parameters)
