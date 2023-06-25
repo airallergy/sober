@@ -43,7 +43,7 @@ def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
 def _write_records(
     record_file: Path, header_row: Iterable[Any], *record_rows: Iterable[Any]
 ) -> None:
-    with record_file.open("wt") as fp:
+    with record_file.open("wt", newline="") as fp:
         writer = csv.writer(fp, dialect="excel")
 
         # write header

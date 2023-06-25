@@ -401,7 +401,9 @@ class _ResultsManager:
         self, level: _AnyLevel, record_directory: Path, uids: AnyUIDs
     ) -> None:
         # only final results
-        with (record_directory / cf._RECORDS_FILENAMES[level]).open("rt") as fp:
+        with (record_directory / cf._RECORDS_FILENAMES[level]).open(
+            "rt", newline=""
+        ) as fp:
             reader = csv.reader(fp, dialect="excel")
 
             header_row = next(reader)
@@ -425,7 +427,9 @@ class _ResultsManager:
                 if not result._is_final:
                     continue
 
-                with (record_directory / uid / result._filename).open("rt") as fp:
+                with (record_directory / uid / result._filename).open(
+                    "rt", newline=""
+                ) as fp:
                     reader = csv.reader(fp, dialect="excel")
 
                     if idx:
@@ -567,7 +571,9 @@ class _ResultsManager:
     @cache
     def _recorded_batch(self, batch_directory: Path) -> tuple[tuple[str, ...], ...]:
         # read job records
-        with (batch_directory / cf._RECORDS_FILENAMES["job"]).open("rt") as fp:
+        with (batch_directory / cf._RECORDS_FILENAMES["job"]).open(
+            "rt", newline=""
+        ) as fp:
             reader = csv.reader(fp, dialect="excel")
 
             # skip the header row
