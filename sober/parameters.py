@@ -255,7 +255,12 @@ class IndexTagger(_IDFTagger):
         for (class_name, object_name, field_name), tag in zip(
             self._index_trios, self._tags, strict=True
         ):
-            model.getobject(class_name, object_name)[makefieldname(field_name)] = tag
+            obj = model.getobject(class_name, object_name)
+            if obj is None:
+                raise ValueError(f"object is not found in the model: '{object_name}'.")
+                # eppy throws a proper error for unknown field names
+
+            obj[makefieldname(field_name)] = tag
         return model
 
 
@@ -292,7 +297,7 @@ class StringTagger(_TextTagger):
         for string, prefix, suffix in _string_trios:
             if not (string.startswith(prefix) and string.endswith(suffix)):
                 raise ValueError(
-                    f"string needs to share the prefix and the suffix: {string}, {prefix}, {suffix}."
+                    f"string needs to share the prefix and the suffix: '{string}, {prefix}, {suffix}'."
                 )
 
         # remove duplicate trios
@@ -304,6 +309,9 @@ class StringTagger(_TextTagger):
         for (string, prefix, suffix), tag in zip(
             self._string_trios, self._tags, strict=True
         ):
+            if string not in model:
+                raise ValueError(f"string is not found in the model: '{string}'.")
+
             model = model.replace(string, prefix + tag + suffix)
         return model
 
@@ -567,6 +575,16 @@ class _ParametersManager(Generic[ModelModifier]):
         with model_file.open("rt") as fp:
             model = fp.read()
 
+        # tag all parameters with a _TextTagger
+        # this has to happen first
+        # as eppy changes the format
+        # and the split below resolve the macro command paths
+        # both of which affects string matching
+        for parameter in self._model_parameters:
+            tagger = parameter._tagger
+            if isinstance(tagger, _TextTagger):
+                model = tagger._tagged(model)
+
         # split the model into macro and regular commands
         macros, regulars = _split_model(model, model_file.parent)
 
@@ -577,15 +595,6 @@ class _ParametersManager(Generic[ModelModifier]):
                 + ("no " if self._model_type == ".imf" else "")
                 + "macro commands are found."
             )
-
-        # tag all parameters with a _TextTagger
-        # this has to happen first
-        # as eppy changes the format, which affects string matching
-        for parameter in self._model_parameters:
-            tagger = parameter._tagger
-            if isinstance(tagger, _TextTagger):
-                macros = tagger._tagged(macros)
-                regulars = tagger._tagged(regulars)
 
         # read regular commands into eppy
         # and configure energyplus if not yet

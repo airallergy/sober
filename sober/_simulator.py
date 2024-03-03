@@ -65,9 +65,9 @@ def _resolved_path(path: AnyStrPath, default_parent: Path) -> Path:
 
     pure_path = PurePath(path)
     if pure_path.is_absolute():
-        return Path(pure_path).resolve(strict=True)
+        return Path(pure_path).resolve()
     else:
-        return (default_parent / pure_path).resolve(strict=True)
+        return (default_parent / pure_path).resolve()
 
 
 def _resolved_macros(macro_lines: Sequence[str], model_directory: Path) -> list[str]:
@@ -105,7 +105,7 @@ def _split_model(model: str, model_directory: Path) -> tuple[str, str]:
         trimmed_line = line.strip()
 
         # ignore comment or empty lines
-        if trimmed_line.startswith("!-") or not trimmed_line:
+        if trimmed_line.startswith("!") or not trimmed_line:
             continue
 
         if trimmed_line.startswith("##"):
