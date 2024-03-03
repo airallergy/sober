@@ -167,8 +167,7 @@ def _algorithm(
     p_crossover: float,
     p_mutation: float,
     sampling: pm.Population,
-) -> pm.NSGA2:
-    ...
+) -> pm.NSGA2: ...
 
 
 @overload
@@ -179,8 +178,7 @@ def _algorithm(
     p_mutation: float,
     sampling: pm.Population,
     reference_directions: pm.ReferenceDirectionFactory,
-) -> pm.NSGA3:
-    ...
+) -> pm.NSGA3: ...
 
 
 def _algorithm(

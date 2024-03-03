@@ -182,9 +182,11 @@ class Problem:
         )
         value_vecs = tuple(
             tuple(
-                component
-                if isinstance(parameter, ContinuousModifier)
-                else parameter[component]
+                (
+                    component
+                    if isinstance(parameter, ContinuousModifier)
+                    else parameter[component]
+                )
                 for parameter, component in zip(
                     self._parameters_manager, candidate_vec, strict=True
                 )

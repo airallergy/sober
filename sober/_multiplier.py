@@ -39,12 +39,10 @@ class _LazyCartesianProduct(Generic[_T]):
         self._mods = tuple_lens
 
     @overload
-    def __getitem__(self, key: int) -> tuple[_T, ...]:
-        ...
+    def __getitem__(self, key: int) -> tuple[_T, ...]: ...
 
     @overload
-    def __getitem__(self, key: Sequence[int]) -> tuple[tuple[_T, ...], ...]:
-        ...
+    def __getitem__(self, key: Sequence[int]) -> tuple[tuple[_T, ...], ...]: ...
 
     def __getitem__(self, key):
         if isinstance(key, int):

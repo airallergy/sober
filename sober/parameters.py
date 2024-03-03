@@ -60,8 +60,7 @@ class _Tagger(ABC, Generic[_T]):
         )
 
     @abstractmethod
-    def _tagged(self, model: Any) -> Any:
-        ...
+    def _tagged(self, model: Any) -> Any: ...
 
     def _detagged(self, tagged_model: str, *values: _T) -> str:
         match len(values):
@@ -82,16 +81,14 @@ class _IDFTagger(_Tagger):
     """an abstract base class for taggers in the IDF format"""
 
     @abstractmethod
-    def _tagged(self, model: IDF) -> IDF:
-        ...
+    def _tagged(self, model: IDF) -> IDF: ...
 
 
 class _TextTagger(_Tagger):
     """an abstract base class for taggers in the text format"""
 
     @abstractmethod
-    def _tagged(self, model: str) -> str:
-        ...
+    def _tagged(self, model: str) -> str: ...
 
 
 class _Modifier(ABC):
@@ -199,12 +196,10 @@ class _IntegralModifier(_Modifier, Generic[_V, _U]):
         self._high = self._n_variations - 1
 
     @overload
-    def __getitem__(self, index: int) -> _V:
-        ...
+    def __getitem__(self, index: int) -> _V: ...
 
     @overload
-    def __getitem__(self, index: tuple[int, int]) -> _U:
-        ...
+    def __getitem__(self, index: tuple[int, int]) -> _U: ...
 
     def __getitem__(self, index):
         match self._is_uncertain, index:
@@ -328,14 +323,12 @@ class WeatherModifier(_IntegralModifier[Path | str, Path]):
     __slots__ = ("_variations", "_uncertainties")
 
     @overload
-    def __init__(self, variations: Iterable[AnyStrPath], /) -> None:
-        ...
+    def __init__(self, variations: Iterable[AnyStrPath], /) -> None: ...
 
     @overload
     def __init__(
         self, variations: Iterable[str], /, *uncertainties: Iterable[AnyStrPath]
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def __init__(self, variations, /, *uncertainties):
         super().__init__(variations, *uncertainties)
@@ -438,8 +431,7 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         /,
         *extra_args: Any,  # TODO: restrict this for serialisation
         is_scalar: Literal[True],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def __init__(
@@ -450,8 +442,7 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         /,
         *extra_args: Any,
         is_scalar: Literal[False],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def __init__(self, tagger, func, parameter_indices, /, *extra_args, is_scalar=True):
         func_name = f"<function {func.__module__ + '.' + func.__code__.co_qualname}>"
@@ -625,9 +616,13 @@ class _ParametersManager(Generic[ModelModifier]):
             scenario_vecs = tuple(
                 product(
                     *(
-                        (cast(float, component),)
-                        if isinstance(parameter, ContinuousModifier)
-                        else range(parameter._ns_uncertainties[cast(int, component)])
+                        (
+                            (cast(float, component),)
+                            if isinstance(parameter, ContinuousModifier)
+                            else range(
+                                parameter._ns_uncertainties[cast(int, component)]
+                            )
+                        )
                         for parameter, component in zip(
                             self, candidate_vec, strict=True
                         )
@@ -735,9 +730,11 @@ class _ParametersManager(Generic[ModelModifier]):
         # curate job parameter value
         # NOTE: use duo_vec from the last loop
         parameter_values = list(
-            component
-            if isinstance(parameter, ContinuousModifier)
-            else parameter[component]
+            (
+                component
+                if isinstance(parameter, ContinuousModifier)
+                else parameter[component]
+            )
             for parameter, (component, _) in zip(self, duo_vec, strict=True)
         )
 

@@ -106,8 +106,7 @@ class _Collector(ABC):
             )
 
     @abstractmethod
-    def _collect(self, cwd: Path) -> None:
-        ...
+    def _collect(self, cwd: Path) -> None: ...
 
     def _to_objective(self, value: float) -> float:
         # convert each objective to minimise
