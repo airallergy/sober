@@ -9,7 +9,7 @@ from multiprocessing import get_context
 from subprocess import PIPE, STDOUT, run
 from contextlib import AbstractContextManager
 from collections.abc import Callable, Iterable, Iterator
-from typing import TYPE_CHECKING, Any, Self, TypeVar, TypeVarTuple
+from typing import TYPE_CHECKING, Any, Self, TypeVar, TypeAlias, TypeVarTuple
 
 from ._logger import _log
 from ._typing import AnyCmdArgs
@@ -162,11 +162,16 @@ class _Loop(AbstractContextManager):
         return starmap(func, iterable)
 
 
+##############################  module typing  ##############################
+AnyParallel: TypeAlias = _Pool | _Loop
+#############################################################################
+
+
 def _Parallel(
     n_processes: int,
     initializer: Callable[[*_InitArgs], None] | None = None,  # type: ignore[valid-type] # python/mypy#12280
     initargs: tuple[*_InitArgs] = (),  # type: ignore[valid-type,assignment] # python/mypy#12280
-) -> _Pool | _Loop:
+) -> AnyParallel:
     """a helper function to distribute parallel computation
     based on the requested number of processes"""
 

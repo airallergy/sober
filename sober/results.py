@@ -13,7 +13,7 @@ from . import config as cf
 from ._simulator import _run_readvars
 from ._logger import _log, _LoggerManager
 from ._typing import AnyJob, AnyUIDs, AnyStrPath, AnyBatchResults
-from ._tools import _run, _uuid, _Parallel, _write_records, _rectified_str_iterable
+from ._tools import AnyParallel, _run, _uuid, _write_records, _rectified_str_iterable
 
 ##############################  module typing  ##############################
 _AnyLevel: TypeAlias = Literal["task", "job"]
@@ -508,26 +508,23 @@ class _ResultsManager:
             result._collect(job_directory)
 
     @_LoggerManager(cwd_index=1)
-    def _collect_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
+    def _collect_batch(
+        self, batch_directory: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+    ) -> None:
         # collect batch in parallel
-        with _Parallel(
-            cf._config["n.processes"],
-            initializer=cf._update_config,
-            initargs=(cf._config,),
-        ) as p:
-            scheduled = p._starmap(
-                self._collect_job,
+        scheduled = parallel._starmap(
+            self._collect_job,
+            (
                 (
-                    (
-                        batch_directory / job_uid,
-                        tuple(task_uid for task_uid, _ in tasks),
-                    )
-                    for job_uid, tasks in jobs
-                ),
-            )
+                    batch_directory / job_uid,
+                    tuple(task_uid for task_uid, _ in tasks),
+                )
+                for job_uid, tasks in jobs
+            ),
+        )
 
-            for (job_uid, _), _ in zip(jobs, scheduled, strict=True):
-                _log(batch_directory, f"collected {job_uid}")
+        for (job_uid, _), _ in zip(jobs, scheduled, strict=True):
+            _log(batch_directory, f"collected {job_uid}")
 
         # record job result values
         self._record_final(
@@ -549,23 +546,20 @@ class _ResultsManager:
                 _log(task_directory, f"deleted {path.relative_to(task_directory)}")
 
     @_LoggerManager(cwd_index=1)
-    def _clean_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
+    def _clean_batch(
+        self, batch_directory: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+    ) -> None:
         # clean batch in parallel
-        with _Parallel(
-            cf._config["n.processes"],
-            initializer=cf._update_config,
-            initargs=(cf._config,),
-        ) as p:
-            pairs = tuple(
-                (job_uid, task_uid) for job_uid, tasks in jobs for task_uid, _ in tasks
-            )
-            scheduled = p._map(
-                self._clean_task,
-                (batch_directory / job_uid / task_uid for job_uid, task_uid in pairs),
-            )
+        pairs = tuple(
+            (job_uid, task_uid) for job_uid, tasks in jobs for task_uid, _ in tasks
+        )
+        scheduled = parallel._map(
+            self._clean_task,
+            (batch_directory / job_uid / task_uid for job_uid, task_uid in pairs),
+        )
 
-            for pair, _ in zip(pairs, scheduled, strict=True):
-                _log(batch_directory, f"cleaned {'-'.join(pair)}")
+        for pair, _ in zip(pairs, scheduled, strict=True):
+            _log(batch_directory, f"cleaned {'-'.join(pair)}")
 
     @cache
     def _recorded_batch(self, batch_directory: Path) -> tuple[tuple[str, ...], ...]:

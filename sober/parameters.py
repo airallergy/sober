@@ -22,7 +22,7 @@ from eppy.bunchhelpers import makefieldname
 
 from . import config as cf
 from ._logger import _log, _LoggerManager
-from ._tools import _uuid, _Parallel, _natural_width, _write_records
+from ._tools import AnyParallel, _uuid, _natural_width, _write_records
 from ._simulator import _run_epmacro, _split_model, _run_energyplus, _run_expandobjects
 from ._typing import (
     AnyJob,
@@ -741,23 +741,20 @@ class _ParametersManager(Generic[ModelModifier]):
         return parameter_values
 
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _make_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
+    def _make_batch(
+        self, batch_directory: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+    ) -> None:
         # make batch in parallel
-        with _Parallel(
-            cf._config["n.processes"],
-            initializer=cf._update_config,
-            initargs=(cf._config,),
-        ) as p:
-            scheduled = p._starmap(
-                self._make_job,
-                ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
-            )
+        scheduled = parallel._starmap(
+            self._make_job,
+            ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
+        )
 
-            job_record_rows = []
-            for (job_uid, _), job_parameter_values in zip(jobs, scheduled, strict=True):
-                job_record_rows.append([job_uid] + job_parameter_values)
+        job_record_rows = []
+        for (job_uid, _), job_parameter_values in zip(jobs, scheduled, strict=True):
+            job_record_rows.append([job_uid] + job_parameter_values)
 
-                _log(batch_directory, f"made {job_uid}")
+            _log(batch_directory, f"made {job_uid}")
 
         # record job parameter values
         self._record_final("job", batch_directory, job_record_rows)
@@ -770,23 +767,20 @@ class _ParametersManager(Generic[ModelModifier]):
         _run_energyplus(task_directory)
 
     @_LoggerManager(cwd_index=1)
-    def _simulate_batch(self, batch_directory: Path, jobs: tuple[AnyJob, ...]) -> None:
+    def _simulate_batch(
+        self, batch_directory: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+    ) -> None:
         # simulate batch in parallel
-        with _Parallel(
-            cf._config["n.processes"],
-            initializer=cf._update_config,
-            initargs=(cf._config,),
-        ) as p:
-            pairs = tuple(
-                (job_uid, task_uid) for job_uid, tasks in jobs for task_uid, _ in tasks
-            )
-            scheduled = p._map(
-                self._simulate_task,
-                (batch_directory / job_uid / task_uid for job_uid, task_uid in pairs),
-            )
+        pairs = tuple(
+            (job_uid, task_uid) for job_uid, tasks in jobs for task_uid, _ in tasks
+        )
+        scheduled = parallel._map(
+            self._simulate_task,
+            (batch_directory / job_uid / task_uid for job_uid, task_uid in pairs),
+        )
 
-            for pair, _ in zip(pairs, scheduled, strict=True):
-                _log(batch_directory, f"simulated {'-'.join(pair)}")
+        for pair, _ in zip(pairs, scheduled, strict=True):
+            _log(batch_directory, f"simulated {'-'.join(pair)}")
 
 
 def _all_integral_modifiers(
