@@ -1,8 +1,9 @@
 from io import StringIO
 from pathlib import Path
+from warnings import warn
 from shutil import copyfile
+from itertools import product
 from abc import ABC, abstractmethod
-from itertools import chain, product
 from collections.abc import Callable, Iterable, Iterator
 from typing import (
     Any,
@@ -98,9 +99,14 @@ class _Modifier(ABC):
     _high: float
     _index: int
     _label: str
+    _name: str
     _is_uncertain: bool
 
-    __slots__ = ("_low", "_high", "_index", "_label", "_is_uncertain")
+    __slots__ = ("_low", "_high", "_index", "_label", "_name", "_is_uncertain")
+
+    @abstractmethod
+    def __init__(self, name: str) -> None:
+        self._name = name
 
     def _check_args(self) -> None:
         pass
@@ -134,10 +140,12 @@ class _RealModifier(_Modifier):
     """an abstract base class for parameter modifiers of real variables in pymoo"""
 
     @abstractmethod
-    def __init__(self, low: float, high: float) -> None:
+    def __init__(self, low: float, high: float, *, name: str) -> None:
         self._low = low
         self._high = high
-        self._is_uncertain = False  # hard-coded for now
+        self._is_uncertain = False  # NOTE: hard-coded for now
+
+        super().__init__(name)
 
 
 class _IntegralModifier(_Modifier, Generic[_V, _U]):
@@ -161,9 +169,7 @@ class _IntegralModifier(_Modifier, Generic[_V, _U]):
 
     @abstractmethod
     def __init__(
-        self,
-        variations: Iterable[_V],
-        *uncertainties: Iterable[_U],
+        self, variations: Iterable[_V], *uncertainties: Iterable[_U], name: str
     ) -> None:
         # parse and count variations
         self._variations = tuple(variations)
@@ -194,6 +200,8 @@ class _IntegralModifier(_Modifier, Generic[_V, _U]):
         self._is_uncertain = set(self._ns_uncertainties) != {1}
         self._low = 0
         self._high = self._n_variations - 1
+
+        super().__init__(name)
 
     @overload
     def __getitem__(self, index: int) -> _V: ...
@@ -323,15 +331,19 @@ class WeatherModifier(_IntegralModifier[Path | str, Path]):
     __slots__ = ("_variations", "_uncertainties")
 
     @overload
-    def __init__(self, variations: Iterable[AnyStrPath], /) -> None: ...
+    def __init__(self, variations: Iterable[AnyStrPath], /, *, name: str) -> None: ...
 
     @overload
     def __init__(
-        self, variations: Iterable[str], /, *uncertainties: Iterable[AnyStrPath]
+        self,
+        variations: Iterable[str],
+        /,
+        *uncertainties: Iterable[AnyStrPath],
+        name: str,
     ) -> None: ...
 
-    def __init__(self, variations, /, *uncertainties):
-        super().__init__(variations, *uncertainties)
+    def __init__(self, variations, /, *uncertainties, name=""):
+        super().__init__(variations, *uncertainties, name=name)
 
         # resolve weather file paths
         if self._is_uncertain:
@@ -353,9 +365,11 @@ class WeatherModifier(_IntegralModifier[Path | str, Path]):
 class ContinuousModifier(_ModelModifierMixin[float], _RealModifier):
     """modifies continuous parameters"""
 
-    def __init__(self, tagger: _Tagger, low: float, high: float, /) -> None:
+    def __init__(
+        self, tagger: _Tagger, low: float, high: float, /, *, name: str = ""
+    ) -> None:
         # TODO: uncertainty of continuous parameters
-        super().__init__(tagger, low, high)
+        super().__init__(tagger, low, high, name=name)
 
     def _value(self, duo: AnyRealDuo, *args) -> float:
         return duo[0]
@@ -378,8 +392,9 @@ class DiscreteModifier(_ModelModifierMixin[float], _IntegralModifier[float, floa
         variations: Iterable[float],
         /,
         *uncertainties: Iterable[float],
+        name: str = "",
     ) -> None:
-        super().__init__(tagger, variations, *uncertainties)
+        super().__init__(tagger, variations, *uncertainties, name=name)
 
     def _value(self, duo: AnyIntegralDuo, *args) -> float:
         return self[duo]
@@ -402,8 +417,9 @@ class CategoricalModifier(_ModelModifierMixin[str], _IntegralModifier[str, str])
         variations: Iterable[str],
         /,
         *uncertainties: Iterable[str],
+        name: str = "",
     ) -> None:
-        super().__init__(tagger, variations, *uncertainties)
+        super().__init__(tagger, variations, *uncertainties, name=name)
 
     def _value(self, duo: AnyIntegralDuo, *args) -> str:
         return self[duo]
@@ -431,6 +447,7 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         /,
         *extra_args: Any,  # TODO: restrict this for serialisation
         is_scalar: Literal[True],
+        name: str,
     ) -> None: ...
 
     @overload
@@ -442,11 +459,14 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         /,
         *extra_args: Any,
         is_scalar: Literal[False],
+        name: str,
     ) -> None: ...
 
-    def __init__(self, tagger, func, parameter_indices, /, *extra_args, is_scalar=True):
+    def __init__(
+        self, tagger, func, parameter_indices, /, *extra_args, is_scalar=True, name=""
+    ):
         func_name = f"<function {func.__module__ + '.' + func.__code__.co_qualname}>"
-        super().__init__(tagger, (func_name,))
+        super().__init__(tagger, (func_name,), name=name)
 
         self._func = func
         self._parameter_indices = tuple(parameter_indices)
@@ -528,7 +548,8 @@ class _ParametersManager(Generic[ModelModifier]):
         self._weather_parameter = weather_parameter
         self._model_parameters = tuple(model_parameters)
 
-        # add index and label to each parameter
+        # assign index and label to each parameter
+        has_names = any(parameter._name for parameter in self)
         for idx, parameter in enumerate(self):
             parameter._index = idx
 
@@ -536,6 +557,12 @@ class _ParametersManager(Generic[ModelModifier]):
                 parameter._label = "W"  # P0
             else:
                 parameter._label = f"P{parameter._index}"
+
+            if has_names:
+                if not parameter._name:
+                    warn(f"no name is specified for '{parameter._label}'.")
+
+                parameter._label += f" ({parameter._name})"
 
         # check model type
         suffix = model_file.suffix
