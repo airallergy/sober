@@ -1,15 +1,15 @@
 import math
 import operator
-from pathlib import Path
-from itertools import accumulate
-from typing import Generic, TypeVar, overload
 from collections.abc import Iterable, Sequence
+from itertools import accumulate
+from pathlib import Path
+from typing import Generic, TypeVar, overload
 
 import numpy as np
 
 from ._evaluator import _evaluate
-from .results import _ResultsManager
 from .parameters import AnyIntegralModelModifier, _ParametersManager
+from .results import _ResultsManager
 
 _T = TypeVar("_T")
 

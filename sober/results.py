@@ -1,19 +1,19 @@
 import csv
-from pathlib import Path
-from warnings import warn
-from functools import cache
-from shutil import copyfile
 from abc import ABC, abstractmethod
-from os.path import isabs, normpath
-from itertools import chain, product
-from typing import Final, Literal, TypeAlias
 from collections.abc import Callable, Iterable, Iterator
+from functools import cache
+from itertools import chain, product
+from os.path import isabs, normpath
+from pathlib import Path
+from shutil import copyfile
+from typing import Final, Literal, TypeAlias
+from warnings import warn
 
 from . import config as cf
-from ._simulator import _run_readvars
 from ._logger import _log, _LoggerManager
-from ._typing import AnyJob, AnyUIDs, AnyStrPath, AnyBatchResults
-from ._tools import AnyParallel, _run, _uuid, _write_records, _rectified_str_iterable
+from ._simulator import _run_readvars
+from ._tools import AnyParallel, _rectified_str_iterable, _run, _uuid, _write_records
+from ._typing import AnyBatchResults, AnyJob, AnyStrPath, AnyUIDs
 
 ##############################  module typing  ##############################
 _AnyLevel: TypeAlias = Literal["task", "job"]
@@ -177,7 +177,7 @@ class RVICollector(_Collector):
                 f"a RVICollector result needs to be a csv file: {self._filename}."
             )
         if self._level != "task":
-            raise ValueError(f"a RVICollector result needs to be on the task level.")
+            raise ValueError("a RVICollector result needs to be on the task level.")
 
     def _touch(self, config_directory: Path) -> None:
         rvi_str = f"eplusout.{self.SUFFIXES[self._output_type]}\n{self._filename}\n"

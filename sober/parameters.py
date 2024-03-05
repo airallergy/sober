@@ -1,40 +1,40 @@
-from io import StringIO
-from pathlib import Path
-from warnings import warn
-from shutil import copyfile
-from itertools import product
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Iterator
+from io import StringIO
+from itertools import product
+from pathlib import Path
+from shutil import copyfile
 from typing import (
     Any,
     Final,
     Generic,
     Literal,
-    TypeVar,
     TypeAlias,
     TypeGuard,
+    TypeVar,
     cast,
     overload,
 )
+from warnings import warn
 
 from eppy import openidf
-from eppy.modeleditor import IDF
 from eppy.bunchhelpers import makefieldname
+from eppy.modeleditor import IDF
 
 from . import config as cf
 from ._logger import _log, _LoggerManager
-from ._tools import AnyParallel, _uuid, _natural_width, _write_records
-from ._simulator import _run_epmacro, _split_model, _run_energyplus, _run_expandobjects
+from ._simulator import _run_energyplus, _run_epmacro, _run_expandobjects, _split_model
+from ._tools import AnyParallel, _natural_width, _uuid, _write_records
 from ._typing import (
-    AnyJob,
-    AnyTask,
-    AnyDuoVec,
-    AnyRealDuo,
-    AnyStrPath,
-    AnyModelType,
-    AnyIntegralDuo,
-    AnyScenarioVec,
     AnyCandidateVec,
+    AnyDuoVec,
+    AnyIntegralDuo,
+    AnyJob,
+    AnyModelType,
+    AnyRealDuo,
+    AnyScenarioVec,
+    AnyStrPath,
+    AnyTask,
 )
 
 ##############################  module typing  ##############################

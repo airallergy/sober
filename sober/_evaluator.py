@@ -2,9 +2,9 @@ from pathlib import Path
 
 from . import config as cf
 from ._tools import _Parallel
-from .results import _ResultsManager
-from .parameters import _ParametersManager
 from ._typing import AnyBatchResults, AnyCandidateVec
+from .parameters import _ParametersManager
+from .results import _ResultsManager
 
 
 def _evaluate(
@@ -20,7 +20,6 @@ def _evaluate(
         initializer=cf._update_config,
         initargs=(cf._config,),
     ) as parallel:
-
         parameters_manager._make_batch(batch_directory, jobs, parallel)
 
         parameters_manager._simulate_batch(batch_directory, jobs, parallel)

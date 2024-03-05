@@ -1,17 +1,17 @@
+from collections.abc import Iterable
 from pathlib import Path
 from shutil import rmtree
-from collections.abc import Iterable
 from typing import Literal, overload
 
 import numpy as np
 
+from . import _pymoo_namespace as pm
+from ._evaluator import _pymoo_evaluate
 from ._logger import _log
 from ._tools import _natural_width
-from . import _pymoo_namespace as pm
-from .results import _ResultsManager
-from ._evaluator import _pymoo_evaluate
+from ._typing import AnyCandidateMap, AnyPymooCallback, PymooOperators, PymooOut
 from .parameters import ContinuousModifier, _ParametersManager
-from ._typing import PymooOut, PymooOperators, AnyCandidateMap, AnyPymooCallback
+from .results import _ResultsManager
 
 
 #############################################################################

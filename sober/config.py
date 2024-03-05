@@ -1,10 +1,10 @@
 from pathlib import Path
-from warnings import warn
 from platform import system
+from warnings import warn
 
 from psutil import cpu_count
 
-from ._typing import Config, AnyStrPath, AnyLanguage, AnyModelType
+from ._typing import AnyLanguage, AnyModelType, AnyStrPath, Config
 
 #############################################################################
 #######                       GLOBAL CONSTANTS                        #######

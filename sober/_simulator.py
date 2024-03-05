@@ -1,8 +1,8 @@
-from pathlib import Path, PurePath
 from collections.abc import Sequence
+from pathlib import Path, PurePath
 
-from ._tools import _run
 from . import config as cf
+from ._tools import _run
 from ._typing import AnyStrPath
 
 

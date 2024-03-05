@@ -1,12 +1,12 @@
-import sys
 import logging
+import sys
+from collections.abc import Callable
+from contextlib import AbstractContextManager, ContextDecorator
+from functools import reduce, wraps
+from inspect import currentframe
 from pathlib import Path
 from platform import node
-from inspect import currentframe
-from functools import wraps, reduce
-from collections.abc import Callable
-from contextlib import ContextDecorator, AbstractContextManager
-from typing import TYPE_CHECKING, Any, Self, Final, Literal, TypeVar, ParamSpec
+from typing import TYPE_CHECKING, Any, Final, Literal, ParamSpec, Self, TypeVar
 
 from . import config as cf
 from ._typing import AnyCmdArgs, SubprocessResult

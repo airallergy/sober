@@ -1,24 +1,24 @@
 import pickle
+from collections.abc import Iterable
+from itertools import chain
 from pathlib import Path
 from typing import Literal
-from itertools import chain
-from collections.abc import Iterable
 
-from . import config as cf
-from ._multiplier import _multiply
-from ._tools import _write_records
 from . import _pymoo_namespace as pm
+from . import config as cf
 from ._logger import _log, _LoggerManager
-from ._typing import AnyStrPath, AnyPymooCallback
-from ._optimiser import _sampling, _survival, _algorithm, _PymooProblem
-from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
+from ._multiplier import _multiply
+from ._optimiser import _algorithm, _PymooProblem, _sampling, _survival
+from ._tools import _write_records
+from ._typing import AnyPymooCallback, AnyStrPath
 from .parameters import (
-    WeatherModifier,
     AnyModelModifier,
     ContinuousModifier,
-    _ParametersManager,
+    WeatherModifier,
     _all_integral_modifiers,
+    _ParametersManager,
 )
+from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
 
 
 #############################################################################

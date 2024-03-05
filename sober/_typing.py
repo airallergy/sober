@@ -1,6 +1,6 @@
-from os import PathLike
 from collections.abc import Callable
-from typing import Literal, TypeVar, Protocol, Required, TypeAlias, TypedDict
+from os import PathLike
+from typing import Literal, Protocol, Required, TypeAlias, TypedDict, TypeVar
 
 import numpy as np
 
@@ -54,15 +54,17 @@ AnyBatchResults: TypeAlias = tuple[tuple[float, ...], ...]
 # pymoo
 AnyPymooCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
 AnyCandidateMap: TypeAlias = dict[str, np.integer | np.floating]
-PymooOut = TypedDict("PymooOut", {"F": None | np.ndarray, "G": None | np.ndarray})
-PymooOperators = TypedDict(
-    "PymooOperators",
-    {
-        "sampling": pm.Population,
-        "mating": pm.MixedVariableMating,
-        "eliminate_duplicates": pm.MixedVariableDuplicateElimination,
-    },
-)
+
+
+class PymooOut(TypedDict):
+    F: np.ndarray | None
+    G: np.ndarray | None
+
+
+class PymooOperators(TypedDict):
+    sampling: pm.Population
+    mating: pm.MixedVariableMating
+    eliminate_duplicates: pm.MixedVariableDuplicateElimination
 
 
 # logger

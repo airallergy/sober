@@ -1,16 +1,16 @@
-from .problem import Problem
-from .results import RVICollector, ScriptCollector
 from ._pymoo_namespace import MaximumGenerationTermination
-from .config import config_script, config_parallel, config_energyplus
+from .config import config_energyplus, config_parallel, config_script
 from .parameters import (
+    CategoricalModifier,
+    ContinuousModifier,
+    DiscreteModifier,
+    FunctionalModifier,
     IndexTagger,
     StringTagger,
     WeatherModifier,
-    DiscreteModifier,
-    ContinuousModifier,
-    FunctionalModifier,
-    CategoricalModifier,
 )
+from .problem import Problem
+from .results import RVICollector, ScriptCollector
 
 __all__ = (
     "Problem",

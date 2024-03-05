@@ -1,15 +1,15 @@
 import csv
 import sys
-from math import log10
-from pathlib import Path
-from itertools import starmap
-from multiprocessing.pool import Pool
-from uuid import NAMESPACE_X500, uuid5
-from multiprocessing import get_context
-from subprocess import PIPE, STDOUT, run
-from contextlib import AbstractContextManager
 from collections.abc import Callable, Iterable, Iterator
-from typing import TYPE_CHECKING, Any, Self, TypeVar, TypeAlias, TypeVarTuple
+from contextlib import AbstractContextManager
+from itertools import starmap
+from math import log10
+from multiprocessing import get_context
+from multiprocessing.pool import Pool
+from pathlib import Path
+from subprocess import PIPE, STDOUT, run
+from typing import TYPE_CHECKING, Any, Self, TypeAlias, TypeVar, TypeVarTuple
+from uuid import NAMESPACE_X500, uuid5
 
 from ._logger import _log
 from ._typing import AnyCmdArgs
@@ -167,7 +167,7 @@ AnyParallel: TypeAlias = _Pool | _Loop
 #############################################################################
 
 
-def _Parallel(
+def _Parallel(  # noqa: N802
     n_processes: int,
     initializer: Callable[[*_InitArgs], None] | None = None,  # type: ignore[valid-type] # python/mypy#12280
     initargs: tuple[*_InitArgs] = (),  # type: ignore[valid-type,assignment] # python/mypy#12280
