@@ -562,7 +562,7 @@ class _ParametersManager(Generic[ModelModifier]):
                 if not parameter._name:
                     warn(f"no name is specified for '{parameter._label}'.")
 
-                parameter._label += f" ({parameter._name})"
+                parameter._label += f":{parameter._name}"
 
         # check model type
         suffix = model_file.suffix
