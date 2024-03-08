@@ -8,7 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pymoo = "^0.6"
+pymoo = "^0.6.1"
 eppy = "^0.5.63"
 numpy = "^1.23"
 psutil = "^5.9.5"

@@ -50,6 +50,7 @@ class _PymooProblem(pm.Problem):
             n_ieq_constr=len(results_manager._constraints),
             vars=variables,
             callback=callback,
+            requires_kwargs=True,
         )
         self._parameters_manager = parameters_manager
         self._results_manager = results_manager
