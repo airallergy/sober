@@ -35,12 +35,10 @@ _S = TypeVar("_S", int, float)
 AnyDuo: TypeAlias = tuple[_S, _S]  # TODO: double check this for float params
 AnyIntegralDuo: TypeAlias = AnyDuo[int]
 AnyRealDuo: TypeAlias = AnyDuo[float]
-AnyDuoVec: TypeAlias = tuple[  # type: ignore[valid-type,misc] # python/mypy#12280
-    AnyIntegralDuo, *tuple[AnyDuo, ...]  # type: ignore[misc] # python/mypy#12280
-]
+AnyDuoVec: TypeAlias = tuple[AnyIntegralDuo, *tuple[AnyDuo, ...]]
 
-AnyCandidateVec: TypeAlias = tuple[int, *tuple[_S, ...]]  # type: ignore[valid-type,misc] # python/mypy#12280
-AnyScenarioVec: TypeAlias = tuple[int, *tuple[_S, ...]]  # type: ignore[valid-type,misc] # python/mypy#12280
+AnyCandidateVec: TypeAlias = tuple[int, *tuple[_S, ...]]
+AnyScenarioVec: TypeAlias = tuple[int, *tuple[_S, ...]]
 
 AnyTask: TypeAlias = tuple[str, AnyDuoVec]
 AnyJob: TypeAlias = tuple[str, tuple[AnyTask, ...]]
@@ -53,7 +51,9 @@ AnyBatchResults: TypeAlias = tuple[tuple[float, ...], ...]
 
 # pymoo
 AnyPymooCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
-AnyCandidateMap: TypeAlias = dict[str, np.integer | np.floating]
+AnyCandidateMap: TypeAlias = dict[
+    str, np.integer | np.floating
+]  # TODO: find a way to type the first element as int
 
 
 class PymooOut(TypedDict):

@@ -92,7 +92,7 @@ else:
     from multiprocessing.pool import IMapIterator, starmapstar
 
 ##############################  module typing  ##############################
-_InitArgs = TypeVarTuple("_InitArgs")  # type: ignore[misc] # python/mypy#12280
+_InitArgs = TypeVarTuple("_InitArgs")
 _P = TypeVar("_P", contravariant=True)
 _R = TypeVar("_R", covariant=True)
 #############################################################################
@@ -114,8 +114,8 @@ class _Pool(Pool):
     def __init__(
         self,
         processes: int,
-        initializer: Callable[[*_InitArgs], None] | None,  # type: ignore[valid-type] # python/mypy#12280
-        initargs: tuple[*_InitArgs],  # type: ignore[valid-type] # python/mypy#12280
+        initializer: Callable[[*_InitArgs], None] | None,
+        initargs: tuple[*_InitArgs],
     ) -> None:
         super().__init__(
             processes, initializer, initargs, context=_MULTIPROCESSING_CONTEXT
@@ -169,8 +169,8 @@ AnyParallel: TypeAlias = _Pool | _Loop
 
 def _Parallel(  # noqa: N802
     n_processes: int,
-    initializer: Callable[[*_InitArgs], None] | None = None,  # type: ignore[valid-type] # python/mypy#12280
-    initargs: tuple[*_InitArgs] = (),  # type: ignore[valid-type,assignment] # python/mypy#12280
+    initializer: Callable[[*_InitArgs], None] | None = None,
+    initargs: tuple[*_InitArgs] = (),  # type:ignore[assignment] # TODO: wait to see the multiprocessing typeshed
 ) -> AnyParallel:
     """a helper function to distribute parallel computation
     based on the requested number of processes"""

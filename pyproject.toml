@@ -14,7 +14,7 @@ numpy = "^1.23"
 psutil = "^5.9.5"
 
 [tool.poetry.group.dev.dependencies]
-mypy = "^1.2.0"
+mypy = "^1.9.0"
 ruff = "^0.3.0"
 
 [build-system]
