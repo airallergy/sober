@@ -649,7 +649,7 @@ class _InputManager(Generic[ModelModifier]):
                             else range(input._ns_uncertainties[cast(int, component)])
                         )
                         for input, component in zip(self, candidate_vec, strict=True)
-                    ),
+                    )
                 )
             )
             scenario_vecs = cast(tuple[AnyScenarioVec, ...], scenario_vecs)
@@ -680,21 +680,18 @@ class _InputManager(Generic[ModelModifier]):
     def _record_final(
         self,
         level: Literal["task", "job"],
-        record_directory: Path,
+        record_dir: Path,
         record_rows: list[list[Any]],
     ) -> None:
-        header_row = (
-            f"{level.capitalize()}UID",
-            *(input._label for input in self),
-        )
+        header_row = (f"{level.capitalize()}UID", *(input._label for input in self))
 
         # write records
         _write_records(
-            record_directory / cf._RECORDS_FILENAMES[level], header_row, *record_rows
+            record_dir / cf._RECORDS_FILENAMES[level], header_row, *record_rows
         )
 
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _make_task(self, task_directory: Path, duo_vec: AnyDuoVec) -> list[Any]:
+    def _make_task(self, task_dir: Path, duo_vec: AnyDuoVec) -> list[Any]:
         # create an empty list to store task input values
         input_values: list[Any] = [None] * len(self)
 
@@ -702,51 +699,50 @@ class _InputManager(Generic[ModelModifier]):
         for idx, (input, duo) in enumerate(zip(self, duo_vec, strict=True)):
             if isinstance(input, FunctionalModifier):
                 input_values[idx] = input._value(
-                    duo,
-                    *(input_values[jdx] for jdx in input._input_indices),
+                    duo, *(input_values[jdx] for jdx in input._input_indices)
                 )
             else:
                 input_values[idx] = input._value(duo)
 
         # copy the task weather file
-        task_epw_file = task_directory / "in.epw"
+        task_epw_file = task_dir / "in.epw"
         src_epw_file = input_values[0]
         copyfile(src_epw_file, task_epw_file)
 
-        _log(task_directory, "created in.epw")
+        _log(task_dir, "created in.epw")
 
         # detag the tagged model with task input values
         model = self._detagged(self._tagged_model, input_values)
 
         # write the task model file
-        with (task_directory / ("in" + self._model_type)).open("wt") as fp:
+        with (task_dir / ("in" + self._model_type)).open("wt") as fp:
             fp.write(model)
 
         # run epmacro if needed
         if self._model_type == ".imf":
-            _run_epmacro(task_directory)
+            _run_epmacro(task_dir)
 
         # run expandobjects if needed
         if self._has_templates:
-            _run_expandobjects(task_directory)
+            _run_expandobjects(task_dir)
 
-        _log(task_directory, "created in.idf")
+        _log(task_dir, "created in.idf")
 
         return input_values
 
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _make_job(self, job_directory: Path, tasks: tuple[AnyTask, ...]) -> list[Any]:
+    def _make_job(self, job_dir: Path, tasks: tuple[AnyTask, ...]) -> list[Any]:
         # record tasks input values
         task_record_rows = []
         for task_uid, duo_vec in tasks:
-            task_input_values = self._make_task(job_directory / task_uid, duo_vec)
+            task_input_values = self._make_task(job_dir / task_uid, duo_vec)
             task_record_rows.append([task_uid] + task_input_values)
 
-            _log(job_directory, f"made {task_uid}")
+            _log(job_dir, f"made {task_uid}")
 
-        self._record_final("task", job_directory, task_record_rows)
+        self._record_final("task", job_dir, task_record_rows)
 
-        _log(job_directory, "recorded inputs")
+        _log(job_dir, "recorded inputs")
 
         # curate job input value
         # NOTE: use duo_vec from the last loop
@@ -759,33 +755,32 @@ class _InputManager(Generic[ModelModifier]):
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_batch(
-        self, batch_directory: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+        self, batch_dir: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
     ) -> None:
         # make batch in parallel
         scheduled = parallel._starmap(
-            self._make_job,
-            ((batch_directory / job_uid, tasks) for job_uid, tasks in jobs),
+            self._make_job, ((batch_dir / job_uid, tasks) for job_uid, tasks in jobs)
         )
 
         job_record_rows = []
         for (job_uid, _), job_input_values in zip(jobs, scheduled, strict=True):
             job_record_rows.append([job_uid] + job_input_values)
 
-            _log(batch_directory, f"made {job_uid}")
+            _log(batch_dir, f"made {job_uid}")
 
         # record job input values
-        self._record_final("job", batch_directory, job_record_rows)
+        self._record_final("job", batch_dir, job_record_rows)
 
-        _log(batch_directory, "recorded inputs")
+        _log(batch_dir, "recorded inputs")
 
     @_LoggerManager(cwd_index=1)
-    def _simulate_task(self, task_directory: Path) -> None:
+    def _simulate_task(self, task_dir: Path) -> None:
         # simulate the task mdoel
-        _run_energyplus(task_directory)
+        _run_energyplus(task_dir)
 
     @_LoggerManager(cwd_index=1)
     def _simulate_batch(
-        self, batch_directory: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+        self, batch_dir: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
     ) -> None:
         # simulate batch in parallel
         pairs = tuple(
@@ -793,11 +788,11 @@ class _InputManager(Generic[ModelModifier]):
         )
         scheduled = parallel._map(
             self._simulate_task,
-            (batch_directory / job_uid / task_uid for job_uid, task_uid in pairs),
+            (batch_dir / job_uid / task_uid for job_uid, task_uid in pairs),
         )
 
         for pair, _ in zip(pairs, scheduled, strict=True):
-            _log(batch_directory, f"simulated {'-'.join(pair)}")
+            _log(batch_dir, f"simulated {'-'.join(pair)}")
 
 
 def _all_integral_modifiers(

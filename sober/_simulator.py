@@ -70,19 +70,19 @@ def _resolved_path(path: AnyStrPath, default_parent: Path) -> Path:
         return (default_parent / pure_path).resolve()
 
 
-def _resolved_macros(macro_lines: Sequence[str], model_directory: Path) -> list[str]:
+def _resolved_macros(macro_lines: Sequence[str], model_dir: Path) -> list[str]:
     """resolves paths in macro commands used to incorporate external files
     macro lines should have been trimmed before passed in"""
 
     # set the model directory as fileprefix
     # in case the first macro command is a relative one
-    fileprefix = model_directory
+    fileprefix = model_dir
     resolved_macro_lines = []
     for line in macro_lines:
         if line.startswith("##fileprefix"):
             # update fileprefix
             # len("##fileprefix") == 12
-            fileprefix = _resolved_path(line[13:], model_directory)
+            fileprefix = _resolved_path(line[13:], model_dir)
         elif line.startswith("##include"):
             # resolve include paths using current fileprefix
             # len("##include") == 9
@@ -96,7 +96,7 @@ def _resolved_macros(macro_lines: Sequence[str], model_directory: Path) -> list[
     return resolved_macro_lines
 
 
-def _split_model(model: str, model_directory: Path) -> tuple[str, str]:
+def _split_model(model: str, model_dir: Path) -> tuple[str, str]:
     """splits an EnergyPlus model into macros and regulars"""
 
     macro_lines = []
@@ -113,6 +113,6 @@ def _split_model(model: str, model_directory: Path) -> tuple[str, str]:
         else:
             regular_lines.append(trimmed_line)
     return (
-        "\n".join(_resolved_macros(macro_lines, model_directory)) + "\n",
+        "\n".join(_resolved_macros(macro_lines, model_dir)) + "\n",
         "\n".join(regular_lines) + "\n",
     )

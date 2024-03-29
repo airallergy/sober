@@ -26,7 +26,7 @@ class _Filter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         if record.levelno == logging.DEBUG:
-            # indent each line and remove the last \n if presnet
+            # indent each line and remove the last \n if present
             record.msg = "\t" + "\n\t".join(record.msg.splitlines())
 
             # if empty message, skip logging

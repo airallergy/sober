@@ -114,11 +114,11 @@ class _Pool(Pool):
     def __init__(
         self,
         processes: int,
-        initializer: Callable[[*_InitArgs], None] | None,
+        initialiser: Callable[[*_InitArgs], None] | None,
         initargs: tuple[*_InitArgs],
     ) -> None:
         super().__init__(
-            processes, initializer, initargs, context=_MULTIPROCESSING_CONTEXT
+            processes, initialiser, initargs, context=_MULTIPROCESSING_CONTEXT
         )
 
     def _map(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> Iterator[_R]:
@@ -169,7 +169,7 @@ AnyParallel: TypeAlias = _Pool | _Loop
 
 def _Parallel(  # noqa: N802
     n_processes: int,
-    initializer: Callable[[*_InitArgs], None] | None = None,
+    initialiser: Callable[[*_InitArgs], None] | None = None,
     initargs: tuple[*_InitArgs] = (),  # type:ignore[assignment] # TODO: wait to see the multiprocessing typeshed
 ) -> AnyParallel:
     """a helper function to distribute parallel computation
@@ -177,6 +177,6 @@ def _Parallel(  # noqa: N802
 
     # allows n_processes <= 0 for now
     if n_processes > 1:
-        return _Pool(n_processes, initializer, initargs)
+        return _Pool(n_processes, initialiser, initargs)
     else:
         return _Loop()

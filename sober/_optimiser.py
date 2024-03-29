@@ -22,7 +22,7 @@ class _PymooProblem(pm.Problem):
 
     _input_manager: _InputManager
     _output_manager: _OutputManager
-    _evaluation_directory: Path
+    _evaluation_dir: Path
     _saves_batches: bool
     _batch_idx_width: int
 
@@ -30,7 +30,7 @@ class _PymooProblem(pm.Problem):
         self,
         input_manager: _InputManager,
         output_manager: _OutputManager,
-        evaluation_directory: Path,
+        evaluation_dir: Path,
         callback: AnyPymooCallback,
         saves_batches: bool,
         expected_n_generations: int,
@@ -54,7 +54,7 @@ class _PymooProblem(pm.Problem):
         )
         self._input_manager = input_manager
         self._output_manager = output_manager
-        self._evaluation_directory = evaluation_directory
+        self._evaluation_dir = evaluation_dir
         self._saves_batches = saves_batches
         self._batch_idx_width = _natural_width(expected_n_generations)
 
@@ -85,7 +85,7 @@ class _PymooProblem(pm.Problem):
             *candidate_vecs,
             input_manager=self._input_manager,
             output_manager=self._output_manager,
-            batch_directory=self._evaluation_directory / batch_uid,
+            batch_dir=self._evaluation_dir / batch_uid,
         )
 
         out["F"] = np.asarray(objectives, dtype=np.float_)
@@ -93,9 +93,9 @@ class _PymooProblem(pm.Problem):
             out["G"] = np.asarray(constraints, dtype=np.float_)
 
         if not self._saves_batches:
-            rmtree(self._evaluation_directory / batch_uid)
+            rmtree(self._evaluation_dir / batch_uid)
 
-        _log(self._evaluation_directory, f"evaluated {batch_uid}")
+        _log(self._evaluation_dir, f"evaluated {batch_uid}")
 
 
 #############################################################################
@@ -115,7 +115,7 @@ def _operators(
 ) -> PymooOperators:
     """a pymoo operators constructor"""
 
-    # defaults from respective algoritm classes in pymoo
+    # defaults from respective algorithm classes in pymoo
     selections = {
         "nsga2": pm.TournamentSelection(func_comp=pm.binary_tournament),
         "nsga3": pm.TournamentSelection(func_comp=pm.comp_by_cv_then_random),

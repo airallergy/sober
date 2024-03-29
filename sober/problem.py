@@ -30,15 +30,15 @@ class Problem:
     _model_file: Path
     _input_manager: _InputManager[AnyModelModifier]
     _output_manager: _OutputManager
-    _evaluation_directory: Path
-    _config_directory: Path
+    _evaluation_dir: Path
+    _config_dir: Path
 
     __slots__ = (
         "_model_file",
         "_input_manager",
         "_output_manager",
-        "_evaluation_directory",
-        "_config_directory",
+        "_evaluation_dir",
+        "_config_dir",
     )
 
     def __init__(
@@ -49,7 +49,7 @@ class Problem:
         model_inputs: Iterable[AnyModelModifier] = (),
         outputs: Iterable[_Collector] = (),
         *,
-        evaluation_directory: AnyStrPath | None = None,
+        evaluation_dir: AnyStrPath | None = None,
         has_templates: bool = False,
         clean_patterns: str | Iterable[str] = _OutputManager._DEFAULT_CLEAN_PATTERNS,
         n_processes: int | None = None,
@@ -62,22 +62,20 @@ class Problem:
         self._output_manager = _OutputManager(
             outputs, clean_patterns, self._input_manager._has_uncertainties
         )
-        self._evaluation_directory = (
+        self._evaluation_dir = (
             self._model_file.parent / "evaluation"
-            if evaluation_directory is None
-            else Path(evaluation_directory)
+            if evaluation_dir is None
+            else Path(evaluation_dir)
         )
-        self._config_directory = self._evaluation_directory / (
-            "." + __package__.split(".")[-1]
-        )
+        self._config_dir = self._evaluation_dir / ("." + __package__.split(".")[-1])
 
         self._prepare(n_processes, python_exec)
 
     def _prepare(self, n_processes: int | None, python_exec: AnyStrPath | None) -> None:
         # mkdir
         # intentionally assumes parents exist
-        self._evaluation_directory.mkdir(exist_ok=True)
-        self._config_directory.mkdir(exist_ok=True)
+        self._evaluation_dir.mkdir(exist_ok=True)
+        self._config_dir.mkdir(exist_ok=True)
 
         # config
         cf.config_parallel(n_processes=n_processes)
@@ -94,8 +92,8 @@ class Problem:
         )
 
         # touch rvi
-        # leave this here, otherwise need to pass _config_directory to _output_manager
-        self._output_manager._touch_rvi(self._config_directory)
+        # leave this here, otherwise need to pass _config_dir to _output_manager
+        self._output_manager._touch_rvi(self._config_dir)
 
     def run_sample(self, size: int, /, *, seed: int | None = None) -> None:
         """runs a sample of the full search space"""
@@ -106,7 +104,7 @@ class Problem:
             _multiply(
                 self._input_manager,
                 self._output_manager,
-                self._evaluation_directory,
+                self._evaluation_dir,
                 size,
                 seed,
             )
@@ -142,14 +140,14 @@ class Problem:
         return _PymooProblem(
             self._input_manager,
             self._output_manager,
-            self._evaluation_directory,
+            self._evaluation_dir,
             callback,
             saves_batches,
             expected_n_generations,
         )
 
     def _record_survival(
-        self, level: Literal["batch"], record_directory: Path, result: pm.Result
+        self, level: Literal["batch"], record_dir: Path, result: pm.Result
     ) -> None:
         # get evaluated individuals
         if result.algorithm.save_history:
@@ -207,13 +205,13 @@ class Problem:
 
         # write records
         _write_records(
-            record_directory / cf._RECORDS_FILENAMES[level], header_row, *record_rows
+            record_dir / cf._RECORDS_FILENAMES[level], header_row, *record_rows
         )
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _optimise_epoch(
         self,
-        epoch_directory: Path,
+        epoch_dir: Path,
         problem: _PymooProblem,
         algorithm: pm.Algorithm,
         termination: pm.Termination,
@@ -272,15 +270,14 @@ class Problem:
                 checkpoint_idx = (idx + 1) * checkpoint_interval - 1
                 if algorithm.n_gen - 1 == checkpoint_idx + 1:
                     # TODO: explore implementing custom serialisation for self(Problem) via TOML/YAML
-                    with (epoch_directory / "checkpoint.pickle").open("wb") as fp:
+                    with (epoch_dir / "checkpoint.pickle").open("wb") as fp:
                         pickle.dump((self, result), fp)
 
                     _log(
-                        epoch_directory,
-                        f"created checkpoint at generation {checkpoint_idx}",
+                        epoch_dir, f"created checkpoint at generation {checkpoint_idx}"
                     )
 
-        self._record_survival("batch", epoch_directory, result)
+        self._record_survival("batch", epoch_dir, result)
 
         return result
 
@@ -316,7 +313,7 @@ class Problem:
         )
 
         return self._optimise_epoch(
-            self._evaluation_directory,
+            self._evaluation_dir,
             problem,
             algorithm,
             termination,
@@ -368,7 +365,7 @@ class Problem:
         )
 
         return self._optimise_epoch(
-            self._evaluation_directory,
+            self._evaluation_dir,
             problem,
             algorithm,
             termination,
@@ -402,7 +399,7 @@ class Problem:
             raise TypeError(f"invalid checkpoint file: {checkpoint_file.resolve()}.")
 
         return problem._optimise_epoch(
-            problem._evaluation_directory,
+            problem._evaluation_dir,
             result.problem,
             result.algorithm,
             termination,

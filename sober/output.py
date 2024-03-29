@@ -181,7 +181,7 @@ class RVICollector(_Collector):
         if self._level != "task":
             raise ValueError("an RVICollector output needs to be on the task level.")
 
-    def _touch(self, config_directory: Path) -> None:
+    def _touch(self, config_dir: Path) -> None:
         rvi_str = f"eplusout.{self.SUFFIXES[self._output_type]}\n{self._filename}\n"
         match self._keys:
             case ():
@@ -197,7 +197,7 @@ class RVICollector(_Collector):
         rvi_str += "\n0\n"
 
         rvi_filestem = _uuid(self.__class__.__name__, *rvi_str.splitlines())
-        self._rvi_file = config_directory / (rvi_filestem + ".rvi")
+        self._rvi_file = config_dir / (rvi_filestem + ".rvi")
         with self._rvi_file.open("wt") as fp:
             fp.write(rvi_str)
 
@@ -286,11 +286,7 @@ class _CopyCollector(_Collector):
 class _OutputManager:
     """manages output collection"""
 
-    _DEFAULT_CLEAN_PATTERNS: Final = (
-        "*.audit",
-        "*.end",
-        "sqlite.err",
-    )
+    _DEFAULT_CLEAN_PATTERNS: Final = ("*.audit", "*.end", "sqlite.err")
 
     _task_outputs: tuple[_Collector, ...]
     _job_outputs: tuple[_Collector, ...]
@@ -389,18 +385,14 @@ class _OutputManager:
             if len(labels) != len(set(labels)):
                 raise ValueError(f"duplicates found in {name[1:]}: {labels}.")
 
-    def _touch_rvi(self, config_directory: Path) -> None:
+    def _touch_rvi(self, config_dir: Path) -> None:
         for item in self._task_outputs:
             if isinstance(item, RVICollector):
-                item._touch(config_directory)
+                item._touch(config_dir)
 
-    def _record_final(
-        self, level: _AnyLevel, record_directory: Path, uids: AnyUIDs
-    ) -> None:
+    def _record_final(self, level: _AnyLevel, record_dir: Path, uids: AnyUIDs) -> None:
         # only final outputs
-        with (record_directory / cf._RECORDS_FILENAMES[level]).open(
-            "rt", newline=""
-        ) as fp:
+        with (record_dir / cf._RECORDS_FILENAMES[level]).open("rt", newline="") as fp:
             reader = csv.reader(fp, dialect="excel")
 
             header_row = next(reader)
@@ -424,9 +416,7 @@ class _OutputManager:
                 if not output._is_final:
                     continue
 
-                with (record_directory / uid / output._filename).open(
-                    "rt", newline=""
-                ) as fp:
+                with (record_dir / uid / output._filename).open("rt", newline="") as fp:
                     reader = csv.reader(fp, dialect="excel")
 
                     if idx:
@@ -480,72 +470,67 @@ class _OutputManager:
 
         # write records
         _write_records(
-            record_directory / cf._RECORDS_FILENAMES[level], header_row, *record_rows
+            record_dir / cf._RECORDS_FILENAMES[level], header_row, *record_rows
         )
 
     @_LoggerManager(cwd_index=1)
-    def _collect_task(self, task_directory: Path) -> None:
+    def _collect_task(self, task_dir: Path) -> None:
         # collect each task output
         for item in self._task_outputs:
-            item._collect(task_directory)
+            item._collect(task_dir)
 
     @_LoggerManager(cwd_index=1)
-    def _collect_job(self, job_directory: Path, task_uids: AnyUIDs) -> None:
+    def _collect_job(self, job_dir: Path, task_uids: AnyUIDs) -> None:
         # collect each task
         for task_uid in task_uids:
-            self._collect_task(job_directory / task_uid)
+            self._collect_task(job_dir / task_uid)
 
-            _log(job_directory, f"collected {task_uid}")
+            _log(job_dir, f"collected {task_uid}")
 
         # record task output values
-        self._record_final("task", job_directory, task_uids)
+        self._record_final("task", job_dir, task_uids)
 
-        _log(job_directory, "recorded final outputs")
+        _log(job_dir, "recorded final outputs")
 
         for item in self._job_outputs:
-            item._collect(job_directory)
+            item._collect(job_dir)
 
     @_LoggerManager(cwd_index=1)
     def _collect_batch(
-        self, batch_directory: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+        self, batch_dir: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
     ) -> None:
         # collect batch in parallel
         scheduled = parallel._starmap(
             self._collect_job,
             (
-                (
-                    batch_directory / job_uid,
-                    tuple(task_uid for task_uid, _ in tasks),
-                )
+                (batch_dir / job_uid, tuple(task_uid for task_uid, _ in tasks))
                 for job_uid, tasks in jobs
             ),
         )
 
         for (job_uid, _), _ in zip(jobs, scheduled, strict=True):
-            _log(batch_directory, f"collected {job_uid}")
+            _log(batch_dir, f"collected {job_uid}")
 
         # record job output values
-        self._record_final(
-            "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
-        )
+        self._record_final("job", batch_dir, tuple(job_uid for job_uid, _ in jobs))
 
-        _log(batch_directory, "recorded final outputs")
+        _log(batch_dir, "recorded final outputs")
 
     @_LoggerManager(cwd_index=1)
-    def _clean_task(self, task_directory: Path) -> None:
+    def _clean_task(self, task_dir: Path) -> None:
         # clean task files
-        for path in task_directory.glob("*"):
+        for path in task_dir.glob("*"):
             if any(
                 path.match(pattern) and path.is_file()
                 for pattern in self._clean_patterns
             ):
                 path.unlink()  # NOTE: missing is handled by the is_file check
 
-                _log(task_directory, f"deleted {path.relative_to(task_directory)}")
+                _log(task_dir, f"deleted {path.relative_to(task_dir)}")
 
     @_LoggerManager(cwd_index=1)
     def _clean_batch(
-        self, batch_directory: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+        self, batch_dir: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
     ) -> None:
         # clean batch in parallel
         pairs = tuple(
@@ -553,18 +538,16 @@ class _OutputManager:
         )
         scheduled = parallel._map(
             self._clean_task,
-            (batch_directory / job_uid / task_uid for job_uid, task_uid in pairs),
+            (batch_dir / job_uid / task_uid for job_uid, task_uid in pairs),
         )
 
         for pair, _ in zip(pairs, scheduled, strict=True):
-            _log(batch_directory, f"cleaned {'-'.join(pair)}")
+            _log(batch_dir, f"cleaned {'-'.join(pair)}")
 
     @cache
-    def _recorded_batch(self, batch_directory: Path) -> tuple[tuple[str, ...], ...]:
+    def _recorded_batch(self, batch_dir: Path) -> tuple[tuple[str, ...], ...]:
         # read job records
-        with (batch_directory / cf._RECORDS_FILENAMES["job"]).open(
-            "rt", newline=""
-        ) as fp:
+        with (batch_dir / cf._RECORDS_FILENAMES["job"]).open("rt", newline="") as fp:
             reader = csv.reader(fp, dialect="excel")
 
             # skip the header row
@@ -572,7 +555,7 @@ class _OutputManager:
 
             return tuple(map(tuple, reader))
 
-    def _recorded_objectives(self, batch_directory: Path) -> AnyBatchOutputs:
+    def _recorded_objectives(self, batch_dir: Path) -> AnyBatchOutputs:
         # slice objective values
         return tuple(
             tuple(
@@ -581,10 +564,10 @@ class _OutputManager:
                     self._objective_indices, self._to_objectives, strict=True
                 )
             )
-            for job_values in self._recorded_batch(batch_directory)
+            for job_values in self._recorded_batch(batch_dir)
         )
 
-    def _recorded_constraints(self, batch_directory: Path) -> AnyBatchOutputs:
+    def _recorded_constraints(self, batch_dir: Path) -> AnyBatchOutputs:
         # slice constraints values
         return tuple(
             tuple(
@@ -593,5 +576,5 @@ class _OutputManager:
                     self._constraint_indices, self._to_constraints, strict=True
                 )
             )
-            for job_values in self._recorded_batch(batch_directory)
+            for job_values in self._recorded_batch(batch_dir)
         )

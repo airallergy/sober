@@ -29,7 +29,7 @@ _config: Config
 #############################################################################
 def _update_config(config: Config) -> None:
     """updates configuration globally in the current python interpreter process
-    this is to copy configuration into child processess when using multiprocessing"""
+    this is to copy configuration into child processes when using multiprocessing"""
 
     global _config
 

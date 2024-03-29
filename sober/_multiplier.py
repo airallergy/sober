@@ -64,7 +64,7 @@ class _LazyCartesianProduct(Generic[_T]):
 def _multiply(
     input_manager: _InputManager[AnyIntegralModelModifier],
     output_manager: _OutputManager,
-    evaluation_directory: Path,
+    evaluation_dir: Path,
     sample_size: int,
     seed: int | None,
 ) -> None:
@@ -84,8 +84,8 @@ def _multiply(
                 f"a search space of more than 1e7 candidates is forbidden due to high computing cost: {n_products}."
             )
 
-        sample_idxs = tuple(range(n_products))
-        candidate_vecs = search_space[sample_idxs]
+        sample_idxes = tuple(range(n_products))
+        candidate_vecs = search_space[sample_idxes]
     elif sample_size == 0:
         # test each variation with fewest simulations
 
@@ -102,14 +102,14 @@ def _multiply(
     else:
         # proper subset
 
-        sample_idxs_ = rng.choice(n_products, sample_size, replace=False)
-        sample_idxs_.sort()
-        sample_idxs = tuple(map(int, sample_idxs_))
-        candidate_vecs = search_space[sample_idxs]
+        sample_idxes_ = rng.choice(n_products, sample_size, replace=False)
+        sample_idxes_.sort()
+        sample_idxes = tuple(map(int, sample_idxes_))
+        candidate_vecs = search_space[sample_idxes]
 
     _evaluate(
         *candidate_vecs,
         input_manager=input_manager,
         output_manager=output_manager,
-        batch_directory=evaluation_directory,
+        batch_dir=evaluation_dir,
     )
