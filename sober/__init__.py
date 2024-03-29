@@ -1,6 +1,6 @@
 from ._pymoo_namespace import MaximumGenerationTermination
 from .config import config_energyplus, config_parallel, config_script
-from .parameters import (
+from .input import (
     CategoricalModifier,
     ContinuousModifier,
     DiscreteModifier,
@@ -9,8 +9,8 @@ from .parameters import (
     StringTagger,
     WeatherModifier,
 )
+from .output import RVICollector, ScriptCollector
 from .problem import Problem
-from .results import RVICollector, ScriptCollector
 
 __all__ = (
     "Problem",
@@ -30,11 +30,11 @@ __all__ = (
 )
 
 """nomenclature
-- variation/uncertainty: alternative values for individual parameters at definition
-- candidate/scenario: one realisation of variation/uncertainty of a given parameter
-- candidate_vec/scenario_vec: one realisation of variation/uncertainty of all parameters in order
+- variation/uncertainty: alternative values for individual inputs at definition
+- candidate/scenario: one realisation of variation/uncertainty of a given input
+- candidate_vec/scenario_vec: one realisation of variation/uncertainty of all inputs in order
 - duo: a pair of variation and uncertainty or candidate and scenario
-- trio: a collection of three items to locate model parameters
+- trio: a collection of three items to locate model inputs
 """
 # NOTE: variation/uncertainty and candidate/scenario
 #           are equivalent on the scalar level, but differ in domain

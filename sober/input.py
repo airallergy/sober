@@ -93,7 +93,7 @@ class _TextTagger(_Tagger):
 
 
 class _Modifier(ABC):
-    """an abstract base class for parameter modifiers"""
+    """an abstract base class for input modifiers"""
 
     _low: float
     _high: float
@@ -137,7 +137,7 @@ class _ModelModifierMixin(ABC, Generic[_T]):
 
 
 class _RealModifier(_Modifier):
-    """an abstract base class for parameter modifiers of real variables in pymoo"""
+    """an abstract base class for input modifiers of real variables in pymoo"""
 
     @abstractmethod
     def __init__(self, low: float, high: float, *, name: str) -> None:
@@ -149,7 +149,7 @@ class _RealModifier(_Modifier):
 
 
 class _IntegralModifier(_Modifier, Generic[_V, _U]):
-    """an abstract base class for parameter modifiers of integral variables in pymoo"""
+    """an abstract base class for input modifiers of integral variables in pymoo"""
 
     _low: int
     _high: int
@@ -320,10 +320,10 @@ class StringTagger(_TextTagger):
 
 
 #############################################################################
-#######                       PARAMETER CLASSES                       #######
+#######                       MODIFIER CLASSES                        #######
 #############################################################################
 class WeatherModifier(_IntegralModifier[Path | str, Path]):
-    """modifies the weather parameter"""
+    """modifies the weather input"""
 
     _variations: tuple[Path | str, ...]
     _uncertainties: tuple[tuple[Path, ...], ...]
@@ -363,12 +363,12 @@ class WeatherModifier(_IntegralModifier[Path | str, Path]):
 
 
 class ContinuousModifier(_ModelModifierMixin[float], _RealModifier):
-    """modifies continuous parameters"""
+    """modifies continuous inputs"""
 
     def __init__(
         self, tagger: _Tagger, low: float, high: float, /, *, name: str = ""
     ) -> None:
-        # TODO: uncertainty of continuous parameters
+        # TODO: uncertainty of continuous inputs
         super().__init__(tagger, low, high, name=name)
 
     def _value(self, duo: AnyRealDuo, *args) -> float:
@@ -379,7 +379,7 @@ class ContinuousModifier(_ModelModifierMixin[float], _RealModifier):
 
 
 class DiscreteModifier(_ModelModifierMixin[float], _IntegralModifier[float, float]):
-    """modifies discrete parameters"""
+    """modifies discrete inputs"""
 
     _variations: tuple[float, ...]
     _uncertainties: tuple[tuple[float, ...], ...]
@@ -404,7 +404,7 @@ class DiscreteModifier(_ModelModifierMixin[float], _IntegralModifier[float, floa
 
 
 class CategoricalModifier(_ModelModifierMixin[str], _IntegralModifier[str, str]):
-    """modifies categorical parameters"""
+    """modifies categorical inputs"""
 
     _variations: tuple[str, ...]
     _uncertainties: tuple[tuple[str, ...], ...]
@@ -429,21 +429,21 @@ class CategoricalModifier(_ModelModifierMixin[str], _IntegralModifier[str, str])
 
 
 class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
-    """modifies functional parameters"""
+    """modifies functional inputs"""
 
     _func: Callable[..., _V | Iterable[_V]]
-    _parameter_indices: tuple[int, ...]
+    _input_indices: tuple[int, ...]
     _extra_args: tuple[Any, ...]
     _is_scalar: bool
 
-    __slots__ = ("_func", "_parameter_indices", "_extra_args", "_is_scalar")
+    __slots__ = ("_func", "_input_indices", "_extra_args", "_is_scalar")
 
     @overload
     def __init__(
         self,
         tagger: _Tagger,
         func: Callable[..., _V],
-        parameter_indices: Iterable[int],
+        input_indices: Iterable[int],
         /,
         *extra_args: Any,  # TODO: restrict this for serialisation
         is_scalar: Literal[True],
@@ -455,7 +455,7 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         self,
         tagger: _Tagger,
         func: Callable[..., Iterable[_V]],
-        parameter_indices: Iterable[int],
+        input_indices: Iterable[int],
         /,
         *extra_args: Any,
         is_scalar: Literal[False],
@@ -463,26 +463,26 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
     ) -> None: ...
 
     def __init__(
-        self, tagger, func, parameter_indices, /, *extra_args, is_scalar=True, name=""
+        self, tagger, func, input_indices, /, *extra_args, is_scalar=True, name=""
     ):
         func_name = f"<function {func.__module__ + '.' + func.__code__.co_qualname}>"
         super().__init__(tagger, (func_name,), name=name)
 
         self._func = func
-        self._parameter_indices = tuple(parameter_indices)
+        self._input_indices = tuple(input_indices)
         self._extra_args = extra_args
         self._is_scalar = is_scalar
 
     def _check_args(self) -> None:
         super()._check_args()
 
-        if any(item >= self._index for item in self._parameter_indices):
+        if any(item >= self._index for item in self._input_indices):
             raise ValueError(
-                f"only previous parameters can be referred to: {self._index}, {self._parameter_indices}."
+                f"only previous inputs can be referred to: {self._index}, {self._input_indices}."
             )
 
     def _value(self, duo: AnyIntegralDuo, *args) -> _V | tuple[_V, ...]:
-        # NOTE: args are values for referenced parameters
+        # NOTE: args are values for referenced inputs
         #       args are passed as tuple whilst _extra_args unpacked
         #       this is to align their corresponding arguments in __init__
 
@@ -501,7 +501,7 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
 
 
 #############################################################################
-#######                  PARAMETERS MANAGER CLASSES                   #######
+#######                    INPUTS MANAGER CLASSES                     #######
 #############################################################################
 
 ##############################  module typing  ##############################
@@ -512,26 +512,26 @@ AnyIntegralModelModifier: TypeAlias = (
 AnyRealModelModifier: TypeAlias = ContinuousModifier
 AnyModelModifier: TypeAlias = AnyRealModelModifier | AnyIntegralModelModifier
 # this TypeVar is defined this way
-# to differ a parameter manager with mixed parameter types from one that only has integers
+# to differ an input manager with mixed input types from one that only has integers
 ModelModifier = TypeVar("ModelModifier", AnyModelModifier, AnyIntegralModelModifier)
 #############################################################################
 
 
-class _ParametersManager(Generic[ModelModifier]):
-    """manages parameters modification"""
+class _InputManager(Generic[ModelModifier]):
+    """manages input modification"""
 
     MODEL_TYPES: Final = frozenset({".idf", ".imf"})
 
-    _weather_parameter: WeatherModifier
-    _model_parameters: tuple[ModelModifier, ...]
+    _weather_input: WeatherModifier
+    _model_inputs: tuple[ModelModifier, ...]
     _model_type: AnyModelType
     _tagged_model: str
     _has_templates: bool
     _has_uncertainties: bool
 
     __slots__ = (
-        "_weather_parameter",
-        "_model_parameters",
+        "_weather_input",
+        "_model_inputs",
         "_model_type",
         "_tagged_model",
         "_has_templates",
@@ -540,29 +540,29 @@ class _ParametersManager(Generic[ModelModifier]):
 
     def __init__(
         self,
-        weather_parameter: WeatherModifier,
-        model_parameters: Iterable[ModelModifier],
+        weather_input: WeatherModifier,
+        model_inputs: Iterable[ModelModifier],
         model_file: Path,
         has_templates: bool,
     ) -> None:
-        self._weather_parameter = weather_parameter
-        self._model_parameters = tuple(model_parameters)
+        self._weather_input = weather_input
+        self._model_inputs = tuple(model_inputs)
 
-        # assign index and label to each parameter
-        has_names = any(parameter._name for parameter in self)
-        for idx, parameter in enumerate(self):
-            parameter._index = idx
+        # assign index and label to each input
+        has_names = any(input._name for input in self)
+        for idx, input in enumerate(self):
+            input._index = idx
 
-            if isinstance(parameter, WeatherModifier):
-                parameter._label = "W"  # P0
+            if isinstance(input, WeatherModifier):
+                input._label = "W"  # P0
             else:
-                parameter._label = f"P{parameter._index}"
+                input._label = f"P{input._index}"
 
             if has_names:
-                if not parameter._name:
-                    warn(f"no name is specified for '{parameter._label}'.")
+                if not input._name:
+                    warn(f"no name is specified for '{input._label}'.")
 
-                parameter._label += f":{parameter._name}"
+                input._label += f":{input._name}"
 
         # check model type
         suffix = model_file.suffix
@@ -572,34 +572,34 @@ class _ParametersManager(Generic[ModelModifier]):
 
         self._tagged_model = self._tagged(model_file)
         self._has_templates = has_templates
-        self._has_uncertainties = any(parameter._is_uncertain for parameter in self)
+        self._has_uncertainties = any(input._is_uncertain for input in self)
 
         self._check_args()
 
     def __iter__(self) -> Iterator[WeatherModifier | ModelModifier]:
-        yield self._weather_parameter
-        yield from self._model_parameters
+        yield self._weather_input
+        yield from self._model_inputs
 
     def __len__(self) -> int:
-        return 1 + len(self._model_parameters)
+        return 1 + len(self._model_inputs)
 
     def _check_args(self) -> None:
-        # check each parameter
-        for parameter in self:
-            parameter._check_args()
+        # check each input
+        for input in self:
+            input._check_args()
 
     def _tagged(self, model_file: Path) -> str:
         # read the model file as str
         with model_file.open("rt") as fp:
             model = fp.read()
 
-        # tag all parameters with a _TextTagger
+        # tag all inputs with a _TextTagger
         # this has to happen first
         # as eppy changes the format
         # and the split below resolve the macro command paths
         # both of which affects string matching
-        for parameter in self._model_parameters:
-            tagger = parameter._tagger
+        for item in self._model_inputs:
+            tagger = item._tagger
             if isinstance(tagger, _TextTagger):
                 model = tagger._tagged(model)
 
@@ -624,9 +624,9 @@ class _ParametersManager(Generic[ModelModifier]):
                 version=idf.idfobjects["Version"][0]["Version_Identifier"]
             )
 
-        # tag all parameters with a _IDFTagger
-        for parameter in self._model_parameters:
-            tagger = parameter._tagger
+        # tag all inputs with a _IDFTagger
+        for item in self._model_inputs:
+            tagger = item._tagger
             if isinstance(tagger, _IDFTagger):
                 idf = tagger._tagged(idf)
 
@@ -645,14 +645,10 @@ class _ParametersManager(Generic[ModelModifier]):
                     *(
                         (
                             (cast(float, component),)
-                            if isinstance(parameter, ContinuousModifier)
-                            else range(
-                                parameter._ns_uncertainties[cast(int, component)]
-                            )
+                            if isinstance(input, ContinuousModifier)
+                            else range(input._ns_uncertainties[cast(int, component)])
                         )
-                        for parameter, component in zip(
-                            self, candidate_vec, strict=True
-                        )
+                        for input, component in zip(self, candidate_vec, strict=True)
                     ),
                 )
             )
@@ -671,16 +667,14 @@ class _ParametersManager(Generic[ModelModifier]):
 
             yield job_uid, tasks
 
-    def _detagged(self, tagged_model: str, task_parameter_values: list[Any]) -> str:
-        for parameter, value in zip(
-            self._model_parameters, task_parameter_values[1:], strict=True
-        ):
-            if isinstance(parameter, FunctionalModifier) and not parameter._is_scalar:
+    def _detagged(self, tagged_model: str, task_input_values: list[Any]) -> str:
+        for input, value in zip(self._model_inputs, task_input_values[1:], strict=True):
+            if isinstance(input, FunctionalModifier) and not input._is_scalar:
                 # each tag has its own value
-                tagged_model = parameter._detagged(tagged_model, *value)
+                tagged_model = input._detagged(tagged_model, *value)
             else:
                 # all tags have the same value
-                tagged_model = parameter._detagged(tagged_model, value)
+                tagged_model = input._detagged(tagged_model, value)
         return tagged_model
 
     def _record_final(
@@ -691,7 +685,7 @@ class _ParametersManager(Generic[ModelModifier]):
     ) -> None:
         header_row = (
             f"{level.capitalize()}UID",
-            *(parameter._label for parameter in self),
+            *(input._label for input in self),
         )
 
         # write records
@@ -701,28 +695,28 @@ class _ParametersManager(Generic[ModelModifier]):
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_task(self, task_directory: Path, duo_vec: AnyDuoVec) -> list[Any]:
-        # create an empty list to store task parameter values
-        parameter_values: list[Any] = [None] * len(self)
+        # create an empty list to store task input values
+        input_values: list[Any] = [None] * len(self)
 
-        # convert duo to value and store for each parameter
-        for idx, (parameter, duo) in enumerate(zip(self, duo_vec, strict=True)):
-            if isinstance(parameter, FunctionalModifier):
-                parameter_values[idx] = parameter._value(
+        # convert duo to value and store for each input
+        for idx, (input, duo) in enumerate(zip(self, duo_vec, strict=True)):
+            if isinstance(input, FunctionalModifier):
+                input_values[idx] = input._value(
                     duo,
-                    *(parameter_values[jdx] for jdx in parameter._parameter_indices),
+                    *(input_values[jdx] for jdx in input._input_indices),
                 )
             else:
-                parameter_values[idx] = parameter._value(duo)
+                input_values[idx] = input._value(duo)
 
         # copy the task weather file
         task_epw_file = task_directory / "in.epw"
-        src_epw_file = parameter_values[0]
+        src_epw_file = input_values[0]
         copyfile(src_epw_file, task_epw_file)
 
         _log(task_directory, "created in.epw")
 
-        # detag the tagged model with task parameter values
-        model = self._detagged(self._tagged_model, parameter_values)
+        # detag the tagged model with task input values
+        model = self._detagged(self._tagged_model, input_values)
 
         # write the task model file
         with (task_directory / ("in" + self._model_type)).open("wt") as fp:
@@ -738,34 +732,30 @@ class _ParametersManager(Generic[ModelModifier]):
 
         _log(task_directory, "created in.idf")
 
-        return parameter_values
+        return input_values
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_job(self, job_directory: Path, tasks: tuple[AnyTask, ...]) -> list[Any]:
-        # record tasks parameter values
+        # record tasks input values
         task_record_rows = []
         for task_uid, duo_vec in tasks:
-            task_parameter_values = self._make_task(job_directory / task_uid, duo_vec)
-            task_record_rows.append([task_uid] + task_parameter_values)
+            task_input_values = self._make_task(job_directory / task_uid, duo_vec)
+            task_record_rows.append([task_uid] + task_input_values)
 
             _log(job_directory, f"made {task_uid}")
 
         self._record_final("task", job_directory, task_record_rows)
 
-        _log(job_directory, "recorded parameters")
+        _log(job_directory, "recorded inputs")
 
-        # curate job parameter value
+        # curate job input value
         # NOTE: use duo_vec from the last loop
-        parameter_values = list(
-            (
-                component
-                if isinstance(parameter, ContinuousModifier)
-                else parameter[component]
-            )
-            for parameter, (component, _) in zip(self, duo_vec, strict=True)
+        input_values = list(
+            (component if isinstance(input, ContinuousModifier) else input[component])
+            for input, (component, _) in zip(self, duo_vec, strict=True)
         )
 
-        return parameter_values
+        return input_values
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_batch(
@@ -778,15 +768,15 @@ class _ParametersManager(Generic[ModelModifier]):
         )
 
         job_record_rows = []
-        for (job_uid, _), job_parameter_values in zip(jobs, scheduled, strict=True):
-            job_record_rows.append([job_uid] + job_parameter_values)
+        for (job_uid, _), job_input_values in zip(jobs, scheduled, strict=True):
+            job_record_rows.append([job_uid] + job_input_values)
 
             _log(batch_directory, f"made {job_uid}")
 
-        # record job parameter values
+        # record job input values
         self._record_final("job", batch_directory, job_record_rows)
 
-        _log(batch_directory, "recorded parameters")
+        _log(batch_directory, "recorded inputs")
 
     @_LoggerManager(cwd_index=1)
     def _simulate_task(self, task_directory: Path) -> None:
@@ -811,10 +801,8 @@ class _ParametersManager(Generic[ModelModifier]):
 
 
 def _all_integral_modifiers(
-    parameters_manager: _ParametersManager[AnyModelModifier],
-) -> TypeGuard[_ParametersManager[AnyIntegralModelModifier]]:
+    input_manager: _InputManager[AnyModelModifier],
+) -> TypeGuard[_InputManager[AnyIntegralModelModifier]]:
     """checks if all integral modifiers"""
 
-    return not any(
-        isinstance(parameter, _RealModifier) for parameter in parameters_manager
-    )
+    return not any(isinstance(item, _RealModifier) for item in input_manager)

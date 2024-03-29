@@ -29,10 +29,10 @@ AnyModelType: TypeAlias = Literal[".idf", ".imf"]
 AnyLanguage: TypeAlias = Literal["python"]
 
 
-# parameters
+# input
 _S = TypeVar("_S", int, float)
 
-AnyDuo: TypeAlias = tuple[_S, _S]  # TODO: double check this for float params
+AnyDuo: TypeAlias = tuple[_S, _S]  # TODO: double check this for float inputs
 AnyIntegralDuo: TypeAlias = AnyDuo[int]
 AnyRealDuo: TypeAlias = AnyDuo[float]
 AnyDuoVec: TypeAlias = tuple[AnyIntegralDuo, *tuple[AnyDuo, ...]]
@@ -44,9 +44,9 @@ AnyTask: TypeAlias = tuple[str, AnyDuoVec]
 AnyJob: TypeAlias = tuple[str, tuple[AnyTask, ...]]
 
 
-# results
+# output
 AnyUIDs: TypeAlias = tuple[str, ...]
-AnyBatchResults: TypeAlias = tuple[tuple[float, ...], ...]
+AnyBatchOutputs: TypeAlias = tuple[tuple[float, ...], ...]
 
 
 # pymoo

@@ -11,14 +11,14 @@ from ._multiplier import _multiply
 from ._optimiser import _algorithm, _PymooProblem, _sampling, _survival
 from ._tools import _write_records
 from ._typing import AnyPymooCallback, AnyStrPath
-from .parameters import (
+from .input import (
     AnyModelModifier,
     ContinuousModifier,
     WeatherModifier,
     _all_integral_modifiers,
-    _ParametersManager,
+    _InputManager,
 )
-from .results import RVICollector, ScriptCollector, _Collector, _ResultsManager
+from .output import RVICollector, ScriptCollector, _Collector, _OutputManager
 
 
 #############################################################################
@@ -28,15 +28,15 @@ class Problem:
     """defines the parametrics/optimisation problem"""
 
     _model_file: Path
-    _parameters_manager: _ParametersManager[AnyModelModifier]
-    _results_manager: _ResultsManager
+    _input_manager: _InputManager[AnyModelModifier]
+    _output_manager: _OutputManager
     _evaluation_directory: Path
     _config_directory: Path
 
     __slots__ = (
         "_model_file",
-        "_parameters_manager",
-        "_results_manager",
+        "_input_manager",
+        "_output_manager",
         "_evaluation_directory",
         "_config_directory",
     )
@@ -44,23 +44,23 @@ class Problem:
     def __init__(
         self,
         model_file: AnyStrPath,
-        weather_parameter: WeatherModifier,
+        weather_input: WeatherModifier,
         /,
-        model_parameters: Iterable[AnyModelModifier] = (),
-        results: Iterable[_Collector] = (),
+        model_inputs: Iterable[AnyModelModifier] = (),
+        outputs: Iterable[_Collector] = (),
         *,
         evaluation_directory: AnyStrPath | None = None,
         has_templates: bool = False,
-        clean_patterns: str | Iterable[str] = _ResultsManager._DEFAULT_CLEAN_PATTERNS,
+        clean_patterns: str | Iterable[str] = _OutputManager._DEFAULT_CLEAN_PATTERNS,
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
     ) -> None:
         self._model_file = Path(model_file).resolve(strict=True)
-        self._parameters_manager = _ParametersManager(
-            weather_parameter, model_parameters, self._model_file, has_templates
+        self._input_manager = _InputManager(
+            weather_input, model_inputs, self._model_file, has_templates
         )
-        self._results_manager = _ResultsManager(
-            results, clean_patterns, self._parameters_manager._has_uncertainties
+        self._output_manager = _OutputManager(
+            outputs, clean_patterns, self._input_manager._has_uncertainties
         )
         self._evaluation_directory = (
             self._model_file.parent / "evaluation"
@@ -83,52 +83,52 @@ class Problem:
         cf.config_parallel(n_processes=n_processes)
         cf.config_script(python_exec=python_exec)
         cf._check_config(
-            self._parameters_manager._model_type,
-            self._parameters_manager._has_templates,
-            any(isinstance(result, RVICollector) for result in self._results_manager),
+            self._input_manager._model_type,
+            self._input_manager._has_templates,
+            any(isinstance(item, RVICollector) for item in self._output_manager),
             set(
-                result._language
-                for result in self._results_manager
-                if isinstance(result, ScriptCollector)
+                item._language
+                for item in self._output_manager
+                if isinstance(item, ScriptCollector)
             ),
         )
 
         # touch rvi
-        # leave this here, otherwise need to pass _config_directory to _results_manager
-        self._results_manager._touch_rvi(self._config_directory)
+        # leave this here, otherwise need to pass _config_directory to _output_manager
+        self._output_manager._touch_rvi(self._config_directory)
 
     def run_sample(self, size: int, /, *, seed: int | None = None) -> None:
         """runs a sample of the full search space"""
 
         cf._has_batches = False
 
-        if _all_integral_modifiers(self._parameters_manager):
+        if _all_integral_modifiers(self._input_manager):
             _multiply(
-                self._parameters_manager,
-                self._results_manager,
+                self._input_manager,
+                self._output_manager,
                 self._evaluation_directory,
                 size,
                 seed,
             )
         else:
-            raise ValueError("with continous parameters cannot run sample.")
+            raise ValueError("with continuous inputs cannot run sample.")
 
     def run_brute_force(self) -> None:
         """runs the full search space"""
 
-        if _all_integral_modifiers(self._parameters_manager):
+        if _all_integral_modifiers(self._input_manager):
             self.run_sample(-1)
         else:
-            raise ValueError("with continous parameters cannot run brute force.")
+            raise ValueError("with continuous inputs cannot run brute force.")
 
     def run_each_variation(self, *, seed: int | None = None) -> None:
-        """runs a minimum sample of the full search space that contains all parameter variations
+        """runs a minimum sample of the full search space that contains all input variations
         this helps check the validity of each variation"""
 
-        if _all_integral_modifiers(self._parameters_manager):
+        if _all_integral_modifiers(self._input_manager):
             self.run_sample(0, seed=seed)
         else:
-            raise ValueError("with continous parameters cannot run each variation.")
+            raise ValueError("with continuous inputs cannot run each variation.")
 
     def _to_pymoo(
         self,
@@ -136,12 +136,12 @@ class Problem:
         saves_batches: bool,
         expected_n_generations: int,
     ) -> _PymooProblem:
-        if not len(self._results_manager._objectives):
+        if not len(self._output_manager._objectives):
             raise ValueError("optimisation needs at least one objective.")
 
         return _PymooProblem(
-            self._parameters_manager,
-            self._results_manager,
+            self._input_manager,
+            self._output_manager,
             self._evaluation_directory,
             callback,
             saves_batches,
@@ -170,8 +170,8 @@ class Problem:
         # create header row
         header_row = (
             tuple(individuals[0].X.keys())
-            + tuple(self._results_manager._objectives)
-            + tuple(self._results_manager._constraints)
+            + tuple(self._output_manager._objectives)
+            + tuple(self._output_manager._constraints)
             + ("is_pareto", "is_feasible")
         )
 
@@ -184,11 +184,11 @@ class Problem:
             tuple(
                 (
                     component
-                    if isinstance(parameter, ContinuousModifier)
-                    else parameter[component]
+                    if isinstance(input, ContinuousModifier)
+                    else input[component]
                 )
-                for parameter, component in zip(
-                    self._parameters_manager, candidate_vec, strict=True
+                for input, component in zip(
+                    self._input_manager, candidate_vec, strict=True
                 )
             )
             for candidate_vec in candidate_vecs

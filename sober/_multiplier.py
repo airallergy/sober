@@ -8,8 +8,8 @@ from typing import Generic, TypeVar, overload
 import numpy as np
 
 from ._evaluator import _evaluate
-from .parameters import AnyIntegralModelModifier, _ParametersManager
-from .results import _ResultsManager
+from .input import AnyIntegralModelModifier, _InputManager
+from .output import _OutputManager
 
 _T = TypeVar("_T")
 
@@ -62,15 +62,15 @@ class _LazyCartesianProduct(Generic[_T]):
 
 
 def _multiply(
-    parameters_manager: _ParametersManager[AnyIntegralModelModifier],
-    results_manager: _ResultsManager,
+    input_manager: _InputManager[AnyIntegralModelModifier],
+    output_manager: _OutputManager,
     evaluation_directory: Path,
     sample_size: int,
     seed: int | None,
 ) -> None:
     """populates parametrics by subsetting the full search space"""
 
-    ns_variations = tuple(parameter._n_variations for parameter in parameters_manager)
+    ns_variations = tuple(item._n_variations for item in input_manager)
     search_space = _LazyCartesianProduct(*map(range, ns_variations))
     n_products = search_space._n_products
 
@@ -109,7 +109,7 @@ def _multiply(
 
     _evaluate(
         *candidate_vecs,
-        parameters_manager=parameters_manager,
-        results_manager=results_manager,
+        input_manager=input_manager,
+        output_manager=output_manager,
         batch_directory=evaluation_directory,
     )

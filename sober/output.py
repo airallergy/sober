@@ -13,14 +13,14 @@ from . import config as cf
 from ._logger import _log, _LoggerManager
 from ._simulator import _run_readvars
 from ._tools import AnyParallel, _rectified_str_iterable, _run, _uuid, _write_records
-from ._typing import AnyBatchResults, AnyJob, AnyStrPath, AnyUIDs
+from ._typing import AnyBatchOutputs, AnyJob, AnyStrPath, AnyUIDs
 
 ##############################  module typing  ##############################
 _AnyLevel: TypeAlias = Literal["task", "job"]
 _AnyDirection: TypeAlias = Literal["minimise", "maximise"]
 _AnyBounds: TypeAlias = tuple[None, float] | tuple[float, None] | tuple[float, float]
 _AnyConverter: TypeAlias = Callable[[float], float]
-_AnyOutputType: TypeAlias = Literal["variable", "meter"]
+_AnyEPOutputType: TypeAlias = Literal["variable", "meter"]
 #############################################################################
 
 
@@ -28,7 +28,7 @@ _AnyOutputType: TypeAlias = Literal["variable", "meter"]
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Collector(ABC):
-    """an abstract base class for result collector"""
+    """an abstract base class for output collector"""
 
     _filename: str
     _level: _AnyLevel
@@ -102,7 +102,7 @@ class _Collector(ABC):
 
         if self._is_final and (self._filename.split(".")[-1] != "csv"):
             raise ValueError(
-                f"a final result needs to be a csv file: {self._filename}."
+                f"a final output needs to be a csv file: {self._filename}."
             )
 
     @abstractmethod
@@ -132,12 +132,14 @@ class _Collector(ABC):
 #######                       COLLECTOR CLASSES                       #######
 #############################################################################
 class RVICollector(_Collector):
-    """collects rvi results"""
+    """collects rvi outputs"""
+
+    # TODO: consider switching to EP native csv once NREL/EnergyPlus#9395
 
     SUFFIXES: Final = {"variable": "eso", "meter": "mtr"}
 
     _output_names: tuple[str, ...]
-    _output_type: _AnyOutputType
+    _output_type: _AnyEPOutputType
     _keys: tuple[str, ...]
     _frequency: str
     _rvi_file: Path
@@ -147,7 +149,7 @@ class RVICollector(_Collector):
     def __init__(
         self,
         output_names: str | Iterable[str],
-        output_type: _AnyOutputType,
+        output_type: _AnyEPOutputType,
         filename: str,
         /,
         keys: str | Iterable[str] = (),
@@ -174,10 +176,10 @@ class RVICollector(_Collector):
 
         if self._filename.split(".")[-1] != "csv":
             raise ValueError(
-                f"a RVICollector result needs to be a csv file: {self._filename}."
+                f"an RVICollector output needs to be a csv file: {self._filename}."
             )
         if self._level != "task":
-            raise ValueError("a RVICollector result needs to be on the task level.")
+            raise ValueError("an RVICollector output needs to be on the task level.")
 
     def _touch(self, config_directory: Path) -> None:
         rvi_str = f"eplusout.{self.SUFFIXES[self._output_type]}\n{self._filename}\n"
@@ -210,7 +212,7 @@ class RVICollector(_Collector):
 
 
 class ScriptCollector(_Collector):
-    """collects script results"""
+    """collects script outputs"""
 
     _script_file: Path
     _language: cf.AnyLanguage
@@ -259,7 +261,7 @@ class ScriptCollector(_Collector):
 
 
 class _CopyCollector(_Collector):
-    """copies task final results as job final results
+    """copies task final outputs as job final outputs
     NOTE: this is for handling non-uncertain cases only"""
 
     def __init__(
@@ -279,10 +281,10 @@ class _CopyCollector(_Collector):
 
 
 #############################################################################
-#######                    RESULTS MANAGER CLASSES                    #######
+#######                    OUTPUTS MANAGER CLASSES                    #######
 #############################################################################
-class _ResultsManager:
-    """manages results collection"""
+class _OutputManager:
+    """manages output collection"""
 
     _DEFAULT_CLEAN_PATTERNS: Final = (
         "*.audit",
@@ -290,8 +292,8 @@ class _ResultsManager:
         "sqlite.err",
     )
 
-    _task_results: tuple[_Collector, ...]
-    _job_results: tuple[_Collector, ...]
+    _task_outputs: tuple[_Collector, ...]
+    _job_outputs: tuple[_Collector, ...]
     _clean_patterns: frozenset[str]
     _objectives: tuple[str, ...]
     _constraints: tuple[str, ...]
@@ -301,8 +303,8 @@ class _ResultsManager:
     _to_constraints: tuple[_AnyConverter, ...]
 
     __slots__ = (
-        "_task_results",
-        "_job_results",
+        "_task_outputs",
+        "_job_outputs",
         "_clean_patterns",
         "_objectives",
         "_constraints",
@@ -314,24 +316,24 @@ class _ResultsManager:
 
     def __init__(
         self,
-        results: Iterable[_Collector],
+        outputs: Iterable[_Collector],
         clean_patterns: str | Iterable[str],
         has_uncertainties: bool,
     ) -> None:
         # parse collectors
-        results = tuple(results)
+        outputs = tuple(outputs)
 
         # add copy collectors if no uncertainty
-        auto_results = []
+        auto_outputs = []
         if not has_uncertainties:
-            for item in results:
+            for item in outputs:
                 if item._level == "job":
                     raise ValueError(
-                        "all results collectors need to be on the task level when no uncertainty in parameters."
+                        "all output collectors need to be on the task level when no uncertainty in inputs."
                     )
 
                 if item._is_final:
-                    auto_results.append(
+                    auto_outputs.append(
                         _CopyCollector(
                             item._filename,
                             item._objectives,
@@ -341,15 +343,11 @@ class _ResultsManager:
                         )
                     )
                     item._is_copied = True
-            results += tuple(auto_results)
+            outputs += tuple(auto_outputs)
 
         # split collectors as per their level
-        self._task_results = tuple(
-            result for result in results if result._level == "task"
-        )
-        self._job_results = tuple(
-            result for result in results if result._level == "job"
-        )
+        self._task_outputs = tuple(item for item in outputs if item._level == "task")
+        self._job_outputs = tuple(item for item in outputs if item._level == "job")
 
         # parse clean patterns without duplicates
         self._clean_patterns = frozenset(
@@ -358,25 +356,25 @@ class _ResultsManager:
 
         # gather objective and constraint labels
         self._objectives = tuple(
-            chain.from_iterable(item._objectives for item in self._job_results)
+            chain.from_iterable(item._objectives for item in self._job_outputs)
         )
         self._constraints = tuple(
-            chain.from_iterable(item._constraints for item in self._job_results)
+            chain.from_iterable(item._constraints for item in self._job_outputs)
         )
 
         self._check_args()
 
     def __iter__(self) -> Iterator[_Collector]:
-        yield from self._task_results
-        yield from self._job_results
+        yield from self._task_outputs
+        yield from self._job_outputs
 
     def __len__(self) -> int:
-        return len(self._task_results) + len(self._job_results)
+        return len(self._task_outputs) + len(self._job_outputs)
 
     def _check_args(self) -> None:
-        # check each result
-        for result in self:
-            result._check_args()
+        # check each output
+        for output in self:
+            output._check_args()
 
         # make sure the clean patterns provided do not interfere parent folders
         # NOTE: this check may not be comprehensive
@@ -392,14 +390,14 @@ class _ResultsManager:
                 raise ValueError(f"duplicates found in {name[1:]}: {labels}.")
 
     def _touch_rvi(self, config_directory: Path) -> None:
-        for result in self._task_results:
-            if isinstance(result, RVICollector):
-                result._touch(config_directory)
+        for item in self._task_outputs:
+            if isinstance(item, RVICollector):
+                item._touch(config_directory)
 
     def _record_final(
         self, level: _AnyLevel, record_directory: Path, uids: AnyUIDs
     ) -> None:
-        # only final results
+        # only final outputs
         with (record_directory / cf._RECORDS_FILENAMES[level]).open(
             "rt", newline=""
         ) as fp:
@@ -419,14 +417,14 @@ class _ResultsManager:
 
         for idx, uid in enumerate(uids):
             # TODO: consider changing this assert to using a dict with uid as keys
-            #       this may somewhat unify the _record_final func for parameters and results
+            #       this may somewhat unify the _record_final func for inputs and outputs
             assert uid == record_rows[idx][0]
 
-            for result in getattr(self, f"_{level}_results"):
-                if not result._is_final:
+            for output in getattr(self, f"_{level}_outputs"):
+                if not output._is_final:
                     continue
 
-                with (record_directory / uid / result._filename).open(
+                with (record_directory / uid / output._filename).open(
                     "rt", newline=""
                 ) as fp:
                     reader = csv.reader(fp, dialect="excel")
@@ -434,42 +432,42 @@ class _ResultsManager:
                     if idx:
                         next(reader)
                     else:
-                        # append final results headers
+                        # append final output headers
                         # and prepare objectives and constraints
                         # do this only once when idx is 0
 
-                        # append result headers
-                        result_headers = next(reader)[1:]
-                        header_row += result_headers
+                        # append output headers
+                        output_headers = next(reader)[1:]
+                        header_row += output_headers
 
                         # append objective and constraint indices and conversion funcs
                         if level == "job":  # [1]
-                            begin_count = len(header_row) - len(result_headers)
+                            begin_count = len(header_row) - len(output_headers)
 
-                            # NOTE: use of .index() relies heavily on uniqueness of labels for final results
-                            #       uniqueness of objectives/constraints within an individual result is checked via _check_args
+                            # NOTE: use of .index() relies heavily on uniqueness of labels for final outputs
+                            #       uniqueness of objectives/constraints within an individual output is checked via _check_args
                             #       otherwise is hard to check, hence at users' discretion
-                            if result._objectives:
+                            if output._objectives:
                                 self._objective_indices += tuple(
-                                    begin_count + result_headers.index(item)
-                                    for item in result._objectives
+                                    begin_count + output_headers.index(item)
+                                    for item in output._objectives
                                 )
-                                self._to_objectives += (result._to_objective,) * len(
-                                    result._objectives
+                                self._to_objectives += (output._to_objective,) * len(
+                                    output._objectives
                                 )
-                            if result._constraints:
+                            if output._constraints:
                                 self._constraint_indices += tuple(
-                                    begin_count + result_headers.index(item)
-                                    for item in result._constraints
+                                    begin_count + output_headers.index(item)
+                                    for item in output._constraints
                                 )
-                                self._to_constraints += (result._to_constraint,) * len(
-                                    result._constraints
+                                self._to_constraints += (output._to_constraint,) * len(
+                                    output._constraints
                                 )
 
-                    # append final results values
+                    # append final output values
                     record_rows[idx] += next(reader)[1:]
 
-                    # check if any final result is no scalar
+                    # check if any final output is no scalar
                     if __debug__:
                         try:
                             next(reader)
@@ -477,7 +475,7 @@ class _ResultsManager:
                             pass
                         else:
                             warn(
-                                f"multiple result lines found in '{result._filename}', only the first collected."
+                                f"multiple output lines found in '{output._filename}', only the first collected."
                             )
 
         # write records
@@ -487,9 +485,9 @@ class _ResultsManager:
 
     @_LoggerManager(cwd_index=1)
     def _collect_task(self, task_directory: Path) -> None:
-        # collect each task result
-        for result in self._task_results:
-            result._collect(task_directory)
+        # collect each task output
+        for item in self._task_outputs:
+            item._collect(task_directory)
 
     @_LoggerManager(cwd_index=1)
     def _collect_job(self, job_directory: Path, task_uids: AnyUIDs) -> None:
@@ -499,13 +497,13 @@ class _ResultsManager:
 
             _log(job_directory, f"collected {task_uid}")
 
-        # record task result values
+        # record task output values
         self._record_final("task", job_directory, task_uids)
 
-        _log(job_directory, "recorded final results")
+        _log(job_directory, "recorded final outputs")
 
-        for result in self._job_results:
-            result._collect(job_directory)
+        for item in self._job_outputs:
+            item._collect(job_directory)
 
     @_LoggerManager(cwd_index=1)
     def _collect_batch(
@@ -526,12 +524,12 @@ class _ResultsManager:
         for (job_uid, _), _ in zip(jobs, scheduled, strict=True):
             _log(batch_directory, f"collected {job_uid}")
 
-        # record job result values
+        # record job output values
         self._record_final(
             "job", batch_directory, tuple(job_uid for job_uid, _ in jobs)
         )
 
-        _log(batch_directory, "recorded final results")
+        _log(batch_directory, "recorded final outputs")
 
     @_LoggerManager(cwd_index=1)
     def _clean_task(self, task_directory: Path) -> None:
@@ -574,7 +572,7 @@ class _ResultsManager:
 
             return tuple(map(tuple, reader))
 
-    def _recorded_objectives(self, batch_directory: Path) -> AnyBatchResults:
+    def _recorded_objectives(self, batch_directory: Path) -> AnyBatchOutputs:
         # slice objective values
         return tuple(
             tuple(
@@ -586,7 +584,7 @@ class _ResultsManager:
             for job_values in self._recorded_batch(batch_directory)
         )
 
-    def _recorded_constraints(self, batch_directory: Path) -> AnyBatchResults:
+    def _recorded_constraints(self, batch_directory: Path) -> AnyBatchOutputs:
         # slice constraints values
         return tuple(
             tuple(

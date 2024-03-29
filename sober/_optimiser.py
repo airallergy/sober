@@ -10,8 +10,8 @@ from ._evaluator import _pymoo_evaluate
 from ._logger import _log
 from ._tools import _natural_width
 from ._typing import AnyCandidateMap, AnyPymooCallback, PymooOperators, PymooOut
-from .parameters import ContinuousModifier, _ParametersManager
-from .results import _ResultsManager
+from .input import ContinuousModifier, _InputManager
+from .output import _OutputManager
 
 
 #############################################################################
@@ -20,40 +20,40 @@ from .results import _ResultsManager
 class _PymooProblem(pm.Problem):
     """interfaces the pymoo problem"""
 
-    _parameters_manager: _ParametersManager
-    _results_manager: _ResultsManager
+    _input_manager: _InputManager
+    _output_manager: _OutputManager
     _evaluation_directory: Path
     _saves_batches: bool
     _batch_idx_width: int
 
     def __init__(
         self,
-        parameters_manager: _ParametersManager,
-        results_manager: _ResultsManager,
+        input_manager: _InputManager,
+        output_manager: _OutputManager,
         evaluation_directory: Path,
         callback: AnyPymooCallback,
         saves_batches: bool,
         expected_n_generations: int,
     ) -> None:
-        # NOTE: pymoo0.6 asks for a map from parameter uids to pymoo variable types
+        # NOTE: pymoo0.6 asks for a map from input uids to pymoo variable types
         variables = {
-            parameter._label: (
-                pm.Real(bounds=(parameter._low, parameter._high))
-                if isinstance(parameter, ContinuousModifier)
-                else pm.Integral(bounds=(parameter._low, parameter._high))
+            item._label: (
+                pm.Real(bounds=(item._low, item._high))
+                if isinstance(item, ContinuousModifier)
+                else pm.Integral(bounds=(item._low, item._high))
             )
-            for parameter in parameters_manager
+            for item in input_manager
         }
 
         super().__init__(
-            n_obj=len(results_manager._objectives),
-            n_ieq_constr=len(results_manager._constraints),
+            n_obj=len(output_manager._objectives),
+            n_ieq_constr=len(output_manager._constraints),
             vars=variables,
             callback=callback,
             requires_kwargs=True,
         )
-        self._parameters_manager = parameters_manager
-        self._results_manager = results_manager
+        self._input_manager = input_manager
+        self._output_manager = output_manager
         self._evaluation_directory = evaluation_directory
         self._saves_batches = saves_batches
         self._batch_idx_width = _natural_width(expected_n_generations)
@@ -69,7 +69,7 @@ class _PymooProblem(pm.Problem):
         # NOTE: in pymoo0.6
         #           n_gen follows 1, 2, 3, ...
         #           x is a numpy array of dicts, each dict is a candidate map
-        #               whose keys are parameter labels
+        #               whose keys are input labels
         #                     values are candidate vectors
         #           out has to be a dict of numpy arrays
 
@@ -83,13 +83,13 @@ class _PymooProblem(pm.Problem):
 
         objectives, constraints = _pymoo_evaluate(
             *candidate_vecs,
-            parameters_manager=self._parameters_manager,
-            results_manager=self._results_manager,
+            input_manager=self._input_manager,
+            output_manager=self._output_manager,
             batch_directory=self._evaluation_directory / batch_uid,
         )
 
         out["F"] = np.asarray(objectives, dtype=np.float_)
-        if self._results_manager._constraints:
+        if self._output_manager._constraints:
             out["G"] = np.asarray(constraints, dtype=np.float_)
 
         if not self._saves_batches:
