@@ -4,21 +4,21 @@ from itertools import chain
 from pathlib import Path
 from typing import Literal
 
-from . import _pymoo_namespace as pm
-from . import config as cf
-from ._logger import _log, _LoggerManager
-from ._multiplier import _multiply
-from ._optimiser import _algorithm, _PymooProblem, _sampling, _survival
-from ._tools import _write_records
-from ._typing import AnyPymooCallback, AnyStrPath
-from .input import (
+import sober._pymoo_namespace as pm
+import sober.config as cf
+from sober._logger import _log, _LoggerManager
+from sober._multiplier import _multiply
+from sober._optimiser import _algorithm, _PymooProblem, _sampling, _survival
+from sober._tools import _write_records
+from sober._typing import AnyPymooCallback, AnyStrPath
+from sober.input import (
     AnyModelModifier,
     ContinuousModifier,
     WeatherModifier,
     _all_integral_modifiers,
     _InputManager,
 )
-from .output import RVICollector, ScriptCollector, _Collector, _OutputManager
+from sober.output import RVICollector, ScriptCollector, _Collector, _OutputManager
 
 
 #############################################################################

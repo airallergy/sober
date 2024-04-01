@@ -25,5 +25,8 @@ build-backend = "poetry.core.masonry.api"
 target-version = "py311"
 
 [tool.ruff.lint]
-extend-select = ["I", "PGH", "UP", "N"]
+extend-select = ["I", "PGH", "UP", "N", "TID"]
 ignore = ["E741"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"

@@ -4,7 +4,7 @@ from typing import Literal, Protocol, Required, TypeAlias, TypedDict, TypeVar
 
 import numpy as np
 
-from . import _pymoo_namespace as pm
+import sober._pymoo_namespace as pm
 
 # generic
 AnyStrPath: TypeAlias = str | PathLike[str]

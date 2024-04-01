@@ -8,8 +8,8 @@ from pathlib import Path
 from platform import node
 from typing import TYPE_CHECKING, Any, Final, Literal, ParamSpec, Self, TypeVar
 
-from . import config as cf
-from ._typing import AnyCmdArgs, SubprocessResult
+import sober.config as cf
+from sober._typing import AnyCmdArgs, SubprocessResult
 
 HOST_STEM = node().split(".")[0]
 

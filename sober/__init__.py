@@ -1,6 +1,6 @@
-from ._pymoo_namespace import MaximumGenerationTermination
-from .config import config_energyplus, config_parallel, config_script
-from .input import (
+from sober._pymoo_namespace import MaximumGenerationTermination
+from sober.config import config_energyplus, config_parallel, config_script
+from sober.input import (
     CategoricalModifier,
     ContinuousModifier,
     DiscreteModifier,
@@ -9,8 +9,8 @@ from .input import (
     StringTagger,
     WeatherModifier,
 )
-from .output import RVICollector, ScriptCollector
-from .problem import Problem
+from sober.output import RVICollector, ScriptCollector
+from sober.problem import Problem
 
 __all__ = (
     "Problem",

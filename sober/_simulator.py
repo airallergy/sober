@@ -1,9 +1,9 @@
 from collections.abc import Sequence
 from pathlib import Path, PurePath
 
-from . import config as cf
-from ._tools import _run
-from ._typing import AnyStrPath
+import sober.config as cf
+from sober._tools import _run
+from sober._typing import AnyStrPath
 
 
 #############################################################################

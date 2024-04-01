@@ -11,8 +11,8 @@ from subprocess import PIPE, STDOUT, run
 from typing import TYPE_CHECKING, Any, Self, TypeAlias, TypeVar, TypeVarTuple
 from uuid import NAMESPACE_X500, uuid5
 
-from ._logger import _log
-from ._typing import AnyCmdArgs
+from sober._logger import _log
+from sober._typing import AnyCmdArgs
 
 
 #############################################################################

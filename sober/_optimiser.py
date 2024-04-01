@@ -5,13 +5,13 @@ from typing import Literal, overload
 
 import numpy as np
 
-from . import _pymoo_namespace as pm
-from ._evaluator import _pymoo_evaluate
-from ._logger import _log
-from ._tools import _natural_width
-from ._typing import AnyCandidateMap, AnyPymooCallback, PymooOperators, PymooOut
-from .input import ContinuousModifier, _InputManager
-from .output import _OutputManager
+import sober._pymoo_namespace as pm
+from sober._evaluator import _pymoo_evaluate
+from sober._logger import _log
+from sober._tools import _natural_width
+from sober._typing import AnyCandidateMap, AnyPymooCallback, PymooOperators, PymooOut
+from sober.input import ContinuousModifier, _InputManager
+from sober.output import _OutputManager
 
 
 #############################################################################

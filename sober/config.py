@@ -4,7 +4,7 @@ from warnings import warn
 
 from psutil import cpu_count
 
-from ._typing import AnyLanguage, AnyModelType, AnyStrPath, Config
+from sober._typing import AnyLanguage, AnyModelType, AnyStrPath, Config
 
 #############################################################################
 #######                       GLOBAL CONSTANTS                        #######
