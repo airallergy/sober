@@ -1,3 +1,4 @@
+import inspect
 import pickle
 from collections.abc import Iterable
 from itertools import chain
@@ -109,24 +110,32 @@ class Problem:
                 seed,
             )
         else:
-            raise ValueError("with continuous inputs cannot run sample.")
+            frames = inspect.stack()
+            caller_name = frames[0].function
+            for item in frames[1:]:
+                if (
+                    item.function.startswith("run_")
+                    and ("self" in item.frame.f_locals)
+                    and isinstance(item.frame.f_locals["self"], self.__class__)
+                ):
+                    caller_name = item.function
+                else:
+                    break
+
+            raise ValueError(
+                f"with continuous inputs cannot {caller_name.replace('_', ' ')}."
+            )
 
     def run_brute_force(self) -> None:
         """runs the full search space"""
 
-        if _all_integral_modifiers(self._input_manager):
-            self.run_sample(-1)
-        else:
-            raise ValueError("with continuous inputs cannot run brute force.")
+        self.run_sample(-1)
 
     def run_each_variation(self, *, seed: int | None = None) -> None:
         """runs a minimum sample of the full search space that contains all input variations
         this helps check the validity of each variation"""
 
-        if _all_integral_modifiers(self._input_manager):
-            self.run_sample(0, seed=seed)
-        else:
-            raise ValueError("with continuous inputs cannot run each variation.")
+        self.run_sample(0, seed=seed)
 
     def _to_pymoo(
         self,
