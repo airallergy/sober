@@ -413,10 +413,10 @@ class _OutputManager:
             self._to_objectives = ()
             self._to_constraints = ()
 
-        for idx, uid in enumerate(uids):
+        for i, uid in enumerate(uids):
             # TODO: consider changing this assert to using a dict with uid as keys
             #       this may somewhat unify the _record_final func for inputs and outputs
-            assert uid == record_rows[idx][0]
+            assert uid == record_rows[i][0]
 
             for output in getattr(self, f"_{level}_outputs"):
                 if not output._is_final:
@@ -425,12 +425,12 @@ class _OutputManager:
                 with (record_dir / uid / output._filename).open("rt", newline="") as fp:
                     reader = csv.reader(fp, dialect="excel")
 
-                    if idx:
+                    if i:
                         next(reader)
                     else:
                         # append final output headers
                         # and prepare objectives and constraints
-                        # do this only once when idx is 0
+                        # do this only once when i is 0
 
                         # append output headers
                         output_headers = next(reader)[1:]
@@ -461,7 +461,7 @@ class _OutputManager:
                                 )
 
                     # append final output values
-                    record_rows[idx] += next(reader)[1:]
+                    record_rows[i] += next(reader)[1:]
 
                     # check if any final output is no scalar
                     if __debug__:
@@ -565,8 +565,8 @@ class _OutputManager:
         # slice objective values
         return tuple(
             tuple(
-                func(float(job_values[idx]))
-                for idx, func in zip(
+                func(float(job_values[i]))
+                for i, func in zip(
                     self._objective_indices, self._to_objectives, strict=True
                 )
             )
@@ -577,8 +577,8 @@ class _OutputManager:
         # slice constraints values
         return tuple(
             tuple(
-                func(float(job_values[idx]))
-                for idx, func in zip(
+                func(float(job_values[i]))
+                for i, func in zip(
                     self._constraint_indices, self._to_constraints, strict=True
                 )
             )

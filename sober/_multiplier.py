@@ -52,8 +52,8 @@ class _LazyCartesianProduct(Generic[_T]):
                 key += self._n_products
 
             return tuple(
-                self._tuples[idx][key // self._divs[idx] % self._mods[idx]]
-                for idx in range(self._n_tuples)
+                self._tuples[i][key // self._divs[i] % self._mods[i]]
+                for i in range(self._n_tuples)
             )
         elif isinstance(key, Sequence) and all(isinstance(item, int) for item in key):
             return tuple(self[item] for item in key)

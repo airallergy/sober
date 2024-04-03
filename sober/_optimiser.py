@@ -24,7 +24,7 @@ class _PymooProblem(pm.Problem):
     _output_manager: _OutputManager
     _evaluation_dir: Path
     _saves_batches: bool
-    _batch_idx_width: int
+    _i_batch_width: int
 
     def __init__(
         self,
@@ -56,7 +56,7 @@ class _PymooProblem(pm.Problem):
         self._output_manager = output_manager
         self._evaluation_dir = evaluation_dir
         self._saves_batches = saves_batches
-        self._batch_idx_width = _natural_width(expected_n_generations)
+        self._i_batch_width = _natural_width(expected_n_generations)
 
     def _evaluate(
         self,
@@ -73,8 +73,8 @@ class _PymooProblem(pm.Problem):
         #                     values are candidate vectors
         #           out has to be a dict of numpy arrays
 
-        batch_idx = algorithm.n_gen - 1
-        batch_uid = f"B{batch_idx:0{self._batch_idx_width}}"
+        i_batch = algorithm.n_gen - 1
+        batch_uid = f"B{i_batch:0{self._i_batch_width}}"
 
         candidate_vecs = tuple(
             tuple(component.item() for component in candidate_map.values())

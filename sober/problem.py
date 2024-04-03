@@ -241,13 +241,11 @@ class Problem:
                 )
 
             n_loops = termination.n_max_gen // checkpoint_interval + 1
-            for idx in range(n_loops):
+            for i in range(n_loops):
                 current_termination = (
                     termination
-                    if idx + 1 == n_loops
-                    else pm.MaximumGenerationTermination(
-                        (idx + 1) * checkpoint_interval
-                    )
+                    if i + 1 == n_loops
+                    else pm.MaximumGenerationTermination((i + 1) * checkpoint_interval)
                 )
 
                 # NOTE: in pymoo0.6
@@ -276,15 +274,13 @@ class Problem:
                 # update algorithm
                 algorithm = result.algorithm
 
-                checkpoint_idx = (idx + 1) * checkpoint_interval - 1
-                if algorithm.n_gen - 1 == checkpoint_idx + 1:
+                i_checkpoint = (i + 1) * checkpoint_interval - 1
+                if algorithm.n_gen - 1 == i_checkpoint + 1:
                     # TODO: explore implementing custom serialisation for self(Problem) via TOML/YAML
                     with (epoch_dir / "checkpoint.pickle").open("wb") as fp:
                         pickle.dump((self, result), fp)
 
-                    _log(
-                        epoch_dir, f"created checkpoint at generation {checkpoint_idx}"
-                    )
+                    _log(epoch_dir, f"created checkpoint at generation {i_checkpoint}")
 
         self._record_survival("batch", epoch_dir, result)
 

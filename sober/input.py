@@ -216,12 +216,12 @@ class _IntegralModifier(_Modifier, Generic[_V, _U]):
 
     def __getitem__(self, index):
         match self._is_uncertain, index:
-            case _, int() as idx:
-                return self._variations[idx]
-            case False, (int() as idx, 0):
-                return self._variations[idx]
-            case True, (int() as idx, int() as jdx):
-                return self._uncertainties[idx][jdx]
+            case _, int() as i:
+                return self._variations[i]
+            case False, (int() as i, 0):
+                return self._variations[i]
+            case True, (int() as i, int() as j):
+                return self._uncertainties[i][j]
             case False, (int(), int()):
                 raise IndexError("no uncertainties defined.")
             case _:
@@ -505,10 +505,6 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         return super()._detagged(tagged_model, *values)
 
 
-#############################################################################
-#######                    INPUTS MANAGER CLASSES                     #######
-#############################################################################
-
 ##############################  module typing  ##############################
 # this technically belongs to _typing.py, but put here to avoid circular import
 AnyIntegralModelModifier: TypeAlias = (
@@ -522,6 +518,9 @@ ModelModifier = TypeVar("ModelModifier", AnyModelModifier, AnyIntegralModelModif
 #############################################################################
 
 
+#############################################################################
+#######                    INPUTS MANAGER CLASSES                     #######
+#############################################################################
 class _InputManager(Generic[ModelModifier]):
     """manages input modification"""
 
@@ -555,8 +554,8 @@ class _InputManager(Generic[ModelModifier]):
 
         # assign index and label to each input
         has_names = any(input._name for input in self)
-        for idx, input in enumerate(self):
-            input._index = idx
+        for i, input in enumerate(self):
+            input._index = i
 
             if isinstance(input, WeatherModifier):
                 input._label = "W"  # P0
@@ -638,10 +637,10 @@ class _InputManager(Generic[ModelModifier]):
         return macros + idf.idfstr()
 
     def _jobs(self, *candidate_vecs: AnyCandidateVec) -> Iterator[AnyJob]:
-        job_idx_width = _natural_width(len(candidate_vecs))
+        i_job_width = _natural_width(len(candidate_vecs))
 
-        for job_idx, candidate_vec in enumerate(candidate_vecs):
-            job_uid = f"J{job_idx:0{job_idx_width}}"
+        for i_job, candidate_vec in enumerate(candidate_vecs):
+            job_uid = f"J{i_job:0{i_job_width}}"
 
             # TODO: mypy infers scenario_vecs incorrectly, might be resolved after python/mypy#12280
             # NOTE: there may be a better way than cast()
@@ -659,14 +658,14 @@ class _InputManager(Generic[ModelModifier]):
             )
             scenario_vecs = cast(tuple[AnyScenarioVec, ...], scenario_vecs)
 
-            task_idx_width = _natural_width(len(scenario_vecs))
+            i_task_width = _natural_width(len(scenario_vecs))
 
             tasks = tuple(
                 (
-                    f"T{task_idx:0{task_idx_width}}",
+                    f"T{i_task:0{i_task_width}}",
                     tuple(zip(candidate_vec, scenario_vec, strict=True)),
                 )
-                for task_idx, scenario_vec in enumerate(scenario_vecs)
+                for i_task, scenario_vec in enumerate(scenario_vecs)
             )
             tasks = cast(tuple[tuple[str, AnyDuoVec], ...], tasks)
 
@@ -701,13 +700,13 @@ class _InputManager(Generic[ModelModifier]):
         input_values: list[Any] = [None] * len(self)
 
         # convert duo to value and store for each input
-        for idx, (input, duo) in enumerate(zip(self, duo_vec, strict=True)):
+        for i, (input, duo) in enumerate(zip(self, duo_vec, strict=True)):
             if isinstance(input, FunctionalModifier):
-                input_values[idx] = input._value(
-                    duo, *(input_values[jdx] for jdx in input._input_indices)
+                input_values[i] = input._value(
+                    duo, *(input_values[j] for j in input._input_indices)
                 )
             else:
-                input_values[idx] = input._value(duo)
+                input_values[i] = input._value(duo)
 
         # copy the task weather file
         task_epw_file = task_dir / "in.epw"
