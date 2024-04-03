@@ -57,12 +57,8 @@ class Problem:
         python_exec: AnyStrPath | None = None,
     ) -> None:
         self._model_file = Path(model_file).resolve(strict=True)
-        self._input_manager = _InputManager(
-            weather_input, model_inputs, self._model_file, has_templates
-        )
-        self._output_manager = _OutputManager(
-            outputs, clean_patterns, self._input_manager._has_uncertainties
-        )
+        self._input_manager = _InputManager(weather_input, model_inputs, has_templates)
+        self._output_manager = _OutputManager(outputs, clean_patterns)
         self._evaluation_dir = (
             self._model_file.parent / "evaluation"
             if evaluation_dir is None
@@ -78,6 +74,12 @@ class Problem:
         self._evaluation_dir.mkdir(exist_ok=True)
         self._config_dir.mkdir(exist_ok=True)
 
+        # prepare io managers
+        self._input_manager._prepare(self._model_file)
+        self._output_manager._prepare(
+            self._config_dir, self._input_manager._has_uncertainties
+        )
+
         # config
         cf.config_parallel(n_processes=n_processes)
         cf.config_script(python_exec=python_exec)
@@ -91,10 +93,6 @@ class Problem:
                 if isinstance(item, ScriptCollector)
             ),
         )
-
-        # touch rvi
-        # leave this here, otherwise need to pass _config_dir to _output_manager
-        self._output_manager._touch_rvi(self._config_dir)
 
     def run_sample(self, size: int, /, *, seed: int | None = None) -> None:
         """runs a sample of the full search space"""

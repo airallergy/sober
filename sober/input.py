@@ -528,17 +528,17 @@ class _InputManager(Generic[ModelModifier]):
 
     _weather_input: WeatherModifier
     _model_inputs: tuple[ModelModifier, ...]
-    _model_type: AnyModelType
-    _tagged_model: str
     _has_templates: bool
+    _tagged_model: str
+    _model_type: AnyModelType
     _has_uncertainties: bool
 
     __slots__ = (
         "_weather_input",
         "_model_inputs",
-        "_model_type",
-        "_tagged_model",
         "_has_templates",
+        "_tagged_model",
+        "_model_type",
         "_has_uncertainties",
     )
 
@@ -546,11 +546,28 @@ class _InputManager(Generic[ModelModifier]):
         self,
         weather_input: WeatherModifier,
         model_inputs: Iterable[ModelModifier],
-        model_file: Path,
         has_templates: bool,
     ) -> None:
         self._weather_input = weather_input
         self._model_inputs = tuple(model_inputs)
+        self._has_templates = has_templates
+
+    def __iter__(self) -> Iterator[WeatherModifier | ModelModifier]:
+        yield self._weather_input
+        yield from self._model_inputs
+
+    def __len__(self) -> int:
+        return 1 + len(self._model_inputs)
+
+    def _prepare(self, model_file: Path) -> None:
+        # check model type
+        suffix = model_file.suffix
+        if suffix not in self.MODEL_TYPES:
+            raise NotImplementedError(f"a '{suffix}' model is not supported.")
+        self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
+
+        self._tagged_model = self._tagged(model_file)
+        self._has_uncertainties = any(input._is_uncertain for input in self)
 
         # assign index and label to each input
         has_names = any(input._name for input in self)
@@ -568,24 +585,7 @@ class _InputManager(Generic[ModelModifier]):
 
                 input._label += f":{input._name}"
 
-        # check model type
-        suffix = model_file.suffix
-        if suffix not in self.MODEL_TYPES:
-            raise NotImplementedError(f"a '{suffix}' model is not supported.")
-        self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
-
-        self._tagged_model = self._tagged(model_file)
-        self._has_templates = has_templates
-        self._has_uncertainties = any(input._is_uncertain for input in self)
-
         self._check_args()
-
-    def __iter__(self) -> Iterator[WeatherModifier | ModelModifier]:
-        yield self._weather_input
-        yield from self._model_inputs
-
-    def __len__(self) -> int:
-        return 1 + len(self._model_inputs)
 
     def _check_args(self) -> None:
         # check each input

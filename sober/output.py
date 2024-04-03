@@ -317,25 +317,37 @@ class _OutputManager:
     )
 
     def __init__(
-        self,
-        outputs: Iterable[_Collector],
-        clean_patterns: str | Iterable[str],
-        has_uncertainties: bool,
+        self, outputs: Iterable[_Collector], clean_patterns: str | Iterable[str]
     ) -> None:
-        # parse collectors
+        # split collectors as per their level
         outputs = tuple(outputs)
+        self._task_outputs = tuple(item for item in outputs if item._level == "task")
+        self._job_outputs = tuple(item for item in outputs if item._level == "job")
 
+        # parse clean patterns without duplicates
+        self._clean_patterns = frozenset(
+            normpath(item) for item in _rectified_str_iterable(clean_patterns)
+        )
+
+    def __iter__(self) -> Iterator[_Collector]:
+        yield from self._task_outputs
+        yield from self._job_outputs
+
+    def __len__(self) -> int:
+        return len(self._task_outputs) + len(self._job_outputs)
+
+    def _prepare(self, config_dir: Path, has_uncertainties: bool) -> None:
         # add copy collectors if no uncertainty
-        auto_outputs = []
         if not has_uncertainties:
-            for item in outputs:
-                if item._level == "job":
-                    raise ValueError(
-                        "all output collectors need to be on the task level when no uncertainty in inputs."
-                    )
+            if len(self._job_outputs):
+                raise ValueError(
+                    "all output collectors need to be on the task level with no uncertain input."
+                )
 
+            copy_outputs = []
+            for item in self._task_outputs:
                 if item._is_final:
-                    auto_outputs.append(
+                    copy_outputs.append(
                         _CopyCollector(
                             item._filename,
                             item._objectives,
@@ -345,16 +357,7 @@ class _OutputManager:
                         )
                     )
                     item._is_copied = True
-            outputs += tuple(auto_outputs)
-
-        # split collectors as per their level
-        self._task_outputs = tuple(item for item in outputs if item._level == "task")
-        self._job_outputs = tuple(item for item in outputs if item._level == "job")
-
-        # parse clean patterns without duplicates
-        self._clean_patterns = frozenset(
-            normpath(item) for item in _rectified_str_iterable(clean_patterns)
-        )
+            self._job_outputs = tuple(copy_outputs)
 
         # gather objective and constraint labels
         self._objectives = tuple(
@@ -364,14 +367,10 @@ class _OutputManager:
             chain.from_iterable(item._constraints for item in self._job_outputs)
         )
 
+        # touch rvi files
+        self._touch_rvi(config_dir)
+
         self._check_args()
-
-    def __iter__(self) -> Iterator[_Collector]:
-        yield from self._task_outputs
-        yield from self._job_outputs
-
-    def __len__(self) -> int:
-        return len(self._task_outputs) + len(self._job_outputs)
 
     def _check_args(self) -> None:
         # check each output
