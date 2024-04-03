@@ -187,16 +187,21 @@ class _IntegralModifier(_Modifier, Generic[_V, _U]):
                 # no uncertainty
                 # self._uncertainties = ()  # leave undefined
                 self._ns_uncertainties = (1,) * self._n_variations
-            case 1:
-                # each variation has the same uncertainty
-                self._uncertainties = (tuple(uncertainties[0]),) * self._n_variations
-                self._ns_uncertainties = (
-                    len(self._uncertainties[0]),
-                ) * self._n_variations
             case self._n_variations:
                 # each variation has different uncertainties
                 self._uncertainties = tuple(map(tuple, uncertainties))
                 self._ns_uncertainties = tuple(map(len, self._uncertainties))
+            case 1:
+                # each variation has the same uncertainty
+                # TODO: this is not useful for absolute uncertainty
+                #                              i.e. uncertainty
+                #                      but for relative uncertainty in the future
+                #                              i.e. variation +- uncertainty
+                raise NotImplementedError
+                self._uncertainties = (tuple(uncertainties[0]),) * self._n_variations
+                self._ns_uncertainties = (
+                    len(self._uncertainties[0]),
+                ) * self._n_variations
             case _:
                 raise ValueError(
                     f"the number of uncertainties is different from that of variations: '{len(uncertainties)}', '{self._n_variations}'."
