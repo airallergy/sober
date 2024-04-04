@@ -7,9 +7,9 @@ from typing import Literal
 
 import sober._pymoo_namespace as pm
 import sober.config as cf
+from sober._evolver import _algorithm, _PymooProblem, _sampling, _survival
 from sober._logger import _log, _LoggerManager
 from sober._multiplier import _multiply
-from sober._optimiser import _algorithm, _PymooProblem, _sampling, _survival
 from sober._tools import _write_records
 from sober._typing import AnyPymooCallback, AnyStrPath
 from sober.input import (
@@ -216,7 +216,7 @@ class Problem:
         )
 
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _optimise_epoch(
+    def _evolve_epoch(
         self,
         epoch_dir: Path,
         problem: _PymooProblem,
@@ -315,7 +315,7 @@ class Problem:
             "nsga2", population_size, p_crossover, p_mutation, sampling
         )
 
-        return self._optimise_epoch(
+        return self._evolve_epoch(
             self._evaluation_dir,
             problem,
             algorithm,
@@ -367,7 +367,7 @@ class Problem:
             reference_directions,
         )
 
-        return self._optimise_epoch(
+        return self._evolve_epoch(
             self._evaluation_dir,
             problem,
             algorithm,
@@ -401,7 +401,7 @@ class Problem:
         if not (isinstance(problem, Problem) and isinstance(result, pm.Result)):
             raise TypeError(f"invalid checkpoint file: {checkpoint_file.resolve()}.")
 
-        return problem._optimise_epoch(
+        return problem._evolve_epoch(
             problem._evaluation_dir,
             result.problem,
             result.algorithm,
