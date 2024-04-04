@@ -10,11 +10,11 @@ import numpy as np
 import sober._pymoo_namespace as pm
 import sober.config as cf
 from sober._evaluator import _pymoo_evaluate
+from sober._io_managers import _InputManager, _OutputManager
 from sober._logger import _log, _LoggerManager
 from sober._tools import _natural_width, _write_records
 from sober._typing import AnyCandidateMap, AnyPymooCallback, PymooOperators, PymooOut
-from sober.input import ContinuousModifier, _InputManager
-from sober.output import _OutputManager
+from sober.input import ContinuousModifier
 
 
 #############################################################################

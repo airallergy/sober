@@ -1,10 +1,9 @@
 from pathlib import Path
 
 import sober.config as cf
+from sober._io_managers import _InputManager, _OutputManager
 from sober._tools import _Parallel
 from sober._typing import AnyBatchOutputs, AnyCandidateVec
-from sober.input import _InputManager
-from sober.output import _OutputManager
 
 
 def _evaluate(

@@ -6,15 +6,11 @@ from pathlib import Path
 import sober._pymoo_namespace as pm
 import sober.config as cf
 from sober._evolver import _algorithm, _PymooProblem, _sampling
+from sober._io_managers import _all_integral_modifiers, _InputManager, _OutputManager
 from sober._multiplier import _multiply
 from sober._typing import AnyPymooCallback, AnyStrPath
-from sober.input import (
-    AnyModelModifier,
-    WeatherModifier,
-    _all_integral_modifiers,
-    _InputManager,
-)
-from sober.output import RVICollector, ScriptCollector, _Collector, _OutputManager
+from sober.input import AnyModelModifier, WeatherModifier
+from sober.output import RVICollector, ScriptCollector, _Collector
 
 
 #############################################################################

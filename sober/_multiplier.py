@@ -8,8 +8,8 @@ from typing import Generic, TypeVar, overload
 import numpy as np
 
 from sober._evaluator import _evaluate
-from sober.input import AnyIntegralModelModifier, _InputManager
-from sober.output import _OutputManager
+from sober._io_managers import _InputManager, _OutputManager
+from sober.input import AnyIntegralModelModifier
 
 _T = TypeVar("_T")
 
