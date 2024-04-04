@@ -1,20 +1,15 @@
 import inspect
 import pickle
 from collections.abc import Iterable
-from itertools import chain
 from pathlib import Path
-from typing import Literal
 
 import sober._pymoo_namespace as pm
 import sober.config as cf
-from sober._evolver import _algorithm, _PymooProblem, _sampling, _survival
-from sober._logger import _log, _LoggerManager
+from sober._evolver import _algorithm, _PymooProblem, _sampling
 from sober._multiplier import _multiply
-from sober._tools import _write_records
 from sober._typing import AnyPymooCallback, AnyStrPath
 from sober.input import (
     AnyModelModifier,
-    ContinuousModifier,
     WeatherModifier,
     _all_integral_modifiers,
     _InputManager,
@@ -153,137 +148,6 @@ class Problem:
             expected_n_generations,
         )
 
-    def _record_survival(
-        self, level: Literal["batch"], record_dir: Path, result: pm.Result
-    ) -> None:
-        # get evaluated individuals
-        if result.algorithm.save_history:
-            # from all generations
-            _individuals = tuple(
-                chain.from_iterable(item.pop for item in result.history)
-            )
-        else:
-            # from the last generation
-            _individuals = tuple(result.pop)
-
-        # re-evaluate survival of individuals
-        individuals = pm.Population.create(
-            *sorted(_individuals, key=lambda x: tuple(x.X.values()))
-        )
-        individuals = _survival(individuals, result.algorithm)
-
-        # create header row
-        header_row = (
-            tuple(individuals[0].X.keys())
-            + tuple(self._output_manager._objectives)
-            + tuple(self._output_manager._constraints)
-            + ("is_pareto", "is_feasible")
-        )
-
-        # convert pymoo candidates to actual values
-        candidate_vecs = tuple(
-            tuple(component.item() for component in individual.X.values())
-            for individual in individuals
-        )
-        value_vecs = tuple(
-            tuple(
-                (
-                    component
-                    if isinstance(input, ContinuousModifier)
-                    else input[component]
-                )
-                for input, component in zip(
-                    self._input_manager, candidate_vec, strict=True
-                )
-            )
-            for candidate_vec in candidate_vecs
-        )
-
-        # create record rows
-        # NOTE: pymoo sums cvs of all constraints
-        #       hence all(individual.FEAS) == individual.FEAS[0]
-        record_rows = [
-            value_vec
-            + tuple(individual.F)
-            + tuple(individual.G)
-            + (individual.get("rank") == 0, all(individual.FEAS))
-            for individual, value_vec in zip(individuals, value_vecs, strict=True)
-        ]
-
-        # write records
-        _write_records(
-            record_dir / cf._RECORDS_FILENAMES[level], header_row, *record_rows
-        )
-
-    @_LoggerManager(cwd_index=1, is_first=True)
-    def _evolve_epoch(
-        self,
-        epoch_dir: Path,
-        problem: _PymooProblem,
-        algorithm: pm.Algorithm,
-        termination: pm.Termination,
-        save_history: bool,
-        checkpoint_interval: int,
-        seed: int | None,
-    ) -> pm.Result:
-        if checkpoint_interval <= 0:
-            result = pm.minimize(
-                problem, algorithm, termination, save_history=save_history, seed=seed
-            )
-        else:
-            if not isinstance(termination, pm.MaximumGenerationTermination):
-                # TODO: add support for other termination criteria
-                #       possibly with a while loop
-                raise ValueError(
-                    "checkpoints only work with max generation termination."
-                )
-
-            n_loops = termination.n_max_gen // checkpoint_interval + 1
-            for i in range(n_loops):
-                current_termination = (
-                    termination
-                    if i + 1 == n_loops
-                    else pm.MaximumGenerationTermination((i + 1) * checkpoint_interval)
-                )
-
-                # NOTE: in pymoo0.6
-                #           algorithm.n_gen will increase by one at the end of optimisation
-                #           at least when using a MaximumGenerationTermination
-                if algorithm.n_gen and (
-                    algorithm.n_gen - 1 >= current_termination.n_max_gen
-                ):
-                    # this should only be invoked by resume
-                    continue
-
-                # NOTE: in pymoo0.6
-                #           algorithm.setup() is only triggered when algorithm.problem is None
-                #           but seed will be reset too
-                #           manually change algorithm.termination to avoid resetting seed
-                algorithm.termination = current_termination
-
-                result = pm.minimize(
-                    problem,
-                    algorithm,
-                    current_termination,
-                    save_history=save_history,
-                    seed=seed,
-                )
-
-                # update algorithm
-                algorithm = result.algorithm
-
-                i_checkpoint = (i + 1) * checkpoint_interval - 1
-                if algorithm.n_gen - 1 == i_checkpoint + 1:
-                    # TODO: explore implementing custom serialisation for self(Problem) via TOML/YAML
-                    with (epoch_dir / "checkpoint.pickle").open("wb") as fp:
-                        pickle.dump((self, result), fp)
-
-                    _log(epoch_dir, f"created checkpoint at generation {i_checkpoint}")
-
-        self._record_survival("batch", epoch_dir, result)
-
-        return result
-
     def run_nsga2(
         self,
         population_size: int,
@@ -315,9 +179,8 @@ class Problem:
             "nsga2", population_size, p_crossover, p_mutation, sampling
         )
 
-        return self._evolve_epoch(
+        return problem._evolve_epoch(
             self._evaluation_dir,
-            problem,
             algorithm,
             termination,
             saves_history,
@@ -367,9 +230,8 @@ class Problem:
             reference_directions,
         )
 
-        return self._evolve_epoch(
+        return problem._evolve_epoch(
             self._evaluation_dir,
-            problem,
             algorithm,
             termination,
             saves_history,
@@ -394,15 +256,15 @@ class Problem:
 
         checkpoint_file = Path(checkpoint_file).resolve(True)
         with checkpoint_file.open("rb") as fp:
-            problem, result = pickle.load(fp)
+            epoch_dir, result = pickle.load(fp)
 
         # checks validity of the check point file
         # currently only checks the object type, but there might be better checks
-        if not (isinstance(problem, Problem) and isinstance(result, pm.Result)):
+        if not (isinstance(epoch_dir, Path) and isinstance(result, pm.Result)):
             raise TypeError(f"invalid checkpoint file: {checkpoint_file.resolve()}.")
 
-        return problem._evolve_epoch(
-            problem._evaluation_dir,
+        return result.algorithm.problem._evolve_epoch(
+            epoch_dir,
             result.problem,
             result.algorithm,
             termination,

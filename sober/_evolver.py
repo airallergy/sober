@@ -1,4 +1,6 @@
+import pickle
 from collections.abc import Iterable
+from itertools import chain
 from pathlib import Path
 from shutil import rmtree
 from typing import Literal, overload
@@ -6,9 +8,10 @@ from typing import Literal, overload
 import numpy as np
 
 import sober._pymoo_namespace as pm
+import sober.config as cf
 from sober._evaluator import _pymoo_evaluate
-from sober._logger import _log
-from sober._tools import _natural_width
+from sober._logger import _log, _LoggerManager
+from sober._tools import _natural_width, _write_records
 from sober._typing import AnyCandidateMap, AnyPymooCallback, PymooOperators, PymooOut
 from sober.input import ContinuousModifier, _InputManager
 from sober.output import _OutputManager
@@ -96,6 +99,135 @@ class _PymooProblem(pm.Problem):
             rmtree(self._evaluation_dir / batch_uid)
 
         _log(self._evaluation_dir, f"evaluated {batch_uid}")
+
+    def _record_survival(
+        self, level: Literal["batch"], record_dir: Path, result: pm.Result
+    ) -> None:
+        # get evaluated individuals
+        if result.algorithm.save_history:
+            # from all generations
+            _individuals = tuple(
+                chain.from_iterable(item.pop for item in result.history)
+            )
+        else:
+            # from the last generation
+            _individuals = tuple(result.pop)
+
+        # re-evaluate survival of individuals
+        individuals = pm.Population.create(
+            *sorted(_individuals, key=lambda x: tuple(x.X.values()))
+        )
+        individuals = _survival(individuals, result.algorithm)
+
+        # create header row
+        header_row = (
+            tuple(individuals[0].X.keys())
+            + tuple(self._output_manager._objectives)
+            + tuple(self._output_manager._constraints)
+            + ("is_pareto", "is_feasible")
+        )
+
+        # convert pymoo candidates to actual values
+        candidate_vecs = tuple(
+            tuple(component.item() for component in individual.X.values())
+            for individual in individuals
+        )
+        value_vecs = tuple(
+            tuple(
+                (
+                    component
+                    if isinstance(input, ContinuousModifier)
+                    else input[component]
+                )
+                for input, component in zip(
+                    self._input_manager, candidate_vec, strict=True
+                )
+            )
+            for candidate_vec in candidate_vecs
+        )
+
+        # create record rows
+        # NOTE: pymoo sums cvs of all constraints
+        #       hence all(individual.FEAS) == individual.FEAS[0]
+        record_rows = [
+            value_vec
+            + tuple(individual.F)
+            + tuple(individual.G)
+            + (individual.get("rank") == 0, all(individual.FEAS))
+            for individual, value_vec in zip(individuals, value_vecs, strict=True)
+        ]
+
+        # write records
+        _write_records(
+            record_dir / cf._RECORDS_FILENAMES[level], header_row, *record_rows
+        )
+
+    @_LoggerManager(cwd_index=1, is_first=True)
+    def _evolve_epoch(
+        self,
+        epoch_dir: Path,
+        algorithm: pm.Algorithm,
+        termination: pm.Termination,
+        save_history: bool,
+        checkpoint_interval: int,
+        seed: int | None,
+    ) -> pm.Result:
+        if checkpoint_interval <= 0:
+            result = pm.minimize(
+                self, algorithm, termination, save_history=save_history, seed=seed
+            )
+        else:
+            if not isinstance(termination, pm.MaximumGenerationTermination):
+                # TODO: add support for other termination criteria
+                #       possibly with a while loop
+                raise ValueError(
+                    "checkpoints only work with max generation termination."
+                )
+
+            n_loops = termination.n_max_gen // checkpoint_interval + 1
+            for i in range(n_loops):
+                current_termination = (
+                    termination
+                    if i + 1 == n_loops
+                    else pm.MaximumGenerationTermination((i + 1) * checkpoint_interval)
+                )
+
+                # NOTE: in pymoo0.6
+                #           algorithm.n_gen will increase by one at the end of optimisation
+                #           at least when using a MaximumGenerationTermination
+                if algorithm.n_gen and (
+                    algorithm.n_gen - 1 >= current_termination.n_max_gen
+                ):
+                    # this should only be invoked by resume
+                    continue
+
+                # NOTE: in pymoo0.6
+                #           algorithm.setup() is only triggered when algorithm.problem is None
+                #           but seed will be reset too
+                #           manually change algorithm.termination to avoid resetting seed
+                algorithm.termination = current_termination
+
+                result = pm.minimize(
+                    self,
+                    algorithm,
+                    current_termination,
+                    save_history=save_history,
+                    seed=seed,
+                )
+
+                # update algorithm
+                algorithm = result.algorithm
+
+                i_checkpoint = (i + 1) * checkpoint_interval - 1
+                if algorithm.n_gen - 1 == i_checkpoint + 1:
+                    with (epoch_dir / "checkpoint.pickle").open("wb") as fp:
+                        pickle.dump((epoch_dir, result), fp)
+
+                    _log(epoch_dir, f"created checkpoint at generation {i_checkpoint}")
+
+        self._record_survival("batch", epoch_dir, result)
+
+        return result
 
 
 #############################################################################
