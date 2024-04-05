@@ -182,10 +182,8 @@ class _IntegralModifier(_Modifier, Generic[_V, _U]):
 
     @overload
     def __getitem__(self, index: int) -> _V: ...
-
     @overload
     def __getitem__(self, index: tuple[int, int]) -> _U: ...
-
     def __getitem__(self, index):
         match self._is_uncertain, index:
             case _, int() as i:
@@ -309,7 +307,6 @@ class WeatherModifier(_IntegralModifier[Path | str, Path]):
 
     @overload
     def __init__(self, variations: Iterable[AnyStrPath], /, *, name: str) -> None: ...
-
     @overload
     def __init__(
         self,
@@ -318,7 +315,6 @@ class WeatherModifier(_IntegralModifier[Path | str, Path]):
         *uncertainties: Iterable[AnyStrPath],
         name: str,
     ) -> None: ...
-
     def __init__(self, variations, /, *uncertainties, name=""):
         super().__init__(variations, *uncertainties, name=name)
 
@@ -426,7 +422,6 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         is_scalar: Literal[True],
         name: str,
     ) -> None: ...
-
     @overload
     def __init__(
         self,
@@ -438,7 +433,6 @@ class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
         is_scalar: Literal[False],
         name: str,
     ) -> None: ...
-
     def __init__(
         self, tagger, func, input_indices, /, *extra_args, is_scalar=True, name=""
     ):

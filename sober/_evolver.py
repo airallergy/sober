@@ -301,8 +301,6 @@ def _algorithm(
     p_mutation: float,
     sampling: pm.Population,
 ) -> pm.NSGA2: ...
-
-
 @overload
 def _algorithm(
     algorithm_name: Literal["nsga3"],
@@ -312,8 +310,6 @@ def _algorithm(
     sampling: pm.Population,
     reference_directions: pm.ReferenceDirectionFactory,
 ) -> pm.NSGA3: ...
-
-
 def _algorithm(
     algorithm_name,
     population_size,
