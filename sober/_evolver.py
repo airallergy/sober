@@ -111,9 +111,9 @@ class _PymooProblem(pm.Problem):
         objectives = self._output_manager._recorded_objectives(batch_dir)
         constraints = self._output_manager._recorded_constraints(batch_dir)
 
-        out["F"] = np.asarray(objectives, dtype=float)
+        out["F"] = np.asarray(objectives, dtype=np.float_)
         if self._output_manager._constraints:
-            out["G"] = np.asarray(constraints, dtype=float)
+            out["G"] = np.asarray(constraints, dtype=np.float_)
 
         if not self._saves_batches:
             rmtree(self._evaluation_dir / batch_uid)

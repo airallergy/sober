@@ -41,3 +41,4 @@ skip-magic-trailing-comma = true
 
 [tool.mypy]
 ignore_missing_imports = true
+disallow_any_generics = true

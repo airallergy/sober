@@ -33,6 +33,7 @@ from sober._typing import (
     AnyJob,
     AnyModelTask,
     AnyModelType,
+    AnyModifierVal,
     AnyTask,
     AnyUIDs,
 )
@@ -189,7 +190,7 @@ class _InputManager:
             aligned = tuple(
                 product(
                     *(
-                        tuple(cast(_IntegralModifier, input))  # mypy
+                        tuple(cast(_IntegralModifier[AnyModifierVal], input))  # mypy
                         if input._is_noise
                         else (input(key) if input._is_ctrl else key,)
                         for input, key in zip(self, ctrl_key_vec, strict=True)

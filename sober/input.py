@@ -1,20 +1,13 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, Generic, Protocol, Self, TypeAlias, cast, final
+from typing import Any, Generic, Protocol, Self, TypeAlias, TypeVar, cast, final
 
 from eppy.bunchhelpers import makefieldname
 from eppy.modeleditor import IDF
 
 from sober._tools import _uuid
-from sober._typing import (
-    MK,
-    MV,
-    AnyFunc,
-    AnyModelModifierVal,
-    AnyModifierVal,
-    AnyStrPath,
-)
+from sober._typing import AnyFunc, AnyModelModifierVal, AnyModifierVal, AnyStrPath
 
 
 ##############################  module typing  ##############################
@@ -25,6 +18,8 @@ class _SupportsStr(Protocol):
     def __str__(self) -> str: ...
 
 
+_MK = TypeVar("_MK", float, int)  # AnyModifierKey
+_MV = TypeVar("_MV", bound=AnyModifierVal)  # AnyModifierValue
 #############################################################################
 
 
@@ -98,7 +93,7 @@ class _Noise(Any):
         return f"<noise {self._s}>"
 
 
-class _Modifier(ABC, Generic[MK, MV]):
+class _Modifier(ABC, Generic[_MK, _MV]):
     """an abstract base class for input modifiers"""
 
     _bounds: tuple[float, float]
@@ -118,7 +113,7 @@ class _Modifier(ABC, Generic[MK, MV]):
         self._name = name
 
     @abstractmethod
-    def __call__(self, key: MK) -> MV: ...
+    def __call__(self, key: _MK) -> _MV: ...
 
     @abstractmethod
     def _check_args(self) -> None:
@@ -126,12 +121,12 @@ class _Modifier(ABC, Generic[MK, MV]):
         # as FunctionalModifier needs the index info assigned by _InputManager
         ...
 
-    def _hype_ctrl_key(self) -> MK:
+    def _hype_ctrl_key(self) -> _MK:
         assert not self._is_ctrl
         return 0  # assuming the hype ctrl is an integral variable with one item
 
     @abstractmethod
-    def _hype_ctrl_val(self) -> MV: ...
+    def _hype_ctrl_val(self) -> _MV: ...
 
     def _hype_ctrl_len(self) -> int:
         assert not self._is_ctrl
@@ -153,33 +148,33 @@ class _RealModifier(_Modifier[float, float]):
         return _Noise(f"({', '.join(map(str, self._bounds))})")
 
 
-class _IntegralModifier(_Modifier[int, MV]):
+class _IntegralModifier(_Modifier[int, _MV]):
     """an abstract base class for input modifiers of integral variables"""
 
-    _options: tuple[MV, ...]
+    _options: tuple[_MV, ...]
 
     __slots__ = ("_options",)
 
     @abstractmethod
-    def __init__(self, options: tuple[MV, ...], is_noise: bool, name: str) -> None:
+    def __init__(self, options: tuple[_MV, ...], is_noise: bool, name: str) -> None:
         self._options = options
 
         bounds = (0, len(self) - 1)
         super().__init__(bounds, is_noise, name)
 
-    def __iter__(self) -> Iterator[MV]:
+    def __iter__(self) -> Iterator[_MV]:
         yield from self._options
 
     def __len__(self) -> int:
         return len(self._options)
 
-    def __getitem__(self, key: int) -> MV:
+    def __getitem__(self, key: int) -> _MV:
         return self._options[key]
 
-    def __call__(self, key: int) -> MV:
+    def __call__(self, key: int) -> _MV:
         return self[key]
 
-    def _hype_ctrl_val(self) -> MV:
+    def _hype_ctrl_val(self) -> _MV:
         # FunctionalModifier overwrites later
         assert not self._is_ctrl
         return _Noise(f"{{{', '.join(map(str, self._options))}}}")

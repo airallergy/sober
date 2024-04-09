@@ -1,7 +1,6 @@
 import csv
 import sys
 from collections.abc import Callable, Iterable, Iterator
-from contextlib import AbstractContextManager
 from itertools import starmap
 from math import log10
 from multiprocessing import get_context
@@ -81,13 +80,13 @@ else:
 #     (related but stale: python/cpython#72567),
 #     a lot of private involved, so not likely to be PRed into typeshed
 if TYPE_CHECKING:  # [1]
-    starmapstar: Callable
     from multiprocessing.pool import IMapIterator as IMapIterator_
 
-    class IMapIterator(IMapIterator_):
+    class IMapIterator(IMapIterator_[Any]):
         _job: int
-        _set_length: Callable
+        _set_length: Callable[..., Any]
 
+    starmapstar: Callable[..., Any]
 else:
     from multiprocessing.pool import IMapIterator, starmapstar
 
@@ -106,10 +105,10 @@ class _Pool(Pool):
         from queue import SimpleQueue
 
         _processes: int
-        _check_running: Callable
-        _get_tasks: Callable
-        _taskqueue: SimpleQueue
-        _guarded_task_generation: Callable
+        _check_running: Callable[..., Any]
+        _get_tasks: Callable[..., Any]
+        _taskqueue: SimpleQueue[Any]
+        _guarded_task_generation: Callable[..., Any]
 
     def __init__(
         self,
@@ -143,7 +142,7 @@ class _Pool(Pool):
         return (item for chunk in result for item in chunk)
 
 
-class _Loop(AbstractContextManager):
+class _Loop:
     """a helper class for loop
     this includes making a context manager and unifying method names"""
 

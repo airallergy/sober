@@ -1,17 +1,10 @@
 from collections.abc import Callable
 from os import PathLike
 from pathlib import Path
-from typing import (
-    Concatenate,
-    Literal,
-    Protocol,
-    Required,
-    TypeAlias,
-    TypedDict,
-    TypeVar,
-)
+from typing import Any, Concatenate, Literal, Protocol, Required, TypeAlias, TypedDict
 
 import numpy as np
+from numpy.typing import NDArray
 
 import sober._pymoo_namespace as pm
 
@@ -42,17 +35,12 @@ AnyLanguage: TypeAlias = Literal["python"]
 
 
 # input
+AnyModifierKey: TypeAlias = float | int
 AnyModelModifierVal: TypeAlias = float | str
 AnyModifierVal: TypeAlias = AnyStrPath | AnyModelModifierVal
 AnyFunc: TypeAlias = Callable[
     Concatenate[tuple[AnyModifierVal, ...], ...], AnyModelModifierVal
 ]
-
-MK = TypeVar("MK", float, int)  # AnyModifierKey
-MV = TypeVar("MV", bound=AnyModifierVal)  # AnyModifierValue
-
-## this contains hype ctrl keys only used for populating jobs
-AnyCtrlKeyVec: TypeAlias = tuple[int, *tuple[MK, ...]]
 
 ## Val is omitted in naming below
 AnyModelTask: TypeAlias = tuple[AnyModelModifierVal, ...]
@@ -62,6 +50,9 @@ AnyJob: TypeAlias = tuple[AnyTaskItem, ...]
 AnyJobItem: TypeAlias = tuple[str, AnyJob]
 AnyBatch: TypeAlias = tuple[AnyJobItem, ...]
 
+## this contains hype ctrl keys only used for populating jobs
+AnyCtrlKeyVec: TypeAlias = tuple[int, *tuple[AnyModifierKey, ...]]
+
 
 # output
 AnyUIDs: TypeAlias = tuple[str, ...]
@@ -70,12 +61,12 @@ AnyBatchOutputs: TypeAlias = tuple[tuple[float, ...], ...]
 
 # pymoo
 AnyPymooCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
-AnyPymooX: TypeAlias = dict[str, np.integer | np.floating]
+AnyPymooX: TypeAlias = dict[str, np.integer[Any] | np.floating[Any]]
 
 
 class PymooOut(TypedDict):
-    F: np.ndarray | None
-    G: np.ndarray | None
+    F: NDArray[np.float_] | None
+    G: NDArray[np.float_] | None
 
 
 class PymooOperators(TypedDict):

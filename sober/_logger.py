@@ -1,7 +1,7 @@
 import logging
 import sys
 from collections.abc import Callable
-from contextlib import AbstractContextManager, ContextDecorator
+from contextlib import ContextDecorator
 from functools import reduce, wraps
 from inspect import currentframe
 from pathlib import Path
@@ -86,7 +86,7 @@ _R = TypeVar("_R", covariant=True)
 #############################################################################
 
 
-class _LoggerManager(AbstractContextManager, ContextDecorator):
+class _LoggerManager(ContextDecorator):
     """manages the logger at each level for each action
     and dies upon each completion
     each directory/log file has their own logger
@@ -102,7 +102,7 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
     __slots__ = ("_cwd_index", "_is_first", "_name", "_level", "_log_file", "_logger")
 
     if TYPE_CHECKING:
-        _recreate_cm: Callable
+        _recreate_cm: Callable[..., Any]
 
     def __init__(self, cwd_index: int, is_first: bool = False) -> None:
         self._cwd_index = cwd_index
@@ -176,16 +176,18 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
         logging.shutdown()
 
 
-class _SubprocessLogger(AbstractContextManager):
+class _SubprocessLogger:
     """facilitates retrieving stdout/stderr from a subprocess"""
 
-    _logger: logging.LoggerAdapter
+    _logger: logging.LoggerAdapter[logging.Logger]
     _cmd: str
     _result: SubprocessResult
 
     __slots__ = ("_logger", "_cmd", "_result")
 
-    def __init__(self, logger: logging.LoggerAdapter, cmd_args: AnyCmdArgs) -> None:
+    def __init__(
+        self, logger: logging.LoggerAdapter[logging.Logger], cmd_args: AnyCmdArgs
+    ) -> None:
         self._logger = logger
         self._cmd = " ".join(str(cmd_arg) for cmd_arg in cmd_args)
 

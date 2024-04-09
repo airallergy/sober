@@ -10,7 +10,7 @@ import numpy as np
 
 from sober._evaluator import _evaluate
 from sober._io_managers import _InputManager, _OutputManager
-from sober._typing import AnyCtrlKeyVec
+from sober.input import AnyModifierVal, _IntegralModifier
 
 _T = TypeVar("_T")
 
@@ -83,7 +83,10 @@ def _multiply(
         )
 
     ctrl_lens = tuple(
-        len(item) if item._is_ctrl else item._hype_ctrl_len() for item in input_manager
+        len(cast(_IntegralModifier[AnyModifierVal], item))
+        if item._is_ctrl
+        else item._hype_ctrl_len()
+        for item in input_manager
     )
     search_space = _LazyCartesianProduct(*map(range, ctrl_lens))
     n_products = search_space._n_products
@@ -110,7 +113,7 @@ def _multiply(
 
         # fill each row to the longest one by cycling
         filled = np.asarray(
-            tuple(np.resize(row, max_ctrl_len) for row in permuted), dtype=int
+            tuple(np.resize(row, max_ctrl_len) for row in permuted), dtype=np.int_
         )
 
         ctrl_key_vecs = tuple(tuple(map(int, row)) for row in filled.T)
@@ -122,10 +125,8 @@ def _multiply(
         sample_idxes = tuple(map(int, sample_idxes_))
         ctrl_key_vecs = search_space[sample_idxes]
 
-    ctrl_key_vecs = cast(tuple[AnyCtrlKeyVec, ...], ctrl_key_vecs)  # mypy
-
     _evaluate(
-        *ctrl_key_vecs,
+        *ctrl_key_vecs,  # type:ignore[arg-type]  # python/mypy#17111
         input_manager=input_manager,
         output_manager=output_manager,
         batch_dir=evaluation_dir,
