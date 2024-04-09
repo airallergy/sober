@@ -1,4 +1,3 @@
-import inspect
 import pickle
 from collections.abc import Iterable
 from pathlib import Path
@@ -87,23 +86,6 @@ class Problem:
         """runs a sample of the full search space"""
 
         cf._has_batches = False
-
-        if self._input_manager._has_real_ctrls:
-            frames = inspect.stack()
-            caller_name = frames[0].function
-            for item in frames[1:]:
-                if (
-                    item.function.startswith("run_")
-                    and ("self" in item.frame.f_locals)
-                    and isinstance(item.frame.f_locals["self"], self.__class__)
-                ):
-                    caller_name = item.function
-                else:
-                    break
-
-            raise NotImplementedError(
-                f"'{caller_name}' for real control variables has yet to be implemented."
-            )
 
         _multiply(
             self._input_manager, self._output_manager, self._evaluation_dir, size, seed

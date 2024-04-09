@@ -1,3 +1,4 @@
+import inspect
 import math
 import operator
 from collections.abc import Iterable, Sequence
@@ -67,6 +68,19 @@ def _multiply(
     seed: int | None,
 ) -> None:
     """populates parametrics by subsetting the full search space"""
+    if input_manager._has_real_ctrls:
+        frames = inspect.stack()
+        caller_name = ""
+        for item in frames[1:]:
+            if item.function.startswith("run_") and ("self" in item.frame.f_locals):
+                caller_name = item.function
+            else:
+                assert caller_name
+                break
+
+        raise NotImplementedError(
+            f"'{caller_name}' for real control variables has yet to be implemented."
+        )
 
     ctrl_lens = tuple(
         len(item) if item._is_ctrl else item._hype_ctrl_len() for item in input_manager
