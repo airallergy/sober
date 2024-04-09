@@ -189,7 +189,7 @@ class _InputManager:
             aligned = tuple(
                 product(
                     *(
-                        cast(_IntegralModifier, input)
+                        tuple(cast(_IntegralModifier, input))  # mypy
                         if input._is_noise
                         else (input(key) if input._is_ctrl else key,)
                         for input, key in zip(self, ctrl_key_vec, strict=True)
