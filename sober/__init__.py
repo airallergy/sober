@@ -13,18 +13,18 @@ from sober.output import RVICollector, ScriptCollector
 from sober.problem import Problem
 
 __all__ = (
+    "CategoricalModifier",
+    "ContinuousModifier",
+    "DiscreteModifier",
+    "FunctionalModifier",
+    "IndexTagger",
+    "MaximumGenerationTermination",
     "Problem",
     "RVICollector",
     "ScriptCollector",
-    "MaximumGenerationTermination",
-    "config_script",
-    "config_parallel",
-    "config_energyplus",
-    "IndexTagger",
     "StringTagger",
     "WeatherModifier",
-    "DiscreteModifier",
-    "ContinuousModifier",
-    "FunctionalModifier",
-    "CategoricalModifier",
+    "config_energyplus",
+    "config_parallel",
+    "config_script",
 )

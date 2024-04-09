@@ -25,8 +25,10 @@ build-backend = "poetry.core.masonry.api"
 target-version = "py311"
 
 [tool.ruff.lint]
-extend-select = ["I", "PGH", "UP", "N", "TID"]
+extend-select = ["I", "PGH", "UP", "N", "TID", "RUF", "RUF022"]
 ignore = ["E741"]
+preview = true
+explicit-preview-rules = true
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false

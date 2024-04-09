@@ -278,7 +278,7 @@ class _InputManager:
             _log(job_dir, f"made {task_uid}")
 
         # record tasks
-        task_record_rows = tuple((task_uid,) + task for task_uid, task in job)
+        task_record_rows = tuple((task_uid, *task) for task_uid, task in job)
         self._record_final("task", job_dir, task_record_rows)
 
         _log(job_dir, "recorded inputs")
@@ -297,10 +297,12 @@ class _InputManager:
 
         # record jobs
         job_record_rows = tuple(
-            (job_uid,)
-            + tuple(
-                job[0][1][i] if input._is_ctrl else input._hype_ctrl_val()
-                for i, input in enumerate(self)
+            (
+                job_uid,
+                *(
+                    job[0][1][i] if input._is_ctrl else input._hype_ctrl_val()
+                    for i, input in enumerate(self)
+                ),
             )
             for job_uid, job in batch
         )
