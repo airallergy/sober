@@ -416,6 +416,7 @@ class FunctionalModifier(
 
 #############################  package typing  ##############################
 # this technically belongs to _typing.py, but put here to avoid circular import
+# TODO: use Intersection after python/typing#213
 AnyIntegralModelModifier: TypeAlias = (
     DiscreteModifier | CategoricalModifier | FunctionalModifier
 )
