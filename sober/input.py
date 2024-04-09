@@ -127,23 +127,6 @@ class _Modifier(ABC, Generic[MK, MV]):
         return 1  # assuming the hype ctrl is an integral variable with one item
 
 
-class _ModelModifierMixin(ABC, Generic[MV]):
-    """an abstract base class for common functions in model modification
-    (as opposed to the weather modifier)"""
-
-    _tagger: _Tagger[MV]
-    __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
-
-    @abstractmethod
-    def __init__(self, tagger: _Tagger[MV], *args, **kwargs) -> None:
-        self._tagger = tagger  # type: ignore[misc]  # [1] microsoft/pyright#2039
-
-        super().__init__(*args, **kwargs)  # NOTE: to _RealModifier/_IntegralModifier
-
-    def _detagged(self, tagged_model: str, *values: MV) -> str:
-        return self._tagger._detagged(tagged_model, *values)
-
-
 class _RealModifier(_Modifier[float, float]):
     """an abstract base class for input modifiers of real variables"""
 
@@ -189,6 +172,23 @@ class _IntegralModifier(_Modifier[int, MV]):
         # FunctionalModifier overwrites later
         assert not self._is_ctrl
         return _Noise(f"{{{', '.join(map(str, self._options))}}}")
+
+
+class _ModelModifierMixin(ABC, Generic[MV]):
+    """an abstract base class for common functions in model modification
+    (as opposed to the weather modifier)"""
+
+    _tagger: _Tagger[MV]
+    __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
+
+    @abstractmethod
+    def __init__(self, tagger: _Tagger[MV], *args, **kwargs) -> None:
+        self._tagger = tagger  # type: ignore[misc]  # [1] microsoft/pyright#2039
+
+        super().__init__(*args, **kwargs)  # NOTE: to _RealModifier/_IntegralModifier
+
+    def _detagged(self, tagged_model: str, *values: MV) -> str:
+        return self._tagger._detagged(tagged_model, *values)
 
 
 #############################################################################
