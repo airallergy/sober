@@ -6,7 +6,7 @@ from pathlib import Path
 import sober._pymoo_namespace as pm
 import sober.config as cf
 from sober._evolver import _algorithm, _PymooProblem, _sampling
-from sober._io_managers import _all_integral_modifiers, _InputManager, _OutputManager
+from sober._io_managers import _InputManager, _OutputManager
 from sober._multiplier import _multiply
 from sober._typing import AnyPymooCallback, AnyStrPath
 from sober.input import AnyModelModifier, WeatherModifier
@@ -20,7 +20,7 @@ class Problem:
     """defines the parametrics/optimisation problem"""
 
     _model_file: Path
-    _input_manager: _InputManager[AnyModelModifier]
+    _input_manager: _InputManager
     _output_manager: _OutputManager
     _evaluation_dir: Path
     _config_dir: Path
@@ -67,9 +67,7 @@ class Problem:
 
         # prepare io managers
         self._input_manager._prepare(self._model_file)
-        self._output_manager._prepare(
-            self._config_dir, self._input_manager._has_uncertainties
-        )
+        self._output_manager._prepare(self._config_dir, self._input_manager._has_noises)
 
         # config
         cf.config_parallel(n_processes=n_processes)
@@ -90,15 +88,7 @@ class Problem:
 
         cf._has_batches = False
 
-        if _all_integral_modifiers(self._input_manager):
-            _multiply(
-                self._input_manager,
-                self._output_manager,
-                self._evaluation_dir,
-                size,
-                seed,
-            )
-        else:
+        if self._input_manager._has_real_ctrls:
             frames = inspect.stack()
             caller_name = frames[0].function
             for item in frames[1:]:
@@ -111,18 +101,22 @@ class Problem:
                 else:
                     break
 
-            raise ValueError(
-                f"with continuous inputs cannot {caller_name.replace('_', ' ')}."
+            raise NotImplementedError(
+                f"'{caller_name}' for real control variables has yet to be implemented."
             )
+
+        _multiply(
+            self._input_manager, self._output_manager, self._evaluation_dir, size, seed
+        )
 
     def run_brute_force(self) -> None:
         """runs the full search space"""
 
         self.run_sample(-1)
 
-    def run_each_variation(self, *, seed: int | None = None) -> None:
-        """runs a minimum sample of the full search space that contains all input variations
-        this helps check the validity of each variation"""
+    def run_each_option(self, *, seed: int | None = None) -> None:
+        """runs a minimum sample of the full search space that contains all control options
+        this helps check the validity of each option"""
 
         self.run_sample(0, seed=seed)
 

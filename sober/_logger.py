@@ -6,10 +6,19 @@ from functools import reduce, wraps
 from inspect import currentframe
 from pathlib import Path
 from platform import node
-from typing import TYPE_CHECKING, Any, Final, Literal, ParamSpec, Self, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Final,
+    Literal,
+    ParamSpec,
+    Self,
+    TypeVar,
+    get_args,
+)
 
 import sober.config as cf
-from sober._typing import AnyCmdArgs, SubprocessResult
+from sober._typing import AnyCmdArgs, AnyLevel, SubprocessResult
 
 HOST_STEM = node().split(".")[0]
 
@@ -86,7 +95,7 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
     _cwd_index: int
     _is_first: bool
     _name: str
-    _level: Literal["task", "job", "batch", "epoch"]
+    _level: AnyLevel
     _log_file: Path
     _logger: logging.Logger
 
@@ -118,13 +127,10 @@ class _LoggerManager(AbstractContextManager, ContextDecorator):
             # get the level from the func name
             # the func name should follow the pattern of _{action}_{level}
             level = func.__code__.co_name.split("_")[-1]
-            assert level in (
-                "task",
-                "job",
-                "batch",
-                "epoch",
+            assert level in get_args(
+                AnyLevel
             ), f"the func name pattern is not recognised: {func.__code__.co_name}."
-            self._level = level  # type:ignore[assignment] # python/mypy#12535
+            self._level = level  # type:ignore[assignment] # python/mypy#12535, python/mypy#15106
 
             # set the log filename
             self._log_file = cwd / f"{self._level}.log"

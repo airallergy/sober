@@ -6,15 +6,7 @@ from itertools import chain, product
 from os.path import isabs, normpath
 from pathlib import Path
 from shutil import copyfile
-from typing import (
-    Any,
-    Final,
-    Generic,
-    Literal,
-    TypeAlias,
-    TypeGuard,
-    cast,
-)
+from typing import Any, Final, TypeAlias, cast
 from warnings import warn
 
 from eppy import openidf
@@ -34,27 +26,26 @@ from sober._tools import (
     _write_records,
 )
 from sober._typing import (
+    AnyBatch,
     AnyBatchOutputs,
-    AnyCandidateVec,
-    AnyDuoVec,
+    AnyCoreLevel,
+    AnyCtrlKeyVec,
     AnyJob,
+    AnyModelTask,
     AnyModelType,
-    AnyScenarioVec,
     AnyTask,
     AnyUIDs,
 )
 from sober.input import (
-    AnyIntegralModelModifier,
     AnyModelModifier,
-    ContinuousModifier,
     FunctionalModifier,
-    ModelModifier,
     WeatherModifier,
     _IDFTagger,
+    _IntegralModifier,
     _RealModifier,
     _TextTagger,
 )
-from sober.output import RVICollector, _AnyLevel, _Collector, _CopyCollector
+from sober.output import RVICollector, _Collector, _CopyCollector
 
 ##############################  module typing  ##############################
 _AnyConverter: TypeAlias = Callable[[float], float]
@@ -64,17 +55,19 @@ _AnyConverter: TypeAlias = Callable[[float], float]
 #############################################################################
 #######                    INPUTS MANAGER CLASSES                     #######
 #############################################################################
-class _InputManager(Generic[ModelModifier]):
+class _InputManager:
     """manages input modification"""
 
     MODEL_TYPES: Final = frozenset({".idf", ".imf"})
 
     _weather_input: WeatherModifier
-    _model_inputs: tuple[ModelModifier, ...]
+    _model_inputs: tuple[AnyModelModifier, ...]
     _has_templates: bool
     _tagged_model: str
     _model_type: AnyModelType
-    _has_uncertainties: bool
+    _has_noises: bool
+    _has_real_ctrls: bool
+    _has_real_noises: bool
 
     __slots__ = (
         "_weather_input",
@@ -82,20 +75,22 @@ class _InputManager(Generic[ModelModifier]):
         "_has_templates",
         "_tagged_model",
         "_model_type",
-        "_has_uncertainties",
+        "_has_noises",
+        "_has_real_ctrls",
+        "_has_real_noises",
     )
 
     def __init__(
         self,
         weather_input: WeatherModifier,
-        model_inputs: Iterable[ModelModifier],
+        model_inputs: Iterable[AnyModelModifier],
         has_templates: bool,
     ) -> None:
         self._weather_input = weather_input
         self._model_inputs = tuple(model_inputs)
         self._has_templates = has_templates
 
-    def __iter__(self) -> Iterator[WeatherModifier | ModelModifier]:
+    def __iter__(self) -> Iterator[WeatherModifier | AnyModelModifier]:
         yield self._weather_input
         yield from self._model_inputs
 
@@ -110,7 +105,14 @@ class _InputManager(Generic[ModelModifier]):
         self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
 
         self._tagged_model = self._tagged(model_file)
-        self._has_uncertainties = any(input._is_uncertain for input in self)
+        self._has_noises = any(input._is_noise for input in self)
+
+        self._has_real_ctrls = any(
+            isinstance(input, _RealModifier) for input in self if input._is_ctrl
+        )
+        self._has_real_noises = any(
+            isinstance(input, _RealModifier) for input in self if input._is_noise
+        )
 
         # assign index and label to each input
         has_names = any(input._name for input in self)
@@ -179,56 +181,60 @@ class _InputManager(Generic[ModelModifier]):
 
         return macros + idf.idfstr()
 
-    def _jobs(self, *candidate_vecs: AnyCandidateVec) -> Iterator[AnyJob]:
-        i_job_width = _natural_width(len(candidate_vecs))
-
-        for i_job, candidate_vec in enumerate(candidate_vecs):
-            job_uid = f"J{i_job:0{i_job_width}}"
-
-            # TODO: mypy infers scenario_vecs incorrectly, might be resolved after python/mypy#12280
-            # NOTE: there may be a better way than cast()
-            scenario_vecs = tuple(
+    def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> AnyJob:
+        if self._has_real_noises:
+            raise NotImplementedError("real noise vars have not been implemented.")
+        else:
+            # align ctrl and noise keys and convert non-functional keys
+            aligned = tuple(
                 product(
                     *(
-                        (
-                            (cast(float, component),)
-                            if isinstance(input, ContinuousModifier)
-                            else range(input._ns_uncertainties[cast(int, component)])
-                        )
-                        for input, component in zip(self, candidate_vec, strict=True)
+                        cast(_IntegralModifier, input)
+                        if input._is_noise
+                        else (input(key) if input._is_ctrl else key,)
+                        for input, key in zip(self, ctrl_key_vec, strict=True)
                     )
                 )
             )
-            scenario_vecs = cast(tuple[AnyScenarioVec, ...], scenario_vecs)
 
-            i_task_width = _natural_width(len(scenario_vecs))
+            # generate task uids
+            n_tasks = len(aligned)
+            i_task_width = _natural_width(n_tasks)
 
-            tasks = tuple(
+            # get functional vals
+            return tuple(
                 (
-                    f"T{i_task:0{i_task_width}}",
-                    tuple(zip(candidate_vec, scenario_vec, strict=True)),
+                    f"T{i:0{i_task_width}}",
+                    tuple(
+                        input(item, *(aligned[i][j] for j in input._input_indices))
+                        if isinstance(input, FunctionalModifier)
+                        else item
+                        for input, item in zip(self, task, strict=True)
+                    ),
                 )
-                for i_task, scenario_vec in enumerate(scenario_vecs)
+                for i, task in enumerate(aligned)
             )
-            tasks = cast(tuple[tuple[str, AnyDuoVec], ...], tasks)
 
-            yield job_uid, tasks
+    def _job_items(self, *ctrl_key_vecs: AnyCtrlKeyVec) -> AnyBatch:
+        # generate job uids
+        n_jobs = len(ctrl_key_vecs)
+        i_job_width = _natural_width(n_jobs)
 
-    def _detagged(self, tagged_model: str, task_input_values: list[Any]) -> str:
-        for input, value in zip(self._model_inputs, task_input_values[1:], strict=True):
-            if isinstance(input, FunctionalModifier) and not input._is_scalar:
-                # each tag has its own value
-                tagged_model = input._detagged(tagged_model, *value)
-            else:
-                # all tags have the same value
-                tagged_model = input._detagged(tagged_model, value)
+        return tuple(
+            (f"J{i:0{i_job_width}}", self._task_items(ctrl_key_vec))
+            for i, ctrl_key_vec in enumerate(ctrl_key_vecs)
+        )
+
+    def _detagged(self, tagged_model: str, model_task: AnyModelTask) -> str:
+        for input, value in zip(self._model_inputs, model_task, strict=True):
+            tagged_model = input._detagged(tagged_model, value)
         return tagged_model
 
     def _record_final(
         self,
-        level: Literal["task", "job"],
+        level: AnyCoreLevel,
         record_dir: Path,
-        record_rows: list[list[Any]],
+        record_rows: Iterable[Iterable[Any]],
     ) -> None:
         header_row = (f"{level.capitalize()}UID", *(input._label for input in self))
 
@@ -238,28 +244,16 @@ class _InputManager(Generic[ModelModifier]):
         )
 
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _make_task(self, task_dir: Path, duo_vec: AnyDuoVec) -> list[Any]:
-        # create an empty list to store task input values
-        input_values: list[Any] = [None] * len(self)
-
-        # convert duo to value and store for each input
-        for i, (input, duo) in enumerate(zip(self, duo_vec, strict=True)):
-            if isinstance(input, FunctionalModifier):
-                input_values[i] = input._value(
-                    duo, *(input_values[j] for j in input._input_indices)
-                )
-            else:
-                input_values[i] = input._value(duo)
-
+    def _make_task(self, task_dir: Path, task: AnyTask) -> None:
         # copy the task weather file
         task_epw_file = task_dir / "in.epw"
-        src_epw_file = input_values[0]
+        src_epw_file = task[0]
         copyfile(src_epw_file, task_epw_file)
 
         _log(task_dir, "created in.epw")
 
         # detag the tagged model with task input values
-        model = self._detagged(self._tagged_model, input_values)
+        model = self._detagged(self._tagged_model, task[1:])
 
         # write the task model file
         with (task_dir / ("in" + self._model_type)).open("wt") as fp:
@@ -275,47 +269,41 @@ class _InputManager(Generic[ModelModifier]):
 
         _log(task_dir, "created in.idf")
 
-        return input_values
-
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _make_job(self, job_dir: Path, tasks: tuple[AnyTask, ...]) -> list[Any]:
-        # record tasks input values
-        task_record_rows = []
-        for task_uid, duo_vec in tasks:
-            task_input_values = self._make_task(job_dir / task_uid, duo_vec)
-            task_record_rows.append([task_uid] + task_input_values)
+    def _make_job(self, job_dir: Path, job: AnyJob) -> None:
+        # make tasks
+        for task_uid, task in job:
+            self._make_task(job_dir / task_uid, task)
 
             _log(job_dir, f"made {task_uid}")
 
+        # record tasks
+        task_record_rows = tuple((task_uid,) + task for task_uid, task in job)
         self._record_final("task", job_dir, task_record_rows)
 
         _log(job_dir, "recorded inputs")
 
-        # curate job input value
-        # NOTE: use duo_vec from the last loop
-        input_values = list(
-            (component if isinstance(input, ContinuousModifier) else input[component])
-            for input, (component, _) in zip(self, duo_vec, strict=True)
-        )
-
-        return input_values
-
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_batch(
-        self, batch_dir: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
     ) -> None:
-        # make batch in parallel
+        # schedule and make jobs
         scheduled = parallel._starmap(
-            self._make_job, ((batch_dir / job_uid, tasks) for job_uid, tasks in jobs)
+            self._make_job, ((batch_dir / job_uid, job) for job_uid, job in batch)
         )
 
-        job_record_rows = []
-        for (job_uid, _), job_input_values in zip(jobs, scheduled, strict=True):
-            job_record_rows.append([job_uid] + job_input_values)
+        for i, _ in enumerate(scheduled):
+            _log(batch_dir, f"made {batch[i][0]}")
 
-            _log(batch_dir, f"made {job_uid}")
-
-        # record job input values
+        # record jobs
+        job_record_rows = tuple(
+            (job_uid,)
+            + tuple(
+                job[0][1][i] if input._is_ctrl else input._hype_ctrl_val()
+                for i, input in enumerate(self)
+            )
+            for job_uid, job in batch
+        )
         self._record_final("job", batch_dir, job_record_rows)
 
         _log(batch_dir, "recorded inputs")
@@ -327,27 +315,19 @@ class _InputManager(Generic[ModelModifier]):
 
     @_LoggerManager(cwd_index=1)
     def _simulate_batch(
-        self, batch_dir: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
     ) -> None:
         # simulate batch in parallel
-        pairs = tuple(
-            (job_uid, task_uid) for job_uid, tasks in jobs for task_uid, _ in tasks
+        uid_pairs = tuple(
+            (job_uid, task_uid) for job_uid, job in batch for task_uid, _ in job
         )
         scheduled = parallel._map(
             self._simulate_task,
-            (batch_dir / job_uid / task_uid for job_uid, task_uid in pairs),
+            (batch_dir / job_uid / task_uid for job_uid, task_uid in uid_pairs),
         )
 
-        for pair, _ in zip(pairs, scheduled, strict=True):
-            _log(batch_dir, f"simulated {'-'.join(pair)}")
-
-
-def _all_integral_modifiers(
-    input_manager: _InputManager[AnyModelModifier],
-) -> TypeGuard[_InputManager[AnyIntegralModelModifier]]:
-    """checks if all integral modifiers"""
-
-    return not any(isinstance(item, _RealModifier) for item in input_manager)
+        for item, _ in zip(uid_pairs, scheduled, strict=True):
+            _log(batch_dir, f"simulated {'-'.join(item)}")
 
 
 #############################################################################
@@ -400,12 +380,12 @@ class _OutputManager:
     def __len__(self) -> int:
         return len(self._task_outputs) + len(self._job_outputs)
 
-    def _prepare(self, config_dir: Path, has_uncertainties: bool) -> None:
-        # add copy collectors if no uncertainty
-        if not has_uncertainties:
+    def _prepare(self, config_dir: Path, has_noises: bool) -> None:
+        # add copy collectors if no noise
+        if not has_noises:
             if len(self._job_outputs):
                 raise ValueError(
-                    "all output collectors need to be on the task level with no uncertain input."
+                    "all output collectors need to be on the task level with no noise input."
                 )
 
             copy_outputs = []
@@ -459,7 +439,9 @@ class _OutputManager:
             if isinstance(item, RVICollector):
                 item._touch(config_dir)
 
-    def _record_final(self, level: _AnyLevel, record_dir: Path, uids: AnyUIDs) -> None:
+    def _record_final(
+        self, level: AnyCoreLevel, record_dir: Path, uids: AnyUIDs
+    ) -> None:
         # only final outputs
         with (record_dir / cf._RECORDS_FILENAMES[level]).open("rt", newline="") as fp:
             reader = csv.reader(fp, dialect="excel")
@@ -544,13 +526,13 @@ class _OutputManager:
 
     @_LoggerManager(cwd_index=1)
     def _collect_task(self, task_dir: Path) -> None:
-        # collect each task output
+        # collect task outputs
         for item in self._task_outputs:
             item._collect(task_dir)
 
     @_LoggerManager(cwd_index=1)
     def _collect_job(self, job_dir: Path, task_uids: AnyUIDs) -> None:
-        # collect each task
+        # collect tasks
         for task_uid in task_uids:
             self._collect_task(job_dir / task_uid)
 
@@ -566,22 +548,22 @@ class _OutputManager:
 
     @_LoggerManager(cwd_index=1)
     def _collect_batch(
-        self, batch_dir: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
     ) -> None:
-        # collect batch in parallel
+        # schedule and collect jobs
         scheduled = parallel._starmap(
             self._collect_job,
             (
-                (batch_dir / job_uid, tuple(task_uid for task_uid, _ in tasks))
-                for job_uid, tasks in jobs
+                (batch_dir / job_uid, tuple(task_uid for task_uid, _ in job))
+                for job_uid, job in batch
             ),
         )
 
-        for (job_uid, _), _ in zip(jobs, scheduled, strict=True):
+        for (job_uid, _), _ in zip(batch, scheduled, strict=True):
             _log(batch_dir, f"collected {job_uid}")
 
         # record job output values
-        self._record_final("job", batch_dir, tuple(job_uid for job_uid, _ in jobs))
+        self._record_final("job", batch_dir, tuple(job_uid for job_uid, _ in batch))
 
         _log(batch_dir, "recorded final outputs")
 
@@ -599,19 +581,19 @@ class _OutputManager:
 
     @_LoggerManager(cwd_index=1)
     def _clean_batch(
-        self, batch_dir: Path, jobs: tuple[AnyJob, ...], parallel: AnyParallel
+        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
     ) -> None:
-        # clean batch in parallel
-        pairs = tuple(
-            (job_uid, task_uid) for job_uid, tasks in jobs for task_uid, _ in tasks
+        # schedule and clean tasks
+        uid_pairs = tuple(
+            (job_uid, task_uid) for job_uid, job in batch for task_uid, _ in job
         )
         scheduled = parallel._map(
             self._clean_task,
-            (batch_dir / job_uid / task_uid for job_uid, task_uid in pairs),
+            (batch_dir / job_uid / task_uid for job_uid, task_uid in uid_pairs),
         )
 
-        for pair, _ in zip(pairs, scheduled, strict=True):
-            _log(batch_dir, f"cleaned {'-'.join(pair)}")
+        for item, _ in zip(uid_pairs, scheduled, strict=True):
+            _log(batch_dir, f"cleaned {'-'.join(item)}")
 
     @cache
     def _recorded_batch(self, batch_dir: Path) -> tuple[tuple[str, ...], ...]:

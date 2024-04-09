@@ -1,25 +1,26 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, Generic, Literal, TypeAlias, TypeVar, cast, overload
+from typing import Any, Generic, Self, TypeAlias, cast, final
 
 from eppy.bunchhelpers import makefieldname
 from eppy.modeleditor import IDF
 
 from sober._tools import _uuid
-from sober._typing import AnyIntegralDuo, AnyRealDuo, AnyStrPath
-
-##############################  module typing  ##############################
-_T = TypeVar("_T")  # AnyValueToTag # python/typing#548
-_V = TypeVar("_V")  # AnyVariationValue
-_U = TypeVar("_U")  # AnyUncertaintyValue
-#############################################################################
+from sober._typing import (
+    MK,
+    MV,
+    AnyFunc,
+    AnyModelModifierVal,
+    AnyModifierVal,
+    AnyStrPath,
+)
 
 
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
-class _Tagger(ABC, Generic[_T]):
+class _Tagger(ABC, Generic[MV]):
     """an abstract base class for taggers"""
 
     _tags: tuple[str, ...]
@@ -35,7 +36,7 @@ class _Tagger(ABC, Generic[_T]):
     @abstractmethod
     def _tagged(self, model: Any) -> Any: ...
 
-    def _detagged(self, tagged_model: str, *values: _T) -> str:
+    def _detagged(self, tagged_model: str, *values: MV) -> str:
         match len(values):
             case 0:
                 raise ValueError("no values for detagging.")
@@ -53,6 +54,8 @@ class _Tagger(ABC, Generic[_T]):
 class _IDFTagger(_Tagger):
     """an abstract base class for taggers in the IDF format"""
 
+    __slots__ = ()
+
     @abstractmethod
     def _tagged(self, model: IDF) -> IDF: ...
 
@@ -60,142 +63,132 @@ class _IDFTagger(_Tagger):
 class _TextTagger(_Tagger):
     """an abstract base class for taggers in the text format"""
 
+    __slots__ = ()
+
     @abstractmethod
     def _tagged(self, model: str) -> str: ...
 
 
-class _Modifier(ABC):
+@final
+class _Noise(Any):
+    """a helper class for _hype_ctrl_val"""
+
+    _s: str
+
+    __slots__ = ("_s",)
+
+    def __new__(cls, s: str) -> Self:
+        self = super().__new__(cls)
+        self._s = s
+        return self
+
+    def __str__(self) -> str:
+        """controls csv.writer"""
+        return f"<noise {self._s}>"
+
+
+class _Modifier(ABC, Generic[MK, MV]):
     """an abstract base class for input modifiers"""
 
-    _low: float
-    _high: float
+    _bounds: tuple[float, float]
+    _is_ctrl: bool
+    _is_noise: bool
+    _name: str
     _index: int
     _label: str
-    _name: str
-    _is_uncertain: bool
 
-    __slots__ = ("_low", "_high", "_index", "_label", "_name", "_is_uncertain")
+    __slots__ = ("_bounds", "_is_ctrl", "_is_noise", "_name", "_index", "_label")
 
     @abstractmethod
-    def __init__(self, name: str) -> None:
+    def __init__(self, bounds: tuple[float, float], is_noise: bool, name: str) -> None:
+        self._bounds = bounds
+        self._is_ctrl = not is_noise  # FunctionalModifier is neither, overwrites later
+        self._is_noise = is_noise
         self._name = name
 
-    def _check_args(self) -> None:
-        pass
+    @abstractmethod
+    def __call__(self, key: MK) -> MV: ...
 
     @abstractmethod
-    def _value(self, duo: Any, *args) -> Any:
-        # *args is only used by FunctionalModifier for now
-
+    def _check_args(self) -> None:
+        # called by _InputManager
+        # as FunctionalModifier needs the index info assigned by _InputManager
         ...
 
+    def _hype_ctrl_key(self) -> MK:
+        assert not self._is_ctrl
+        return 0  # assuming the hype ctrl is an integral variable with one item
 
-class _ModelModifierMixin(ABC, Generic[_T]):
+    @abstractmethod
+    def _hype_ctrl_val(self) -> MV: ...
+
+    def _hype_ctrl_len(self) -> int:
+        assert not self._is_ctrl
+        return 1  # assuming the hype ctrl is an integral variable with one item
+
+
+class _ModelModifierMixin(ABC, Generic[MV]):
     """an abstract base class for common functions in model modification
     (as opposed to the weather modifier)"""
 
-    _tagger: _Tagger[_T]
-
-    # __slots__ = ("_tagger",)  # a slots/mixin issue
+    _tagger: _Tagger[MV]
+    __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
 
     @abstractmethod
-    def __init__(self, tagger: _Tagger[_T], *args, **kwargs) -> None:
-        self._tagger = tagger
+    def __init__(self, tagger: _Tagger[MV], *args, **kwargs) -> None:
+        self._tagger = tagger  # type: ignore[misc]  # [1] microsoft/pyright#2039
 
         super().__init__(*args, **kwargs)  # NOTE: to _RealModifier/_IntegralModifier
 
-    def _detagged(self, tagged_model: str, *values: _T) -> str:
+    def _detagged(self, tagged_model: str, *values: MV) -> str:
         return self._tagger._detagged(tagged_model, *values)
 
 
-class _RealModifier(_Modifier):
-    """an abstract base class for input modifiers of real variables in pymoo"""
+class _RealModifier(_Modifier[float, float]):
+    """an abstract base class for input modifiers of real variables"""
 
     @abstractmethod
-    def __init__(self, low: float, high: float, *, name: str) -> None:
-        self._low = low
-        self._high = high
-        self._is_uncertain = False  # NOTE: hard-coded for now
+    def __init__(self, bounds: tuple[float, float], is_noise: bool, name: str) -> None:
+        super().__init__(bounds, is_noise, name)
 
-        super().__init__(name)
+    def __call__(self, key: float) -> float:
+        return key
+
+    def _hype_ctrl_val(self) -> float:
+        assert not self._is_ctrl
+        return _Noise(f"({', '.join(map(str, self._bounds))})")
 
 
-class _IntegralModifier(_Modifier, Generic[_V, _U]):
-    """an abstract base class for input modifiers of integral variables in pymoo"""
+class _IntegralModifier(_Modifier[int, MV]):
+    """an abstract base class for input modifiers of integral variables"""
 
-    _low: int
-    _high: int
-    _variations: tuple[_V, ...]
-    _uncertainties: tuple[tuple[_U, ...], ...]
-    _n_variations: int
-    _ns_uncertainties: tuple[int, ...]
+    _options: tuple[MV, ...]
 
-    __slots__ = (
-        "_low",
-        "_high",
-        "_variations",
-        "_uncertainties",
-        "_n_variations",
-        "_ns_uncertainties",
-    )
+    __slots__ = ("_options",)
 
     @abstractmethod
-    def __init__(
-        self, variations: Iterable[_V], *uncertainties: Iterable[_U], name: str
-    ) -> None:
-        # parse and count variations
-        self._variations = tuple(variations)
-        self._n_variations = len(self._variations)
+    def __init__(self, options: tuple[MV, ...], is_noise: bool, name: str) -> None:
+        self._options = options
 
-        # parse and count uncertainties
-        # NOTE: when no uncertainty, the count of uncertainties is 1
-        match len(uncertainties):
-            case 0:
-                # no uncertainty
-                # self._uncertainties = ()  # leave undefined
-                self._ns_uncertainties = (1,) * self._n_variations
-            case self._n_variations:
-                # each variation has different uncertainties
-                self._uncertainties = tuple(map(tuple, uncertainties))
-                self._ns_uncertainties = tuple(map(len, self._uncertainties))
-            case 1:
-                # each variation has the same uncertainty
-                # TODO: this is not useful for absolute uncertainty
-                #                              i.e. uncertainty
-                #                      but for relative uncertainty in the future
-                #                              i.e. variation +- uncertainty
-                raise NotImplementedError
-                self._uncertainties = (tuple(uncertainties[0]),) * self._n_variations
-                self._ns_uncertainties = (
-                    len(self._uncertainties[0]),
-                ) * self._n_variations
-            case _:
-                raise ValueError(
-                    f"the number of uncertainties is different from that of variations: '{len(uncertainties)}', '{self._n_variations}'."
-                )
+        bounds = (0, len(self) - 1)
+        super().__init__(bounds, is_noise, name)
 
-        self._is_uncertain = set(self._ns_uncertainties) != {1}
-        self._low = 0
-        self._high = self._n_variations - 1
+    def __iter__(self) -> Iterator[MV]:
+        yield from self._options
 
-        super().__init__(name)
+    def __len__(self) -> int:
+        return len(self._options)
 
-    @overload
-    def __getitem__(self, index: int) -> _V: ...
-    @overload
-    def __getitem__(self, index: tuple[int, int]) -> _U: ...
-    def __getitem__(self, index):
-        match self._is_uncertain, index:
-            case _, int() as i:
-                return self._variations[i]
-            case False, (int() as i, 0):
-                return self._variations[i]
-            case True, (int() as i, int() as j):
-                return self._uncertainties[i][j]
-            case False, (int(), int()):
-                raise IndexError("no uncertainties defined.")
-            case _:
-                raise IndexError(f"invalid index: {index}.")
+    def __getitem__(self, key: int) -> MV:
+        return self._options[key]
+
+    def __call__(self, key: int) -> MV:
+        return self[key]
+
+    def _hype_ctrl_val(self) -> MV:
+        # FunctionalModifier overwrites later
+        assert not self._is_ctrl
+        return _Noise(f"{{{', '.join(map(str, self._options))}}}")
 
 
 #############################################################################
@@ -297,178 +290,128 @@ class StringTagger(_TextTagger):
 #############################################################################
 #######                       MODIFIER CLASSES                        #######
 #############################################################################
-class WeatherModifier(_IntegralModifier[Path | str, Path]):
+class WeatherModifier(_IntegralModifier[Path]):
     """modifies the weather input"""
 
-    _variations: tuple[Path | str, ...]
-    _uncertainties: tuple[tuple[Path, ...], ...]
+    __slots__ = ()
 
-    __slots__ = ("_variations", "_uncertainties")
-
-    @overload
-    def __init__(self, variations: Iterable[AnyStrPath], /, *, name: str) -> None: ...
-    @overload
     def __init__(
-        self,
-        variations: Iterable[str],
-        /,
-        *uncertainties: Iterable[AnyStrPath],
-        name: str,
-    ) -> None: ...
-    def __init__(self, variations, /, *uncertainties, name=""):
-        super().__init__(variations, *uncertainties, name=name)
+        self, *options: AnyStrPath, is_noise: bool = False, name: str = ""
+    ) -> None:
+        super().__init__(tuple(Path(item) for item in options), is_noise, name)
 
-        # resolve weather file paths
-        if self._is_uncertain:
-            self._variations = tuple(str(item) for item in self._variations)
-            self._uncertainties = tuple(
-                tuple(Path(item).resolve(True) for item in uncertainty)
-                for uncertainty in self._uncertainties
-            )
-        else:
-            self._variations = tuple(
-                Path(item).resolve(True) for item in self._variations
-            )
-            assert not hasattr(self, "_uncertainties")
+    def _check_args(self) -> None:
+        for item in self._options:
+            # check existence
+            item.resolve(True)
 
-    def _value(self, duo: AnyIntegralDuo, *args) -> Path:
-        return self[duo]
+            # check suffix
+            if item.suffix != ".epw":
+                raise ValueError(f"'{item}' is no epw file.")
 
 
 class ContinuousModifier(_ModelModifierMixin[float], _RealModifier):
     """modifies continuous inputs"""
 
-    def __init__(
-        self, tagger: _Tagger, low: float, high: float, /, *, name: str = ""
-    ) -> None:
-        # TODO: uncertainty of continuous inputs
-        super().__init__(tagger, low, high, name=name)
-
-    def _value(self, duo: AnyRealDuo, *args) -> float:
-        return duo[0]
-
-    def _detagged(self, tagged_model: str, *values: float) -> str:
-        return super()._detagged(tagged_model, *values)
-
-
-class DiscreteModifier(_ModelModifierMixin[float], _IntegralModifier[float, float]):
-    """modifies discrete inputs"""
-
-    _variations: tuple[float, ...]
-    _uncertainties: tuple[tuple[float, ...], ...]
-
-    __slots__ = ("_variations", "_uncertainties")
+    __slots__ = ("_tagger",)
 
     def __init__(
         self,
-        tagger: _Tagger,
-        variations: Iterable[float],
+        tagger: _Tagger[float],
+        low: float,
+        high: float,
         /,
-        *uncertainties: Iterable[float],
+        *,
+        is_noise: bool = False,
         name: str = "",
     ) -> None:
-        super().__init__(tagger, variations, *uncertainties, name=name)
-
-    def _value(self, duo: AnyIntegralDuo, *args) -> float:
-        return self[duo]
-
-    def _detagged(self, tagged_model: str, *values: float) -> str:
-        return super()._detagged(tagged_model, *values)
-
-
-class CategoricalModifier(_ModelModifierMixin[str], _IntegralModifier[str, str]):
-    """modifies categorical inputs"""
-
-    _variations: tuple[str, ...]
-    _uncertainties: tuple[tuple[str, ...], ...]
-
-    __slots__ = ("_variations", "_uncertainties")
-
-    def __init__(
-        self,
-        tagger: _Tagger,
-        variations: Iterable[str],
-        /,
-        *uncertainties: Iterable[str],
-        name: str = "",
-    ) -> None:
-        super().__init__(tagger, variations, *uncertainties, name=name)
-
-    def _value(self, duo: AnyIntegralDuo, *args) -> str:
-        return self[duo]
-
-    def _detagged(self, tagged_model: str, *values: str) -> str:
-        return super()._detagged(tagged_model, *values)
-
-
-class FunctionalModifier(_ModelModifierMixin[_T], _IntegralModifier[_V, _U]):
-    """modifies functional inputs"""
-
-    _func: Callable[..., _V | Iterable[_V]]
-    _input_indices: tuple[int, ...]
-    _extra_args: tuple[Any, ...]
-    _is_scalar: bool
-
-    __slots__ = ("_func", "_input_indices", "_extra_args", "_is_scalar")
-
-    @overload
-    def __init__(
-        self,
-        tagger: _Tagger,
-        func: Callable[..., _V],
-        input_indices: Iterable[int],
-        /,
-        *extra_args: Any,  # TODO: restrict this for serialisation
-        is_scalar: Literal[True],
-        name: str,
-    ) -> None: ...
-    @overload
-    def __init__(
-        self,
-        tagger: _Tagger,
-        func: Callable[..., Iterable[_V]],
-        input_indices: Iterable[int],
-        /,
-        *extra_args: Any,
-        is_scalar: Literal[False],
-        name: str,
-    ) -> None: ...
-    def __init__(
-        self, tagger, func, input_indices, /, *extra_args, is_scalar=True, name=""
-    ):
-        func_name = f"<function {func.__module__ + '.' + func.__code__.co_qualname}>"
-        super().__init__(tagger, (func_name,), name=name)
-
-        self._func = func
-        self._input_indices = tuple(input_indices)
-        self._extra_args = extra_args
-        self._is_scalar = is_scalar
+        super().__init__(tagger, (low, high), is_noise, name)
 
     def _check_args(self) -> None:
-        super()._check_args()
+        low, high = self._bounds
+        if low >= high:
+            raise ValueError(f"the low '{low}' is not less than the high '{high}'.")
 
+
+class DiscreteModifier(_ModelModifierMixin[float], _IntegralModifier[float]):
+    """modifies discrete inputs"""
+
+    __slots__ = ("_tagger",)
+
+    def __init__(
+        self,
+        tagger: _Tagger[float],
+        *options: float,
+        is_noise: bool = False,
+        name: str = "",
+    ) -> None:
+        super().__init__(tagger, options, is_noise, name)
+
+    def _check_args(self) -> None:
+        pass
+
+
+class CategoricalModifier(_ModelModifierMixin[str], _IntegralModifier[str]):
+    """modifies categorical inputs"""
+
+    __slots__ = ("_tagger",)
+
+    def __init__(
+        self,
+        tagger: _Tagger[str],
+        *options: str,
+        is_noise: bool = False,
+        name: str = "",
+    ) -> None:
+        super().__init__(tagger, options, is_noise, name)
+
+    def _check_args(self) -> None:
+        pass
+
+
+class FunctionalModifier(
+    _ModelModifierMixin[AnyModelModifierVal], _IntegralModifier[AnyModelModifierVal]
+):
+    """modifies functional inputs"""
+
+    _func: AnyFunc
+    _input_indices: tuple[int, ...]
+    _args: tuple[Any, ...]  # TODO: restrict this for serialisation
+    _kwargs: dict[str, Any]  # TODO: restrict this for serialisation
+
+    __slots__ = ("_tagger", "_func", "_input_indices", "_args", "_kwargs")
+
+    def __init__(
+        self,
+        tagger: _Tagger[AnyModelModifierVal],
+        func: AnyFunc,
+        input_indices: Iterable[int],
+        *args,
+        name: str = "",
+        **kwargs,
+    ) -> None:
+        self._func = func
+        self._input_indices = tuple(input_indices)
+        self._args = args
+        self._kwargs = kwargs
+
+        func_name = f"<function {self._func.__module__ + '.' + self._func.__code__.co_qualname}>"
+        super().__init__(tagger, (func_name,), False, name)
+
+        self._is_ctrl = False
+
+    def __call__(self, key: int, *input_vals: AnyModifierVal) -> AnyModelModifierVal:
+        return self._func(input_vals, *self._args, **self._kwargs)
+
+    def _check_args(self) -> None:
         if any(item >= self._index for item in self._input_indices):
             raise ValueError(
                 f"only previous inputs can be referred to: {self._index}, {self._input_indices}."
             )
 
-    def _value(self, duo: AnyIntegralDuo, *args) -> _V | tuple[_V, ...]:
-        # NOTE: args are values for referenced inputs
-        #       args are passed as tuple whilst _extra_args unpacked
-        #       this is to align their corresponding arguments in __init__
-
-        if self._is_scalar:
-            self._func = cast(Callable[..., _V], self._func)
-
-            return self._func(args, *self._extra_args)
-
-        else:
-            self._func = cast(Callable[..., Iterable[_V]], self._func)
-
-            return tuple(self._func(args, *self._extra_args))
-
-    def _detagged(self, tagged_model: str, *values: _T) -> str:
-        return super()._detagged(tagged_model, *values)
+    def _hype_ctrl_val(self) -> AnyModelModifierVal:
+        # assert not self._is_ctrl  # no need, as hardcoded in __init__
+        return self._options[0]
 
 
 #############################  package typing  ##############################
@@ -478,7 +421,4 @@ AnyIntegralModelModifier: TypeAlias = (
 )
 AnyRealModelModifier: TypeAlias = ContinuousModifier
 AnyModelModifier: TypeAlias = AnyRealModelModifier | AnyIntegralModelModifier
-# this TypeVar is defined this way
-# to differ an input manager with mixed input types from one that only has integers
-ModelModifier = TypeVar("ModelModifier", AnyModelModifier, AnyIntegralModelModifier)
 #############################################################################

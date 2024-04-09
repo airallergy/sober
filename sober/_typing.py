@@ -1,15 +1,27 @@
 from collections.abc import Callable
 from os import PathLike
-from typing import Literal, Protocol, Required, TypeAlias, TypedDict, TypeVar
+from pathlib import Path
+from typing import (
+    Concatenate,
+    Literal,
+    Protocol,
+    Required,
+    TypeAlias,
+    TypedDict,
+    TypeVar,
+)
 
 import numpy as np
 
 import sober._pymoo_namespace as pm
 
-# generic
+# shared - python
 AnyStrPath: TypeAlias = str | PathLike[str]
 AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
 
+# shared - sober
+AnyCoreLevel: TypeAlias = Literal["task", "job"]
+AnyLevel: TypeAlias = Literal[AnyCoreLevel, "batch", "epoch"]
 
 # config
 Config = TypedDict(
@@ -30,18 +42,25 @@ AnyLanguage: TypeAlias = Literal["python"]
 
 
 # input
-_S = TypeVar("_S", int, float)
+AnyModelModifierVal: TypeAlias = float | str
+AnyModifierVal: TypeAlias = AnyStrPath | AnyModelModifierVal
+AnyFunc: TypeAlias = Callable[
+    Concatenate[tuple[AnyModifierVal, ...], ...], AnyModelModifierVal
+]
 
-AnyDuo: TypeAlias = tuple[_S, _S]  # TODO: double check this for float inputs
-AnyIntegralDuo: TypeAlias = AnyDuo[int]
-AnyRealDuo: TypeAlias = AnyDuo[float]
-AnyDuoVec: TypeAlias = tuple[AnyIntegralDuo, *tuple[AnyDuo, ...]]
+MK = TypeVar("MK", float, int)  # AnyModifierKey
+MV = TypeVar("MV", bound=AnyModifierVal)  # AnyModifierValue
 
-AnyCandidateVec: TypeAlias = tuple[int, *tuple[_S, ...]]
-AnyScenarioVec: TypeAlias = tuple[int, *tuple[_S, ...]]
+## this contains hype ctrl keys only used for populating jobs
+AnyCtrlKeyVec: TypeAlias = tuple[int, *tuple[MK, ...]]
 
-AnyTask: TypeAlias = tuple[str, AnyDuoVec]
-AnyJob: TypeAlias = tuple[str, tuple[AnyTask, ...]]
+## Val is omitted in naming below
+AnyModelTask: TypeAlias = tuple[AnyModelModifierVal, ...]
+AnyTask: TypeAlias = tuple[Path, *AnyModelTask]
+AnyTaskItem: TypeAlias = tuple[str, AnyTask]
+AnyJob: TypeAlias = tuple[AnyTaskItem, ...]
+AnyJobItem: TypeAlias = tuple[str, AnyJob]
+AnyBatch: TypeAlias = tuple[AnyJobItem, ...]
 
 
 # output
@@ -51,9 +70,7 @@ AnyBatchOutputs: TypeAlias = tuple[tuple[float, ...], ...]
 
 # pymoo
 AnyPymooCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
-AnyCandidateMap: TypeAlias = dict[
-    str, np.integer | np.floating
-]  # TODO: find a way to type the first element as int
+AnyPymooX: TypeAlias = dict[str, np.integer | np.floating]
 
 
 class PymooOut(TypedDict):

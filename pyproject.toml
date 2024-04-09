@@ -28,5 +28,14 @@ target-version = "py311"
 extend-select = ["I", "PGH", "UP", "N", "TID"]
 ignore = ["E741"]
 
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
+
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.mypy]
+ignore_missing_imports = true

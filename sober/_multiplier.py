@@ -3,13 +3,13 @@ import operator
 from collections.abc import Iterable, Sequence
 from itertools import accumulate
 from pathlib import Path
-from typing import Generic, TypeVar, overload
+from typing import Generic, TypeVar, cast, overload
 
 import numpy as np
 
 from sober._evaluator import _evaluate
 from sober._io_managers import _InputManager, _OutputManager
-from sober.input import AnyIntegralModelModifier
+from sober._typing import AnyCtrlKeyVec
 
 _T = TypeVar("_T")
 
@@ -60,7 +60,7 @@ class _LazyCartesianProduct(Generic[_T]):
 
 
 def _multiply(
-    input_manager: _InputManager[AnyIntegralModelModifier],
+    input_manager: _InputManager,
     output_manager: _OutputManager,
     evaluation_dir: Path,
     sample_size: int,
@@ -68,8 +68,10 @@ def _multiply(
 ) -> None:
     """populates parametrics by subsetting the full search space"""
 
-    ns_variations = tuple(item._n_variations for item in input_manager)
-    search_space = _LazyCartesianProduct(*map(range, ns_variations))
+    ctrl_lens = tuple(
+        len(item) if item._is_ctrl else item._hype_ctrl_len() for item in input_manager
+    )
+    search_space = _LazyCartesianProduct(*map(range, ctrl_lens))
     n_products = search_space._n_products
 
     rng = np.random.default_rng(seed)
@@ -83,30 +85,33 @@ def _multiply(
             )
 
         sample_idxes = tuple(range(n_products))
-        candidate_vecs = search_space[sample_idxes]
+        ctrl_key_vecs = search_space[sample_idxes]
     elif sample_size == 0:
-        # test each variation with fewest simulations
+        # test each control options with fewest simulations
 
-        max_n_variations = max(ns_variations)
+        max_ctrl_len = max(ctrl_lens)
 
-        # permute variations of each paramter
-        permuted = tuple(map(rng.permutation, ns_variations))
+        # permute control keys
+        permuted = tuple(map(rng.permutation, ctrl_lens))
+
         # fill each row to the longest one by cycling
         filled = np.asarray(
-            tuple(np.resize(row, max_n_variations) for row in permuted), dtype=np.int_
+            tuple(np.resize(row, max_ctrl_len) for row in permuted), dtype=int
         )
 
-        candidate_vecs = tuple(tuple(map(int, row)) for row in filled.T)
+        ctrl_key_vecs = tuple(tuple(map(int, row)) for row in filled.T)
     else:
         # proper subset
 
         sample_idxes_ = rng.choice(n_products, sample_size, replace=False)
         sample_idxes_.sort()
         sample_idxes = tuple(map(int, sample_idxes_))
-        candidate_vecs = search_space[sample_idxes]
+        ctrl_key_vecs = search_space[sample_idxes]
+
+    ctrl_key_vecs = cast(tuple[AnyCtrlKeyVec, ...], ctrl_key_vecs)  # mypy
 
     _evaluate(
-        *candidate_vecs,
+        *ctrl_key_vecs,
         input_manager=input_manager,
         output_manager=output_manager,
         batch_dir=evaluation_dir,

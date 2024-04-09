@@ -147,6 +147,8 @@ class _Loop(AbstractContextManager):
     """a helper class for loop
     this includes making a context manager and unifying method names"""
 
+    __slots__ = ()
+
     def __enter__(self) -> Self:
         return self
 

@@ -3,18 +3,24 @@ from collections.abc import Iterable
 from itertools import chain
 from pathlib import Path
 from shutil import rmtree
-from typing import Literal, overload
+from typing import Literal, cast, overload
 
 import numpy as np
 
 import sober._pymoo_namespace as pm
 import sober.config as cf
-from sober._evaluator import _pymoo_evaluate
+from sober._evaluator import _evaluate
 from sober._io_managers import _InputManager, _OutputManager
 from sober._logger import _log, _LoggerManager
 from sober._tools import _natural_width, _write_records
-from sober._typing import AnyCandidateMap, AnyPymooCallback, PymooOperators, PymooOut
-from sober.input import ContinuousModifier
+from sober._typing import (
+    AnyCtrlKeyVec,
+    AnyPymooCallback,
+    AnyPymooX,
+    PymooOperators,
+    PymooOut,
+)
+from sober.input import _RealModifier
 
 
 #############################################################################
@@ -38,32 +44,34 @@ class _PymooProblem(pm.Problem):
         saves_batches: bool,
         expected_n_generations: int,
     ) -> None:
-        # NOTE: pymoo0.6 asks for a map from input uids to pymoo variable types
-        variables = {
-            item._label: (
-                pm.Real(bounds=(item._low, item._high))
-                if isinstance(item, ContinuousModifier)
-                else pm.Integral(bounds=(item._low, item._high))
-            )
-            for item in input_manager
-        }
-
-        super().__init__(
-            n_obj=len(output_manager._objectives),
-            n_ieq_constr=len(output_manager._constraints),
-            vars=variables,
-            callback=callback,
-            requires_kwargs=True,
-        )
         self._input_manager = input_manager
         self._output_manager = output_manager
         self._evaluation_dir = evaluation_dir
         self._saves_batches = saves_batches
         self._i_batch_width = _natural_width(expected_n_generations)
 
+        # NOTE: pymoo0.6 asks for a map from input uids to pymoo variable types
+        # only control variables are passed
+        ctrl_vars = {
+            item._label: (
+                (pm.Real if isinstance(item, _RealModifier) else pm.Integral)(
+                    bounds=item._bounds
+                )
+            )
+            for item in (item for item in input_manager if item._is_ctrl)
+        }
+
+        super().__init__(
+            n_obj=len(output_manager._objectives),
+            n_ieq_constr=len(output_manager._constraints),
+            vars=ctrl_vars,
+            callback=callback,
+            requires_kwargs=True,
+        )
+
     def _evaluate(
         self,
-        x: Iterable[AnyCandidateMap],
+        x: Iterable[AnyPymooX],
         out: PymooOut,
         *args,
         algorithm: pm.Algorithm,
@@ -71,29 +79,41 @@ class _PymooProblem(pm.Problem):
     ) -> None:
         # NOTE: in pymoo0.6
         #           n_gen follows 1, 2, 3, ...
-        #           x is a numpy array of dicts, each dict is a candidate map
+        #           x is a numpy array of dicts, each dict is a control key map
         #               whose keys are input labels
-        #                     values are candidate vectors
+        #                     values are control key vectors
         #           out has to be a dict of numpy arrays
 
         i_batch = algorithm.n_gen - 1
         batch_uid = f"B{i_batch:0{self._i_batch_width}}"
 
-        candidate_vecs = tuple(
-            tuple(component.item() for component in candidate_map.values())
-            for candidate_map in x
+        # convert pymoo x to ctrl key vecs
+        ctrl_key_vecs = tuple(
+            tuple(
+                ctrl_key_map[item._label].item()
+                if item._is_ctrl
+                else item._hype_ctrl_key()
+                for item in self._input_manager
+            )
+            for ctrl_key_map in x
         )
 
-        objectives, constraints = _pymoo_evaluate(
-            *candidate_vecs,
+        ctrl_key_vecs = cast(tuple[AnyCtrlKeyVec, ...], ctrl_key_vecs)  # mypy
+
+        # evaluate and get objectives and constraints
+        batch_dir = self._evaluation_dir / batch_uid
+        _evaluate(
+            *ctrl_key_vecs,
             input_manager=self._input_manager,
             output_manager=self._output_manager,
-            batch_dir=self._evaluation_dir / batch_uid,
+            batch_dir=batch_dir,
         )
+        objectives = self._output_manager._recorded_objectives(batch_dir)
+        constraints = self._output_manager._recorded_constraints(batch_dir)
 
-        out["F"] = np.asarray(objectives, dtype=np.float_)
+        out["F"] = np.asarray(objectives, dtype=float)
         if self._output_manager._constraints:
-            out["G"] = np.asarray(constraints, dtype=np.float_)
+            out["G"] = np.asarray(constraints, dtype=float)
 
         if not self._saves_batches:
             rmtree(self._evaluation_dir / batch_uid)
@@ -120,41 +140,41 @@ class _PymooProblem(pm.Problem):
         individuals = _survival(individuals, result.algorithm)
 
         # create header row
+        # TODO: consider prepending retrieved UIDs
         header_row = (
-            tuple(individuals[0].X.keys())
+            tuple(item._label for item in self._input_manager)
             + tuple(self._output_manager._objectives)
             + tuple(self._output_manager._constraints)
             + ("is_pareto", "is_feasible")
         )
 
-        # convert pymoo candidates to actual values
-        candidate_vecs = tuple(
-            tuple(component.item() for component in individual.X.values())
+        # convert pymoo x to ctrl val vecs
+        ctrl_key_vecs = tuple(
+            tuple(
+                individual.X[item._label].item()
+                if item._is_ctrl
+                else item._hype_ctrl_key()
+                for item in self._input_manager
+            )
             for individual in individuals
         )
-        value_vecs = tuple(
+        ctrl_val_vecs = tuple(
             tuple(
-                (
-                    component
-                    if isinstance(input, ContinuousModifier)
-                    else input[component]
-                )
-                for input, component in zip(
-                    self._input_manager, candidate_vec, strict=True
-                )
+                item(key) if item._is_ctrl else item._hype_ctrl_val()
+                for item, key in zip(self._input_manager, ctrl_key_vec, strict=True)
             )
-            for candidate_vec in candidate_vecs
+            for ctrl_key_vec in ctrl_key_vecs
         )
 
         # create record rows
         # NOTE: pymoo sums cvs of all constraints
         #       hence all(individual.FEAS) == individual.FEAS[0]
         record_rows = [
-            value_vec
-            + tuple(individual.F)
-            + tuple(individual.G)
-            + (individual.get("rank") == 0, all(individual.FEAS))
-            for individual, value_vec in zip(individuals, value_vecs, strict=True)
+            ctrl_val_vec
+            + tuple(item.F)
+            + tuple(item.G)
+            + (item.get("rank") == 0, all(item.FEAS))
+            for item, ctrl_val_vec in zip(individuals, ctrl_val_vecs, strict=True)
         ]
 
         # write records

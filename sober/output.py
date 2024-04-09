@@ -8,10 +8,9 @@ from typing import Final, Literal, TypeAlias
 import sober.config as cf
 from sober._simulator import _run_readvars
 from sober._tools import _rectified_str_iterable, _run, _uuid
-from sober._typing import AnyStrPath
+from sober._typing import AnyCoreLevel, AnyStrPath
 
 ##############################  module typing  ##############################
-_AnyLevel: TypeAlias = Literal["task", "job"]
 _AnyDirection: TypeAlias = Literal["minimise", "maximise"]
 _AnyBounds: TypeAlias = tuple[None, float] | tuple[float, None] | tuple[float, float]
 _AnyConverter: TypeAlias = Callable[[float], float]
@@ -26,7 +25,7 @@ class _Collector(ABC):
     """an abstract base class for output collector"""
 
     _filename: str
-    _level: _AnyLevel
+    _level: AnyCoreLevel
     _objectives: tuple[str, ...]
     _constraints: tuple[str, ...]
     _direction: _AnyDirection
@@ -49,7 +48,7 @@ class _Collector(ABC):
     def __init__(
         self,
         filename: str,
-        level: _AnyLevel,
+        level: AnyCoreLevel,
         objectives: str | Iterable[str],
         constraints: str | Iterable[str],
         direction: _AnyDirection,
@@ -150,7 +149,7 @@ class RVICollector(_Collector):
         keys: str | Iterable[str] = (),
         frequency: str = "",
         *,
-        level: _AnyLevel = "task",
+        level: AnyCoreLevel = "task",
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
         direction: _AnyDirection = "minimise",
@@ -222,7 +221,7 @@ class ScriptCollector(_Collector):
         filename: str,
         /,
         *extra_args: str,
-        level: _AnyLevel = "task",
+        level: AnyCoreLevel = "task",
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
         direction: _AnyDirection = "minimise",
@@ -257,7 +256,9 @@ class ScriptCollector(_Collector):
 
 class _CopyCollector(_Collector):
     """copies task final outputs as job final outputs
-    NOTE: this is for handling non-uncertain cases only"""
+    NOTE: this is for handling non-noisy cases only"""
+
+    __slots__ = ()
 
     def __init__(
         self,
