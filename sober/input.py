@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, Generic, Self, TypeAlias, cast, final
+from typing import Any, Generic, Protocol, Self, TypeAlias, cast, final
 
 from eppy.bunchhelpers import makefieldname
 from eppy.modeleditor import IDF
@@ -17,10 +17,21 @@ from sober._typing import (
 )
 
 
+##############################  module typing  ##############################
+class _SupportsStr(Protocol):
+    __slots__ = ()
+
+    @abstractmethod
+    def __str__(self) -> str: ...
+
+
+#############################################################################
+
+
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
-class _Tagger(ABC, Generic[MV]):
+class _Tagger(ABC):
     """an abstract base class for taggers"""
 
     _tags: tuple[str, ...]
@@ -36,7 +47,7 @@ class _Tagger(ABC, Generic[MV]):
     @abstractmethod
     def _tagged(self, model: Any) -> Any: ...
 
-    def _detagged(self, tagged_model: str, *values: MV) -> str:
+    def _detagged(self, tagged_model: str, *values: _SupportsStr) -> str:
         match len(values):
             case 0:
                 raise ValueError("no values for detagging.")
@@ -174,20 +185,20 @@ class _IntegralModifier(_Modifier[int, MV]):
         return _Noise(f"{{{', '.join(map(str, self._options))}}}")
 
 
-class _ModelModifierMixin(ABC, Generic[MV]):
+class _ModelModifierMixin(ABC):
     """an abstract base class for common functions in model modification
     (as opposed to the weather modifier)"""
 
-    _tagger: _Tagger[MV]
+    _tagger: _Tagger
     __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
 
     @abstractmethod
-    def __init__(self, tagger: _Tagger[MV], *args, **kwargs) -> None:
+    def __init__(self, tagger: _Tagger, *args, **kwargs) -> None:
         self._tagger = tagger  # type: ignore[misc]  # [1] microsoft/pyright#2039
 
         super().__init__(*args, **kwargs)  # NOTE: to _RealModifier/_IntegralModifier
 
-    def _detagged(self, tagged_model: str, *values: MV) -> str:
+    def _detagged(self, tagged_model: str, *values: _SupportsStr) -> str:
         return self._tagger._detagged(tagged_model, *values)
 
 
@@ -310,14 +321,14 @@ class WeatherModifier(_IntegralModifier[Path]):
                 raise ValueError(f"'{item}' is no epw file.")
 
 
-class ContinuousModifier(_ModelModifierMixin[float], _RealModifier):
+class ContinuousModifier(_ModelModifierMixin, _RealModifier):
     """modifies continuous inputs"""
 
     __slots__ = ("_tagger",)
 
     def __init__(
         self,
-        tagger: _Tagger[float],
+        tagger: _Tagger,
         low: float,
         high: float,
         /,
@@ -333,17 +344,13 @@ class ContinuousModifier(_ModelModifierMixin[float], _RealModifier):
             raise ValueError(f"the low '{low}' is not less than the high '{high}'.")
 
 
-class DiscreteModifier(_ModelModifierMixin[float], _IntegralModifier[float]):
+class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
     """modifies discrete inputs"""
 
     __slots__ = ("_tagger",)
 
     def __init__(
-        self,
-        tagger: _Tagger[float],
-        *options: float,
-        is_noise: bool = False,
-        name: str = "",
+        self, tagger: _Tagger, *options: float, is_noise: bool = False, name: str = ""
     ) -> None:
         super().__init__(tagger, options, is_noise, name)
 
@@ -351,17 +358,13 @@ class DiscreteModifier(_ModelModifierMixin[float], _IntegralModifier[float]):
         pass
 
 
-class CategoricalModifier(_ModelModifierMixin[str], _IntegralModifier[str]):
+class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
     """modifies categorical inputs"""
 
     __slots__ = ("_tagger",)
 
     def __init__(
-        self,
-        tagger: _Tagger[str],
-        *options: str,
-        is_noise: bool = False,
-        name: str = "",
+        self, tagger: _Tagger, *options: str, is_noise: bool = False, name: str = ""
     ) -> None:
         super().__init__(tagger, options, is_noise, name)
 
@@ -369,9 +372,7 @@ class CategoricalModifier(_ModelModifierMixin[str], _IntegralModifier[str]):
         pass
 
 
-class FunctionalModifier(
-    _ModelModifierMixin[AnyModelModifierVal], _IntegralModifier[AnyModelModifierVal]
-):
+class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifierVal]):
     """modifies functional inputs"""
 
     _func: AnyFunc
@@ -383,7 +384,7 @@ class FunctionalModifier(
 
     def __init__(
         self,
-        tagger: _Tagger[AnyModelModifierVal],
+        tagger: _Tagger,
         func: AnyFunc,
         input_indices: Iterable[int],
         *args,
