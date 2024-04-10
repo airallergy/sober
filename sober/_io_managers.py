@@ -38,6 +38,7 @@ from sober.input import (
     WeatherModifier,
     _IDFTagger,
     _IntegralModifier,
+    _Modifier,
     _RealModifier,
     _TextTagger,
 )
@@ -95,7 +96,7 @@ class _InputManager:
         self._model_inputs = tuple(model_inputs)
         self._has_templates = has_templates
 
-    def __iter__(self) -> Iterator[WeatherModifier | AnyModelModifier]:
+    def __iter__(self) -> Iterator[_Modifier[Any, Any]]:
         yield self._weather_input
         yield from self._model_inputs
 
