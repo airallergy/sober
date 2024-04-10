@@ -13,6 +13,12 @@ from uuid import NAMESPACE_X500, uuid5
 from sober._logger import _log
 from sober._typing import AnyCmdArgs
 
+##############################  module typing  ##############################
+_InitArgs = TypeVarTuple("_InitArgs")
+_P = TypeVar("_P", contravariant=True)
+_R = TypeVar("_R", covariant=True)
+#############################################################################
+
 
 #############################################################################
 #######                    MISCELLANEOUS FUNCTIONS                    #######
@@ -90,12 +96,6 @@ if TYPE_CHECKING:  # [1]
 else:
     from multiprocessing.pool import IMapIterator, starmapstar
 
-##############################  module typing  ##############################
-_InitArgs = TypeVarTuple("_InitArgs")
-_P = TypeVar("_P", contravariant=True)
-_R = TypeVar("_R", covariant=True)
-#############################################################################
-
 
 class _Pool(Pool):
     """a helper class for multiprocessing.Pool
@@ -163,7 +163,8 @@ class _Loop:
         return starmap(func, iterable)
 
 
-##############################  module typing  ##############################
+#############################  package typing  ##############################
+# this technically belongs to _typing.py, but put here to avoid circular import
 AnyParallel: TypeAlias = _Pool | _Loop
 #############################################################################
 

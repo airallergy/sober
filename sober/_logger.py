@@ -12,13 +12,25 @@ from typing import (
     Final,
     Literal,
     ParamSpec,
+    Protocol,
     Self,
     TypeVar,
     get_args,
 )
 
 import sober.config as cf
-from sober._typing import AnyCmdArgs, AnyLevel, SubprocessResult
+from sober._typing import AnyCmdArgs, AnyLevel
+
+
+##############################  module typing  ##############################
+class _SubprocessResult(Protocol):
+    returncode: int
+    stdout: str
+
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R", covariant=True)
+#############################################################################
 
 HOST_STEM = node().split(".")[0]
 
@@ -78,12 +90,6 @@ class _Formatter(logging.Formatter):
             fmted = super().format(record)
 
         return fmted
-
-
-##############################  module typing  ##############################
-_P = ParamSpec("_P")
-_R = TypeVar("_R", covariant=True)
-#############################################################################
 
 
 class _LoggerManager(ContextDecorator):
@@ -181,7 +187,7 @@ class _SubprocessLogger:
 
     _logger: logging.LoggerAdapter[logging.Logger]
     _cmd: str
-    _result: SubprocessResult
+    _result: _SubprocessResult
 
     __slots__ = ("_logger", "_cmd", "_result")
 

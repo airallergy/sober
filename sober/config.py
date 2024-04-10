@@ -1,10 +1,27 @@
 from pathlib import Path
 from platform import system
+from typing import Required, TypedDict
 from warnings import warn
 
 from psutil import cpu_count
 
-from sober._typing import AnyLanguage, AnyModelType, AnyStrPath, Config
+from sober._typing import AnyLanguage, AnyModelType, AnyStrPath
+
+##############################  module typing  ##############################
+_Config = TypedDict(
+    "_Config",
+    {
+        "schema.energyplus": Required[str],
+        "exec.energyplus": Required[str],
+        "exec.epmacro": str,
+        "exec.expandobjects": str,
+        "exec.readvars": str,
+        "exec.python": str,
+        "n.processes": int,
+    },
+    total=False,
+)
+#############################################################################
 
 #############################################################################
 #######                       GLOBAL CONSTANTS                        #######
@@ -21,13 +38,13 @@ _RECORDS_FILENAMES: dict[str, str] = {
 #############################################################################
 _has_batches: bool = True  # only used in the parent process
 
-_config: Config
+_config: _Config
 
 
 #############################################################################
 #######                    CONFIGURATION FUNCTIONS                    #######
 #############################################################################
-def _update_config(config: Config) -> None:
+def _update_config(config: _Config) -> None:
     """updates configuration globally in the current python interpreter process
     this is to copy configuration into child processes when using multiprocessing"""
 

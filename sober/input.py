@@ -1,13 +1,23 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
-from typing import Any, Generic, Protocol, Self, TypeAlias, TypeVar, cast, final
+from typing import (
+    Any,
+    Concatenate,
+    Generic,
+    Protocol,
+    Self,
+    TypeAlias,
+    TypeVar,
+    cast,
+    final,
+)
 
 from eppy.bunchhelpers import makefieldname
 from eppy.modeleditor import IDF
 
 from sober._tools import _uuid
-from sober._typing import AnyFunc, AnyModelModifierVal, AnyModifierVal, AnyStrPath
+from sober._typing import AnyModelModifierVal, AnyModifierVal, AnyStrPath
 
 
 ##############################  module typing  ##############################
@@ -18,8 +28,31 @@ class _SupportsStr(Protocol):
     def __str__(self) -> str: ...
 
 
+@final
+class _Noise(Any):
+    """a helper class for _hype_ctrl_val"""
+
+    _s: str
+
+    __slots__ = ("_s",)
+
+    def __new__(cls, s: str) -> Self:
+        self = super().__new__(cls)
+        self._s = s
+        return self
+
+    def __str__(self) -> str:
+        """controls csv.writer"""
+        return f"<noise {self._s}>"
+
+
 _MK = TypeVar("_MK", float, int)  # AnyModifierKey
 _MV = TypeVar("_MV", bound=AnyModifierVal)  # AnyModifierValue
+
+
+_AnyFunc: TypeAlias = Callable[
+    Concatenate[tuple[AnyModifierVal, ...], ...], AnyModelModifierVal
+]  # TODO: consider resticting at least one previous output
 #############################################################################
 
 
@@ -73,24 +106,6 @@ class _TextTagger(_Tagger):
 
     @abstractmethod
     def _tagged(self, model: str) -> str: ...
-
-
-@final
-class _Noise(Any):
-    """a helper class for _hype_ctrl_val"""
-
-    _s: str
-
-    __slots__ = ("_s",)
-
-    def __new__(cls, s: str) -> Self:
-        self = super().__new__(cls)
-        self._s = s
-        return self
-
-    def __str__(self) -> str:
-        """controls csv.writer"""
-        return f"<noise {self._s}>"
 
 
 class _Modifier(ABC, Generic[_MK, _MV]):
@@ -370,7 +385,7 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
 class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifierVal]):
     """modifies functional inputs"""
 
-    _func: AnyFunc
+    _func: _AnyFunc
     _input_indices: tuple[int, ...]
     _args: tuple[Any, ...]  # TODO: restrict this for serialisation
     _kwargs: dict[str, Any]  # TODO: restrict this for serialisation
@@ -380,7 +395,7 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
     def __init__(
         self,
         tagger: _Tagger,
-        func: AnyFunc,
+        func: _AnyFunc,
         input_indices: Iterable[int],
         *args,
         name: str = "",

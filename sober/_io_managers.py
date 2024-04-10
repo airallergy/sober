@@ -26,16 +26,11 @@ from sober._tools import (
     _write_records,
 )
 from sober._typing import (
-    AnyBatch,
-    AnyBatchOutputs,
     AnyCoreLevel,
     AnyCtrlKeyVec,
-    AnyJob,
-    AnyModelTask,
+    AnyModelModifierVal,
     AnyModelType,
     AnyModifierVal,
-    AnyTask,
-    AnyUIDs,
 )
 from sober.input import (
     AnyModelModifier,
@@ -49,7 +44,16 @@ from sober.input import (
 from sober.output import RVICollector, _Collector, _CopyCollector
 
 ##############################  module typing  ##############################
+_AnyModelTask: TypeAlias = tuple[AnyModelModifierVal, ...]
+_AnyTask: TypeAlias = tuple[Path, *_AnyModelTask]
+_AnyTaskItem: TypeAlias = tuple[str, _AnyTask]
+_AnyJob: TypeAlias = tuple[_AnyTaskItem, ...]
+_AnyJobItem: TypeAlias = tuple[str, _AnyJob]
+_AnyBatch: TypeAlias = tuple[_AnyJobItem, ...]
+
 _AnyConverter: TypeAlias = Callable[[float], float]
+_AnyUIDs: TypeAlias = tuple[str, ...]
+_AnyBatchOutputs: TypeAlias = tuple[tuple[float, ...], ...]
 #############################################################################
 
 
@@ -182,7 +186,7 @@ class _InputManager:
 
         return macros + idf.idfstr()
 
-    def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> AnyJob:
+    def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> _AnyJob:
         if self._has_real_noises:
             raise NotImplementedError("real noise vars have not been implemented.")
         else:
@@ -216,7 +220,7 @@ class _InputManager:
                 for i, task in enumerate(aligned)
             )
 
-    def _job_items(self, *ctrl_key_vecs: AnyCtrlKeyVec) -> AnyBatch:
+    def _job_items(self, *ctrl_key_vecs: AnyCtrlKeyVec) -> _AnyBatch:
         # generate job uids
         n_jobs = len(ctrl_key_vecs)
         i_job_width = _natural_width(n_jobs)
@@ -226,7 +230,7 @@ class _InputManager:
             for i, ctrl_key_vec in enumerate(ctrl_key_vecs)
         )
 
-    def _detagged(self, tagged_model: str, model_task: AnyModelTask) -> str:
+    def _detagged(self, tagged_model: str, model_task: _AnyModelTask) -> str:
         for input, value in zip(self._model_inputs, model_task, strict=True):
             tagged_model = input._detagged(tagged_model, value)
         return tagged_model
@@ -245,7 +249,7 @@ class _InputManager:
         )
 
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _make_task(self, task_dir: Path, task: AnyTask) -> None:
+    def _make_task(self, task_dir: Path, task: _AnyTask) -> None:
         # copy the task weather file
         task_epw_file = task_dir / "in.epw"
         src_epw_file = task[0]
@@ -271,7 +275,7 @@ class _InputManager:
         _log(task_dir, "created in.idf")
 
     @_LoggerManager(cwd_index=1, is_first=True)
-    def _make_job(self, job_dir: Path, job: AnyJob) -> None:
+    def _make_job(self, job_dir: Path, job: _AnyJob) -> None:
         # make tasks
         for task_uid, task in job:
             self._make_task(job_dir / task_uid, task)
@@ -286,7 +290,7 @@ class _InputManager:
 
     @_LoggerManager(cwd_index=1, is_first=True)
     def _make_batch(
-        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
+        self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
     ) -> None:
         # schedule and make jobs
         scheduled = parallel._starmap(
@@ -318,7 +322,7 @@ class _InputManager:
 
     @_LoggerManager(cwd_index=1)
     def _simulate_batch(
-        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
+        self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
     ) -> None:
         # simulate batch in parallel
         uid_pairs = tuple(
@@ -443,7 +447,7 @@ class _OutputManager:
                 item._touch(config_dir)
 
     def _record_final(
-        self, level: AnyCoreLevel, record_dir: Path, uids: AnyUIDs
+        self, level: AnyCoreLevel, record_dir: Path, uids: _AnyUIDs
     ) -> None:
         # only final outputs
         with (record_dir / cf._RECORDS_FILENAMES[level]).open("rt", newline="") as fp:
@@ -534,7 +538,7 @@ class _OutputManager:
             item._collect(task_dir)
 
     @_LoggerManager(cwd_index=1)
-    def _collect_job(self, job_dir: Path, task_uids: AnyUIDs) -> None:
+    def _collect_job(self, job_dir: Path, task_uids: _AnyUIDs) -> None:
         # collect tasks
         for task_uid in task_uids:
             self._collect_task(job_dir / task_uid)
@@ -551,7 +555,7 @@ class _OutputManager:
 
     @_LoggerManager(cwd_index=1)
     def _collect_batch(
-        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
+        self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
     ) -> None:
         # schedule and collect jobs
         scheduled = parallel._starmap(
@@ -584,7 +588,7 @@ class _OutputManager:
 
     @_LoggerManager(cwd_index=1)
     def _clean_batch(
-        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
+        self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
     ) -> None:
         # schedule and clean tasks
         uid_pairs = tuple(
@@ -609,7 +613,7 @@ class _OutputManager:
 
             return tuple(map(tuple, reader))
 
-    def _recorded_objectives(self, batch_dir: Path) -> AnyBatchOutputs:
+    def _recorded_objectives(self, batch_dir: Path) -> _AnyBatchOutputs:
         # slice objective values
         return tuple(
             tuple(
@@ -621,7 +625,7 @@ class _OutputManager:
             for job_values in self._recorded_batch(batch_dir)
         )
 
-    def _recorded_constraints(self, batch_dir: Path) -> AnyBatchOutputs:
+    def _recorded_constraints(self, batch_dir: Path) -> _AnyBatchOutputs:
         # slice constraints values
         return tuple(
             tuple(

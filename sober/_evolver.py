@@ -3,9 +3,10 @@ from collections.abc import Iterable
 from itertools import chain
 from pathlib import Path
 from shutil import rmtree
-from typing import Literal, cast, overload
+from typing import Any, Literal, TypeAlias, TypedDict, cast, overload
 
 import numpy as np
+from numpy.typing import NDArray
 
 import sober._pymoo_namespace as pm
 import sober.config as cf
@@ -13,14 +14,25 @@ from sober._evaluator import _evaluate
 from sober._io_managers import _InputManager, _OutputManager
 from sober._logger import _log, _LoggerManager
 from sober._tools import _natural_width, _write_records
-from sober._typing import (
-    AnyCtrlKeyVec,
-    AnyPymooCallback,
-    AnyPymooX,
-    PymooOperators,
-    PymooOut,
-)
+from sober._typing import AnyCtrlKeyVec, AnyPymooCallback
 from sober.input import _RealModifier
+
+##############################  module typing  ##############################
+_AnyPymooX: TypeAlias = dict[str, np.integer[Any] | np.floating[Any]]
+
+
+class _PymooOut(TypedDict):
+    F: NDArray[np.float_] | None
+    G: NDArray[np.float_] | None
+
+
+class _PymooOperators(TypedDict):
+    sampling: pm.Population
+    mating: pm.MixedVariableMating
+    eliminate_duplicates: pm.MixedVariableDuplicateElimination
+
+
+#############################################################################
 
 
 #############################################################################
@@ -50,7 +62,7 @@ class _PymooProblem(pm.Problem):
         self._saves_batches = saves_batches
         self._i_batch_width = _natural_width(expected_n_generations)
 
-        # NOTE: pymoo0.6 asks for a map from input uids to pymoo variable types
+        # NOTE: pymoo0.6 asks for a dict from input uids to pymoo variable types
         # only control variables are passed
         ctrl_vars = {
             item._label: (
@@ -71,8 +83,8 @@ class _PymooProblem(pm.Problem):
 
     def _evaluate(
         self,
-        x: Iterable[AnyPymooX],
-        out: PymooOut,
+        x: Iterable[_AnyPymooX],
+        out: _PymooOut,
         *args,
         algorithm: pm.Algorithm,
         **kwargs,
@@ -264,7 +276,7 @@ def _operators(
     p_crossover: float,
     p_mutation: float,
     sampling: pm.Population,
-) -> PymooOperators:
+) -> _PymooOperators:
     """a pymoo operators constructor"""
 
     # defaults from respective algorithm classes in pymoo

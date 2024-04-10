@@ -4,16 +4,25 @@ import operator
 from collections.abc import Iterable, Sequence
 from itertools import accumulate
 from pathlib import Path
-from typing import Generic, TypeVar, cast, overload
+from typing import Generic, TypeGuard, TypeVar, cast, overload
 
 import numpy as np
 
 from sober._evaluator import _evaluate
 from sober._io_managers import _InputManager, _OutputManager
-from sober._typing import each_item_is_non_empty
 from sober.input import AnyModifierVal, _IntegralModifier
 
+##############################  module typing  ##############################
 _T = TypeVar("_T")
+
+
+def each_item_is_non_empty(
+    args: tuple[tuple[_T, ...], ...],
+) -> TypeGuard[tuple[tuple[_T, *tuple[_T, ...]], ...]]:
+    return all(len(item) >= 1 for item in args)
+
+
+#############################################################################
 
 
 class _LazyCartesianProduct(Generic[_T]):
