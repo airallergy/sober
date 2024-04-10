@@ -283,14 +283,20 @@ class _CopyCollector(_Collector):
     def __init__(
         self,
         filename: str,
-        objectives: str | Iterable[str],
-        constraints: str | Iterable[str],
-        direction: _AnyDirection,
+        objectives: tuple[str, ...],
+        constraints: tuple[str, ...],
+        direction: _Direction,
         bounds: _AnyBounds,
     ) -> None:
-        super().__init__(
-            filename, "job", objectives, constraints, direction, bounds, True
-        )
+        # overwrite _Collector's __init__, as all args have been rectified
+        self._filename = filename
+        self._level = "job"
+        self._objectives = objectives
+        self._constraints = constraints
+        self._direction = direction
+        self._bounds = bounds
+        self._is_final = True
+        self._is_copied = False
 
     def _collect(self, cwd: Path) -> None:
         copyfile(cwd / "T0" / self._filename, cwd / self._filename)
