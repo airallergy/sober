@@ -160,7 +160,7 @@ class _RealModifier(_Modifier[float, float]):
 
     def _hype_ctrl_val(self) -> float:
         assert not self._is_ctrl
-        return _Noise(f"({', '.join(map(str, self._bounds))})")
+        return _Noise("(...)")
 
 
 class _IntegralModifier(_Modifier[int, _MV]):
@@ -192,7 +192,7 @@ class _IntegralModifier(_Modifier[int, _MV]):
     def _hype_ctrl_val(self) -> _MV:
         # FunctionalModifier overwrites later
         assert not self._is_ctrl
-        return _Noise(f"{{{', '.join(map(str, self._options))}}}")
+        return _Noise("{...}")
 
 
 class _ModelModifierMixin(ABC):
