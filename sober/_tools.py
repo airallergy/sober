@@ -15,7 +15,7 @@ from sober._typing import AnyCmdArgs
 
 ##############################  module typing  ##############################
 _InitArgs = TypeVarTuple("_InitArgs")
-_P = TypeVar("_P", contravariant=True)
+_T = TypeVar("_T", contravariant=True)
 _R = TypeVar("_R", covariant=True)
 #############################################################################
 
@@ -120,7 +120,7 @@ class _Pool(Pool):
             processes, initialiser, initargs, context=_MULTIPROCESSING_CONTEXT
         )
 
-    def _map(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> Iterator[_R]:
+    def _map(self, func: Callable[[_T], _R], iterable: Iterable[_T]) -> Iterator[_R]:
         return super().imap(func, iterable, 1)
 
     def _starmap(
@@ -154,7 +154,7 @@ class _Loop:
     def __exit__(self, *args) -> None:
         pass
 
-    def _map(self, func: Callable[[_P], _R], iterable: Iterable[_P]) -> Iterator[_R]:
+    def _map(self, func: Callable[[_T], _R], iterable: Iterable[_T]) -> Iterator[_R]:
         return map(func, iterable)
 
     def _starmap(
