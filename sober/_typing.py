@@ -1,7 +1,17 @@
 from collections.abc import Callable
 from os import PathLike
 from pathlib import Path
-from typing import Any, Concatenate, Literal, Protocol, Required, TypeAlias, TypedDict
+from typing import (
+    Any,
+    Concatenate,
+    Literal,
+    Protocol,
+    Required,
+    TypeAlias,
+    TypedDict,
+    TypeGuard,
+    TypeVar,
+)
 
 import numpy as np
 from numpy.typing import NDArray
@@ -52,6 +62,15 @@ AnyBatch: TypeAlias = tuple[AnyJobItem, ...]
 
 ## this contains hype ctrl keys only used for populating jobs
 AnyCtrlKeyVec: TypeAlias = tuple[int, *tuple[AnyModifierKey, ...]]
+
+### this TypeGuard helps narrow down AnyCtrlKeyVec
+_T = TypeVar("_T")
+
+
+def each_item_is_non_empty(
+    args: tuple[tuple[_T, ...], ...],
+) -> TypeGuard[tuple[tuple[_T, *tuple[_T, ...]], ...]]:
+    return all(len(item) >= 1 for item in args)
 
 
 # output

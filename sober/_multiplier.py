@@ -10,6 +10,7 @@ import numpy as np
 
 from sober._evaluator import _evaluate
 from sober._io_managers import _InputManager, _OutputManager
+from sober._typing import each_item_is_non_empty
 from sober.input import AnyModifierVal, _IntegralModifier
 
 _T = TypeVar("_T")
@@ -125,9 +126,13 @@ def _multiply(
         sample_idxes = tuple(map(int, sample_idxes_))
         ctrl_key_vecs = search_space[sample_idxes]
 
-    _evaluate(
-        *ctrl_key_vecs,  # type:ignore[arg-type]  # python/mypy#17111
-        input_manager=input_manager,
-        output_manager=output_manager,
-        batch_dir=evaluation_dir,
-    )
+    if each_item_is_non_empty(ctrl_key_vecs):
+        _evaluate(
+            *ctrl_key_vecs,
+            input_manager=input_manager,
+            output_manager=output_manager,
+            batch_dir=evaluation_dir,
+        )
+    else:
+        # impossible, there is at least the weather modifer
+        raise IndexError("no modifiers are defined.")
