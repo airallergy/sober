@@ -472,6 +472,7 @@ class _OutputManager:
             assert uid == record_rows[i][0]
 
             for output in getattr(self, f"_{level}_outputs"):
+                output = cast(_Collector, output)  # python/mypy#11142
                 if not output._is_final:
                     continue
 

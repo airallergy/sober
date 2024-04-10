@@ -136,7 +136,7 @@ class _LoggerManager(ContextDecorator):
             assert level in get_args(
                 AnyLevel
             ), f"the func name pattern is not recognised: {func.__code__.co_name}."
-            self._level = level  # type:ignore[assignment] # python/mypy#12535, python/mypy#15106
+            self._level = level  # type: ignore[assignment] # python/mypy#12535, python/mypy#15106
 
             # set the log filename
             self._log_file = cwd / f"{self._level}.log"

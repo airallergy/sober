@@ -172,7 +172,7 @@ AnyParallel: TypeAlias = _Pool | _Loop
 def _Parallel(  # noqa: N802
     n_processes: int,
     initialiser: Callable[[*_InitArgs], None] | None = None,
-    initargs: tuple[*_InitArgs] = (),  # type:ignore[assignment] # TODO: wait to see the multiprocessing typeshed
+    initargs: tuple[*_InitArgs] = (),  # type: ignore[assignment]  # python/mypy#17113
 ) -> AnyParallel:
     """a helper function to distribute parallel computation
     based on the requested number of processes"""

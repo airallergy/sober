@@ -21,12 +21,20 @@ _Config = TypedDict(
     },
     total=False,
 )
+
+
+class _RecordsFilenames(TypedDict):
+    task: str
+    job: str
+    batch: str
+
+
 #############################################################################
 
 #############################################################################
 #######                       GLOBAL CONSTANTS                        #######
 #############################################################################
-_RECORDS_FILENAMES: dict[str, str] = {
+_RECORDS_FILENAMES: _RecordsFilenames = {
     "task": "task_records.csv",
     "job": "job_records.csv",
     "batch": "batch_records.csv",

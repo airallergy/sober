@@ -257,10 +257,7 @@ class ScriptCollector(_Collector):
         )
 
     def _collect(self, cwd: Path) -> None:
-        # TODO: python/mypy#12554
-        language_exec = cf._config[
-            "exec." + self._language  # type:ignore[literal-required]
-        ]
+        language_exec = cf._config["exec." + self._language]  # type: ignore[literal-required]  # python/mypy#12554
 
         cmd_args = (
             language_exec,
