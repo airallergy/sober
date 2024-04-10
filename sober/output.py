@@ -1,20 +1,39 @@
+import enum
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from itertools import product
 from pathlib import Path
 from shutil import copyfile
-from typing import Final, Literal, TypeAlias
+from typing import Literal, TypeAlias, get_args
 
 import sober.config as cf
 from sober._simulator import _run_readvars
 from sober._tools import _rectified_str_iterable, _run, _uuid
 from sober._typing import AnyCoreLevel, AnyStrPath
 
+
 ##############################  module typing  ##############################
+@enum.unique
+class _Direction(enum.IntEnum):
+    MINIMISE = 1
+    MAXIMISE = -1
+
+
+@enum.unique
+class _EPOutputType(enum.StrEnum):
+    VARIABLE = "eplusout.eso"
+    METER = "eplusout.mtr"
+
+
 _AnyDirection: TypeAlias = Literal["minimise", "maximise"]
 _AnyBounds: TypeAlias = tuple[None, float] | tuple[float, None] | tuple[float, float]
-_AnyConverter: TypeAlias = Callable[[float], float]
 _AnyEPOutputType: TypeAlias = Literal["variable", "meter"]
+
+# TODO: below goes to tests when made
+assert [item.upper() for item in get_args(_AnyDirection)] == _Direction._member_names_
+assert [
+    item.upper() for item in get_args(_AnyEPOutputType)
+] == _EPOutputType._member_names_
 #############################################################################
 
 
@@ -28,7 +47,7 @@ class _Collector(ABC):
     _level: AnyCoreLevel
     _objectives: tuple[str, ...]
     _constraints: tuple[str, ...]
-    _direction: _AnyDirection
+    _direction: _Direction
     _bounds: _AnyBounds
     _is_final: bool
     _is_copied: bool
@@ -59,7 +78,7 @@ class _Collector(ABC):
         self._level = level
         self._objectives = _rectified_str_iterable(objectives)
         self._constraints = _rectified_str_iterable(constraints)
-        self._direction = direction
+        self._direction = _Direction[direction.upper()]
         self._bounds = bounds
         self._is_final = is_final
         self._is_copied = False
@@ -104,7 +123,7 @@ class _Collector(ABC):
 
     def _to_objective(self, value: float) -> float:
         # convert each objective to minimise
-        return value * {"minimise": 1, "maximise": -1}[self._direction]
+        return value * self._direction.value
 
     def _to_constraint(self, value: float) -> float:
         # convert each constraint to <= 0
@@ -128,41 +147,44 @@ class _Collector(ABC):
 class RVICollector(_Collector):
     """collects rvi outputs"""
 
-    # TODO: consider switching to EP native csv once NREL/EnergyPlus#9395
+    # TODO: consider switching to/adding EP native csv once NREL/EnergyPlus#9395
 
-    SUFFIXES: Final = {"variable": "eso", "meter": "mtr"}
-
-    _output_names: tuple[str, ...]
-    _output_type: _AnyEPOutputType
+    _ep_output_names: tuple[str, ...]
+    _ep_output_type: _EPOutputType
     _keys: tuple[str, ...]
     _frequency: str
     _rvi_file: Path
 
-    __slots__ = ("_output_names", "_output_type", "_keys", "_frequency", "_rvi_file")
+    __slots__ = (
+        "_ep_output_names",
+        "_ep_output_type",
+        "_keys",
+        "_frequency",
+        "_rvi_file",
+    )
 
     def __init__(
         self,
-        output_names: str | Iterable[str],
-        output_type: _AnyEPOutputType,
+        ep_output_names: str | Iterable[str],
+        ep_output_type: _AnyEPOutputType,
         filename: str,
         /,
         keys: str | Iterable[str] = (),
         frequency: str = "",
         *,
-        level: AnyCoreLevel = "task",
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
         direction: _AnyDirection = "minimise",
         bounds: _AnyBounds = (None, 0),
         is_final: bool = True,
     ) -> None:
-        self._output_names = _rectified_str_iterable(output_names)
-        self._output_type = output_type
+        self._ep_output_names = _rectified_str_iterable(ep_output_names)
+        self._ep_output_type = _EPOutputType[ep_output_type.upper()]
         self._keys = _rectified_str_iterable(keys)
         self._frequency = frequency
 
         super().__init__(
-            filename, level, objectives, constraints, direction, bounds, is_final
+            filename, "task", objectives, constraints, direction, bounds, is_final
         )
 
     def _check_args(self) -> None:
@@ -172,22 +194,20 @@ class RVICollector(_Collector):
             raise ValueError(
                 f"an RVICollector output needs to be a csv file: {self._filename}."
             )
-        if self._level != "task":
-            raise ValueError("an RVICollector output needs to be on the task level.")
+
+        if self._ep_output_type is _EPOutputType.METER and self._keys:
+            raise ValueError("meter variables do not accept keys.")
 
     def _touch(self, config_dir: Path) -> None:
-        rvi_str = f"eplusout.{self.SUFFIXES[self._output_type]}\n{self._filename}\n"
-        match self._keys:
-            case ():
-                rvi_str += "\n".join(self._output_names)
-            case _:
-                if self._output_type == "meter":
-                    raise ValueError("meter variables do not accept keys.")
+        rvi_str = f"{self._ep_output_type.value}\n{self._filename}\n"
+        if self._keys:
+            rvi_str += "\n".join(
+                f"{key},{name}"
+                for key, name in product(self._keys, self._ep_output_names)
+            )
+        else:
+            rvi_str += "\n".join(self._ep_output_names)
 
-                rvi_str += "\n".join(
-                    f"{key},{name}"
-                    for key, name in product(self._keys, self._output_names)
-                )
         rvi_str += "\n0\n"
 
         rvi_filestem = _uuid(self.__class__.__name__, *rvi_str.splitlines())
