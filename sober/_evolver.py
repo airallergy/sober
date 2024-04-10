@@ -1,8 +1,8 @@
+import itertools as it
 import pickle
+import shutil
 from collections.abc import Iterable
-from itertools import chain
 from pathlib import Path
-from shutil import rmtree
 from typing import Any, Literal, TypeAlias, TypedDict, cast, overload
 
 import numpy as np
@@ -128,7 +128,7 @@ class _PymooProblem(pm.Problem):
             out["G"] = np.asarray(constraints, dtype=np.float_)
 
         if not self._saves_batches:
-            rmtree(self._evaluation_dir / batch_uid)
+            shutil.rmtree(self._evaluation_dir / batch_uid)
 
         _log(self._evaluation_dir, f"evaluated {batch_uid}")
 
@@ -139,7 +139,7 @@ class _PymooProblem(pm.Problem):
         if result.algorithm.save_history:
             # from all generations
             _individuals = tuple(
-                chain.from_iterable(item.pop for item in result.history)
+                it.chain.from_iterable(item.pop for item in result.history)
             )
         else:
             # from the last generation

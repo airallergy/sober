@@ -1,11 +1,11 @@
+import os
 from collections.abc import Callable
-from os import PathLike
 from typing import Literal, TypeAlias
 
 import sober._pymoo_namespace as pm
 
 # python
-AnyStrPath: TypeAlias = str | PathLike[str]
+AnyStrPath: TypeAlias = str | os.PathLike[str]
 AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
 
 

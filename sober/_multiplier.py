@@ -1,8 +1,8 @@
 import inspect
+import itertools as it
 import math
 import operator
 from collections.abc import Iterable, Sequence
-from itertools import accumulate
 from pathlib import Path
 from typing import Generic, TypeGuard, TypeVar, cast, overload
 
@@ -44,7 +44,7 @@ class _LazyCartesianProduct(Generic[_T]):
 
         tuple_lens = tuple(map(len, self._tuples))
         self._n_products = math.prod(tuple_lens)
-        self._divs = tuple(accumulate(tuple_lens[::-1], operator.mul, initial=1))[
+        self._divs = tuple(it.accumulate(tuple_lens[::-1], operator.mul, initial=1))[
             -2::-1
         ]
         self._mods = tuple_lens

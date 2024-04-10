@@ -1,9 +1,9 @@
 import enum
+import itertools as it
+import shutil
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from itertools import product
 from pathlib import Path
-from shutil import copyfile
 from typing import Literal, TypeAlias, get_args
 
 import sober.config as cf
@@ -203,7 +203,7 @@ class RVICollector(_Collector):
         if self._keys:
             rvi_str += "\n".join(
                 f"{key},{name}"
-                for key, name in product(self._keys, self._ep_output_names)
+                for key, name in it.product(self._keys, self._ep_output_names)
             )
         else:
             rvi_str += "\n".join(self._ep_output_names)
@@ -296,4 +296,4 @@ class _CopyCollector(_Collector):
         self._is_copied = False
 
     def _collect(self, cwd: Path) -> None:
-        copyfile(cwd / "T0" / self._filename, cwd / self._filename)
+        shutil.copyfile(cwd / "T0" / self._filename, cwd / self._filename)

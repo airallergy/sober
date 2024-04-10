@@ -1,11 +1,11 @@
+import functools as ft
+import inspect
 import logging
+import platform
 import sys
 from collections.abc import Callable
 from contextlib import ContextDecorator
-from functools import reduce, wraps
-from inspect import currentframe
 from pathlib import Path
-from platform import node
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -32,7 +32,7 @@ _P = ParamSpec("_P")
 _R = TypeVar("_R", covariant=True)
 #############################################################################
 
-HOST_STEM = node().split(".")[0]
+HOST_STEM = platform.node().split(".")[0]
 
 
 def _logger_identifier(cwd: Path) -> str:
@@ -115,7 +115,7 @@ class _LoggerManager(ContextDecorator):
         self._is_first = is_first
 
     def __call__(self, func: Callable[_P, _R]) -> Callable[_P, _R]:  # type: ignore[override]
-        @wraps(func)
+        @ft.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
             # get the cwd of the decorated func
             cwd = args[self._cwd_index]
@@ -209,7 +209,7 @@ class _SubprocessLogger:
 
 def _rgetattr(obj: object, names: tuple[str, ...]) -> Any:
     """a recursive getattr"""
-    return reduce(getattr, names, obj)
+    return ft.reduce(getattr, names, obj)
 
 
 def _log(
@@ -227,7 +227,7 @@ def _log(
     # get the name of the function that calls this _log function
     # caller_depth + 1, as this _log function always adds one more depth
     caller_name = _rgetattr(
-        currentframe(), ("f_back",) * (caller_depth + 1) + ("f_code", "co_name")
+        inspect.currentframe(), ("f_back",) * (caller_depth + 1) + ("f_code", "co_name")
     )
 
     # add the caller name to the contextual info of the logger

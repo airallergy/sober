@@ -1,9 +1,9 @@
+import platform
+import warnings
 from pathlib import Path
-from platform import system
 from typing import Required, TypedDict
-from warnings import warn
 
-from psutil import cpu_count
+import psutil
 
 from sober._typing import AnyLanguage, AnyModelType, AnyStrPath
 
@@ -95,7 +95,7 @@ def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:
     """returns the default EnergyPlus installation directory"""
 
     version = "-".join((major, minor, patch))
-    match system():
+    match platform.system():
         case "Linux":
             return Path(f"/usr/local/EnergyPlus-{version}")
         case "Darwin":
@@ -166,14 +166,14 @@ def config_parallel(*, n_processes: int | None = None) -> None:
     global _config
 
     if ("n.processes" in _config) and (_config["n.processes"] != n_processes):
-        warn(
+        warnings.warn(
             f"n_processes has been configured to '{_config['n.processes']}', and will be overriden by '{n_processes}'."
         )
 
     # the default number of processes is the number of physical cores - 1
     # this leaves one physical core idle
     _config["n.processes"] = (
-        cpu_count(logical=False) - 1 if n_processes is None else n_processes
+        psutil.cpu_count(logical=False) - 1 if n_processes is None else n_processes
     )
 
 
@@ -191,7 +191,7 @@ def config_script(*, python_exec: AnyStrPath | None = None) -> None:
             Path(_config["exec.python"]).resolve(True)
             != Path(python_exec).resolve(True)
         ):
-            warn(
+            warnings.warn(
                 f"python_exec has been configured to '{_config['exec.python']}', and will be overriden by '{python_exec}'."
             )
 

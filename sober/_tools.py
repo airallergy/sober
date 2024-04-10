@@ -1,14 +1,13 @@
 import csv
+import itertools as it
+import math
+import multiprocessing as mp
+import subprocess as sp
 import sys
+import uuid
 from collections.abc import Callable, Iterable, Iterator
-from itertools import starmap
-from math import log10
-from multiprocessing import get_context
-from multiprocessing.pool import Pool
 from pathlib import Path
-from subprocess import PIPE, STDOUT, run
 from typing import TYPE_CHECKING, Any, Self, TypeAlias, TypeVar, TypeVarTuple
-from uuid import NAMESPACE_X500, uuid5
 
 from sober._logger import _log
 from sober._typing import AnyCmdArgs
@@ -28,13 +27,13 @@ def _natural_width(x: int) -> int:
 
     assert isinstance(x, int) and x > 0
 
-    return int(log10(x)) + 1
+    return int(math.log10(x)) + 1
 
 
 def _uuid(*feature_group: str) -> str:
     """an uuid generator"""
 
-    return str(uuid5(NAMESPACE_X500, "-".join(feature_group)))
+    return str(uuid.uuid5(uuid.NAMESPACE_X500, "-".join(feature_group)))
 
 
 def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
@@ -42,7 +41,9 @@ def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
 
     # run subprocess and pass the result object to logging
     with _log(cwd, caller_depth=1, cmd_args=cmd_args) as l:
-        l._result = run(cmd_args, stdout=PIPE, stderr=STDOUT, cwd=cwd, text=True)
+        l._result = sp.run(
+            cmd_args, stdout=sp.PIPE, stderr=sp.STDOUT, cwd=cwd, text=True
+        )
 
 
 def _write_records(
@@ -77,9 +78,9 @@ def _rectified_str_iterable(s: str | Iterable[str]) -> tuple[str, ...]:
 # follow the use of sys.platform by multiprocessing, see also python/mypy#8166
 # don't use fork on posix, better safe than sorry
 if sys.platform != "win32":
-    _MULTIPROCESSING_CONTEXT = get_context("forkserver")
+    _MULTIPROCESSING_CONTEXT = mp.get_context("forkserver")
 else:
-    _MULTIPROCESSING_CONTEXT = get_context("spawn")
+    _MULTIPROCESSING_CONTEXT = mp.get_context("spawn")
 
 # [1] quite a few mypy complaints due to typeshed,
 #     stemmed from the implementation of starmap/starimap
@@ -97,17 +98,17 @@ else:
     from multiprocessing.pool import IMapIterator, starmapstar
 
 
-class _Pool(Pool):
-    """a helper class for multiprocessing.Pool
+class _Pool(mp.pool.Pool):
+    """a helper class for multiprocessing.pool.Pool
     this includes setting defaults, unifying method names and implementing starimap"""
 
     if TYPE_CHECKING:  # [1]
-        from queue import SimpleQueue
+        import queue
 
         _processes: int
         _check_running: Callable[..., Any]
         _get_tasks: Callable[..., Any]
-        _taskqueue: SimpleQueue[Any]
+        _taskqueue: queue.SimpleQueue[Any]
         _guarded_task_generation: Callable[..., Any]
 
     def __init__(
@@ -160,7 +161,7 @@ class _Loop:
     def _starmap(
         self, func: Callable[..., _R], iterable: Iterable[Iterable[Any]]
     ) -> Iterator[_R]:
-        return starmap(func, iterable)
+        return it.starmap(func, iterable)
 
 
 #############################  package typing  ##############################

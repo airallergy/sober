@@ -1,13 +1,13 @@
 import csv
+import functools as ft
+import itertools as it
+import os.path
+import shutil
+import warnings
 from collections.abc import Callable, Iterable, Iterator
-from functools import cache
 from io import StringIO
-from itertools import chain, product
-from os.path import isabs, normpath
 from pathlib import Path
-from shutil import copyfile
 from typing import Any, Final, TypeAlias, cast
-from warnings import warn
 
 from eppy import openidf
 
@@ -132,7 +132,7 @@ class _InputManager:
 
             if has_names:
                 if not input._name:
-                    warn(f"no name is specified for '{input._label}'.")
+                    warnings.warn(f"no name is specified for '{input._label}'.")
 
                 input._label += f":{input._name}"
 
@@ -193,7 +193,7 @@ class _InputManager:
         else:
             # align ctrl and noise keys and convert non-functional keys
             aligned = tuple(
-                product(
+                it.product(
                     *(
                         tuple(cast(_IntegralModifier[AnyModifierVal], input))  # mypy
                         if input._is_noise
@@ -254,7 +254,7 @@ class _InputManager:
         # copy the task weather file
         task_epw_file = task_dir / "in.epw"
         src_epw_file = task[0]
-        copyfile(src_epw_file, task_epw_file)
+        shutil.copyfile(src_epw_file, task_epw_file)
 
         _log(task_dir, "created in.epw")
 
@@ -378,7 +378,7 @@ class _OutputManager:
 
         # parse clean patterns without duplicates
         self._clean_patterns = frozenset(
-            normpath(item) for item in _rectified_str_iterable(clean_patterns)
+            os.path.normpath(item) for item in _rectified_str_iterable(clean_patterns)
         )
 
     def __iter__(self) -> Iterator[_Collector]:
@@ -413,10 +413,10 @@ class _OutputManager:
 
         # gather objective and constraint labels
         self._objectives = tuple(
-            chain.from_iterable(item._objectives for item in self._job_outputs)
+            it.chain.from_iterable(item._objectives for item in self._job_outputs)
         )
         self._constraints = tuple(
-            chain.from_iterable(item._constraints for item in self._job_outputs)
+            it.chain.from_iterable(item._constraints for item in self._job_outputs)
         )
 
         # touch rvi files
@@ -431,7 +431,10 @@ class _OutputManager:
 
         # make sure the clean patterns provided do not interfere parent folders
         # NOTE: this check may not be comprehensive
-        if any(item.startswith("..") or isabs(item) for item in self._clean_patterns):
+        if any(
+            item.startswith("..") or os.path.isabs(item)
+            for item in self._clean_patterns
+        ):
             raise ValueError(
                 f"only files inside the task directory can be cleaned: {tuple(self._clean_patterns)}."
             )
@@ -524,7 +527,7 @@ class _OutputManager:
                         except StopIteration:
                             pass
                         else:
-                            warn(
+                            warnings.warn(
                                 f"multiple output lines found in '{output._filename}', only the first collected."
                             )
 
@@ -604,7 +607,7 @@ class _OutputManager:
         for item, _ in zip(uid_pairs, scheduled, strict=True):
             _log(batch_dir, f"cleaned {'-'.join(item)}")
 
-    @cache
+    @ft.cache
     def _recorded_batch(self, batch_dir: Path) -> tuple[tuple[str, ...], ...]:
         # read job records
         with (batch_dir / cf._RECORDS_FILENAMES["job"]).open("rt", newline="") as fp:
