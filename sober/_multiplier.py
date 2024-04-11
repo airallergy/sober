@@ -30,7 +30,8 @@ _T = TypeVar("_T")
 class _LazyCartesianProduct(Generic[_T]):
     """allows indexing a Cartesian product without evaluating all
     which enables super fast sampling
-    adapted from: https://github.com/tylerburdsall/lazy-cartesian-product-python"""
+    adapted from: https://github.com/tylerburdsall/lazy-cartesian-product-python
+    see also: https://medium.com/hackernoon/generating-the-nth-cartesian-product-e48db41bed3f"""
 
     _tuples: tuple[tuple[_T, ...], ...]
     _n_tuples: int
