@@ -29,6 +29,7 @@ extend-select = [
     "B",
     "C4",
     "FLY",
+    "FURB",
     "I",
     "ISC",
     "LOG",
@@ -41,7 +42,6 @@ extend-select = [
     "PYI",
     "RET",
     "RUF",
-    "RUF022",
     "SIM",
     "SLOT",
     "T20",
@@ -51,9 +51,8 @@ extend-select = [
     "UP",
     "YTT",
 ]
-ignore = ["E741", "TRY003", "RET505"]
+ignore = ["E741", "TRY003", "RET505", "RUF023"]
 preview = true
-explicit-preview-rules = true
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false
