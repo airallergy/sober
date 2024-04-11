@@ -28,8 +28,10 @@ target-version = "py311"
 extend-select = [
     "B",
     "C4",
+    "FLY",
     "I",
     "ISC",
+    "LOG",
     "N",
     "PERF",
     "PGH",
@@ -41,13 +43,15 @@ extend-select = [
     "RUF",
     "RUF022",
     "SIM",
+    "SLOT",
     "T20",
     "TCH",
     "TID",
+    "TRY",
     "UP",
     "YTT",
 ]
-ignore = ["E741", "RET505"]
+ignore = ["E741", "TRY003", "RET505"]
 preview = true
 explicit-preview-rules = true
 

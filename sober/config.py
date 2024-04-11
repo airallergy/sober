@@ -95,7 +95,7 @@ def _check_config(
 def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:
     """returns the default EnergyPlus installation directory"""
 
-    version = "-".join((major, minor, patch))
+    version = f"{major}-{minor}-{patch}"
     match platform.system():
         case "Linux":
             return Path(f"/usr/local/EnergyPlus-{version}")

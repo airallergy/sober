@@ -32,6 +32,8 @@ def _logger_identifier(cwd: Path) -> str:
     """returns a unique logger identifier
     currently just using the full path to cwd"""
 
+    # TODO: ruff: LOG002
+
     return str(cwd)
 
 
