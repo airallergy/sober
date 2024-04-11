@@ -1,9 +1,15 @@
-from collections.abc import Sequence
+from __future__ import annotations
+
 from pathlib import Path, PurePath
+from typing import TYPE_CHECKING
 
 import sober.config as cf
 from sober._tools import _run
-from sober._typing import AnyStrPath
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from sober._typing import AnyStrPath
 
 
 #############################################################################

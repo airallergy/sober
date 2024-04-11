@@ -1,27 +1,34 @@
+from __future__ import annotations
+
 import inspect
 import itertools as it
 import math
 import operator
-from collections.abc import Iterable, Sequence
-from pathlib import Path
-from typing import Generic, TypeGuard, TypeVar, cast, overload
+from collections.abc import Sequence  # isinstance
+from typing import TYPE_CHECKING, Generic, TypeVar, cast, overload
 
 import numpy as np
 
 from sober._evaluator import _evaluate
-from sober._io_managers import _InputManager, _OutputManager
 from sober.input import AnyModifierVal, _IntegralModifier
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+    from typing import TypeGuard
+
+    from sober._io_managers import _InputManager, _OutputManager
+
+    def each_item_is_non_empty(
+        args: tuple[tuple[_T, ...], ...],
+    ) -> TypeGuard[tuple[tuple[_T, *tuple[_T, ...]], ...]]:
+        return all(len(item) >= 1 for item in args)
+
+
 ##############################  module typing  ##############################
+# https://github.com/python/typing/issues/60#issuecomment-869757075
+# this can be removed with the new type syntax from py3.12
 _T = TypeVar("_T")
-
-
-def each_item_is_non_empty(
-    args: tuple[tuple[_T, ...], ...],
-) -> TypeGuard[tuple[tuple[_T, *tuple[_T, ...]], ...]]:
-    return all(len(item) >= 1 for item in args)
-
-
 #############################################################################
 
 

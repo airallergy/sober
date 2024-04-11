@@ -1,36 +1,29 @@
+from __future__ import annotations
+
 import functools as ft
 import inspect
 import logging
 import platform
 import sys
-from collections.abc import Callable
 from contextlib import ContextDecorator
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Final,
-    Literal,
-    ParamSpec,
-    Protocol,
-    Self,
-    TypeVar,
-    get_args,
-)
+from typing import TYPE_CHECKING, get_args
 
 import sober.config as cf
-from sober._typing import AnyCmdArgs, AnyLevel
+from sober._typing import AnyLevel  # get_args
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Any, Final, Literal, ParamSpec, Protocol, Self, TypeVar
 
-##############################  module typing  ##############################
-class _SubprocessResult(Protocol):
-    returncode: int
-    stdout: str
+    from sober._typing import AnyCmdArgs
 
+    class _SubprocessResult(Protocol):
+        returncode: int
+        stdout: str
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R", covariant=True)
-#############################################################################
+    _P = ParamSpec("_P")
+    _R = TypeVar("_R", covariant=True)
 
 HOST_STEM: Final = platform.node().split(".")[0]
 

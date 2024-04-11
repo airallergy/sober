@@ -1,38 +1,40 @@
+from __future__ import annotations
+
 import itertools as it
 import pickle
 import shutil
-from collections.abc import Iterable
-from pathlib import Path
-from typing import Any, Literal, TypeAlias, TypedDict, cast, overload
+from typing import TYPE_CHECKING, cast, overload
 
 import numpy as np
-from numpy.typing import NDArray
 
 import sober._pymoo_namespace as pm
 import sober.config as cf
 from sober._evaluator import _evaluate
-from sober._io_managers import _InputManager, _OutputManager
 from sober._logger import _log, _LoggerManager
 from sober._tools import _natural_width, _write_records
-from sober._typing import AnyCtrlKeyVec, AnyPymooCallback
+from sober._typing import AnyCtrlKeyVec  # cast
 from sober.input import _RealModifier
 
-##############################  module typing  ##############################
-_AnyPymooX: TypeAlias = dict[str, np.integer[Any] | np.floating[Any]]
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+    from typing import Any, Literal, TypeAlias, TypedDict
 
+    from numpy.typing import NDArray
 
-class _PymooOut(TypedDict):
-    F: NDArray[np.float_] | None
-    G: NDArray[np.float_] | None
+    from sober._io_managers import _InputManager, _OutputManager
+    from sober._typing import AnyPymooCallback
 
+    _AnyPymooX: TypeAlias = dict[str, np.integer[Any] | np.floating[Any]]
 
-class _PymooOperators(TypedDict):
-    sampling: pm.Population
-    mating: pm.MixedVariableMating
-    eliminate_duplicates: pm.MixedVariableDuplicateElimination
+    class _PymooOut(TypedDict):
+        F: NDArray[np.float_] | None
+        G: NDArray[np.float_] | None
 
-
-#############################################################################
+    class _PymooOperators(TypedDict):
+        sampling: pm.Population
+        mating: pm.MixedVariableMating
+        eliminate_duplicates: pm.MixedVariableDuplicateElimination
 
 
 #############################################################################

@@ -1,35 +1,36 @@
+from __future__ import annotations
+
 import platform
 import warnings
 from pathlib import Path
-from typing import Final, Required, TypedDict
+from typing import TYPE_CHECKING
 
 import psutil
 
-from sober._typing import AnyLanguage, AnyModelType, AnyStrPath
+if TYPE_CHECKING:
+    from typing import Final, Required, TypedDict
 
-##############################  module typing  ##############################
-_Config = TypedDict(
-    "_Config",
-    {
-        "schema.energyplus": Required[str],
-        "exec.energyplus": Required[str],
-        "exec.epmacro": str,
-        "exec.expandobjects": str,
-        "exec.readvars": str,
-        "exec.python": str,
-        "n.processes": int,
-    },
-    total=False,
-)
+    from sober._typing import AnyLanguage, AnyModelType, AnyStrPath
 
+    _Config = TypedDict(
+        "_Config",
+        {
+            "schema.energyplus": Required[str],
+            "exec.energyplus": Required[str],
+            "exec.epmacro": str,
+            "exec.expandobjects": str,
+            "exec.readvars": str,
+            "exec.python": str,
+            "n.processes": int,
+        },
+        total=False,
+    )
 
-class _RecordsFilenames(TypedDict):
-    task: str
-    job: str
-    batch: str
+    class _RecordsFilenames(TypedDict):
+        task: str
+        job: str
+        batch: str
 
-
-#############################################################################
 
 #############################################################################
 #######                       GLOBAL CONSTANTS                        #######

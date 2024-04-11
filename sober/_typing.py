@@ -1,17 +1,11 @@
-import os
-from collections.abc import Callable
-from typing import Literal, TypeAlias
+from os import PathLike
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
-import sober._pymoo_namespace as pm
+##############################  package typing  ##############################
+# need to remove casts etc. to resolve this block
 
 # python
-AnyStrPath: TypeAlias = str | os.PathLike[str]
-AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
-
-
-# config
-AnyModelType: TypeAlias = Literal[".idf", ".imf"]
-AnyLanguage: TypeAlias = Literal["python"]
+AnyStrPath: TypeAlias = str | PathLike[str]
 
 
 # input
@@ -26,7 +20,19 @@ AnyCtrlKeyVec: TypeAlias = tuple[int, *tuple[AnyModifierKey, ...]]
 # output
 AnyCoreLevel: TypeAlias = Literal["task", "job"]
 AnyLevel: TypeAlias = Literal[AnyCoreLevel, "batch", "epoch"]
+#############################################################################
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
-# pymoo
-AnyPymooCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None
+    import sober._pymoo_namespace as pm
+
+    # python
+    AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
+
+    # config
+    AnyModelType: TypeAlias = Literal[".idf", ".imf"]
+    AnyLanguage: TypeAlias = Literal["python"]
+
+    # pymoo
+    AnyPymooCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None

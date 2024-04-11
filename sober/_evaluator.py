@@ -1,9 +1,15 @@
-from pathlib import Path
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import sober.config as cf
-from sober._io_managers import _InputManager, _OutputManager
 from sober._tools import _Parallel
-from sober._typing import AnyCtrlKeyVec
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from sober._io_managers import _InputManager, _OutputManager
+    from sober._typing import AnyCtrlKeyVec
 
 
 def _evaluate(

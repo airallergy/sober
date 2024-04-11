@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 import functools as ft
 import itertools as it
@@ -5,21 +7,41 @@ import math
 import subprocess as sp
 import sys
 import uuid
-from collections.abc import Callable, Iterable, Iterator
 from multiprocessing import get_context
 from multiprocessing.pool import Pool
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final, Self, TypeAlias, TypeVar, TypeVarTuple
+from typing import TYPE_CHECKING
 
 import sober.config as cf
 from sober._logger import _log
-from sober._typing import AnyCmdArgs
 
-##############################  module typing  ##############################
-_InitArgs = TypeVarTuple("_InitArgs")
-_T = TypeVar("_T", contravariant=True)
-_R = TypeVar("_R", covariant=True)
-#############################################################################
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Iterator
+    from pathlib import Path
+    from queue import SimpleQueue
+    from typing import Any, Final, Self, TypeAlias, TypeVar, TypeVarTuple
+
+    from sober._typing import AnyCmdArgs
+
+    _InitArgs = TypeVarTuple("_InitArgs")
+    _T = TypeVar("_T", contravariant=True)
+    _R = TypeVar("_R", covariant=True)
+
+    # [1] quite a few mypy complaints due to typeshed,
+    #     stemmed from the implementation of starmap/starimap
+    #     (related but stale: python/cpython#72567),
+    #     a lot of private involved, so not likely to be PRed into typeshed
+
+    # [1]
+    from multiprocessing.pool import IMapIterator as IMapIterator_
+
+    class IMapIterator(IMapIterator_[Any]):
+        _job: int
+        _set_length: Callable[..., Any]
+
+    starmapstar: Callable[..., Any]
+else:
+    # [1]
+    from multiprocessing.pool import IMapIterator, starmapstar
 
 
 #############################################################################
@@ -98,33 +120,17 @@ if sys.platform != "win32":
 else:
     _MULTIPROCESSING_CONTEXT: Final = get_context("spawn")
 
-# [1] quite a few mypy complaints due to typeshed,
-#     stemmed from the implementation of starmap/starimap
-#     (related but stale: python/cpython#72567),
-#     a lot of private involved, so not likely to be PRed into typeshed
-if TYPE_CHECKING:  # [1]
-    from multiprocessing.pool import IMapIterator as IMapIterator_
-
-    class IMapIterator(IMapIterator_[Any]):
-        _job: int
-        _set_length: Callable[..., Any]
-
-    starmapstar: Callable[..., Any]
-else:
-    from multiprocessing.pool import IMapIterator, starmapstar
-
 
 class _Pool(Pool):
     """a helper class for multiprocessing.pool.Pool
     this includes setting defaults, unifying method names and implementing starimap"""
 
-    if TYPE_CHECKING:  # [1]
-        import queue
-
+    if TYPE_CHECKING:
+        # [1]
         _processes: int
         _check_running: Callable[..., Any]
         _get_tasks: Callable[..., Any]
-        _taskqueue: queue.SimpleQueue[Any]
+        _taskqueue: SimpleQueue[Any]
         _guarded_task_generation: Callable[..., Any]
 
     def __init__(

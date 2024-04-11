@@ -1,31 +1,38 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
-from typing import (
-    Any,
-    Concatenate,
-    Generic,
-    Protocol,
-    Self,
-    TypeAlias,
-    TypeVar,
-    cast,
-    final,
-)
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast, final
 
 from eppy.bunchhelpers import makefieldname
-from eppy.modeleditor import IDF
 
 from sober._tools import _uuid
-from sober._typing import AnyModelModifierVal, AnyModifierVal, AnyStrPath
+from sober._typing import AnyModelModifierVal, AnyModifierVal
 
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Iterator
+    from typing import Concatenate, Protocol, Self, TypeAlias
+
+    from eppy.modeleditor import IDF
+
+    from sober._typing import AnyStrPath
+
+    class _SupportsStr(Protocol):
+        __slots__ = ()
+
+        @abstractmethod
+        def __str__(self) -> str: ...
+
+    _AnyFunc: TypeAlias = Callable[
+        Concatenate[tuple[AnyModifierVal, ...], ...], AnyModelModifierVal
+    ]  # TODO: consider resticting at least one previous output
 
 ##############################  module typing  ##############################
-class _SupportsStr(Protocol):
-    __slots__ = ()
-
-    @abstractmethod
-    def __str__(self) -> str: ...
+# https://github.com/python/typing/issues/60#issuecomment-869757075
+# this can be removed with the new type syntax from py3.12
+_MK = TypeVar("_MK", float, int)  # AnyModifierKey
+_MV = TypeVar("_MV", bound=AnyModifierVal)  # AnyModifierValue
+#############################################################################
 
 
 @final
@@ -44,16 +51,6 @@ class _Noise(Any):
     def __str__(self) -> str:
         """controls csv.writer"""
         return f"<noise {self._s}>"
-
-
-_MK = TypeVar("_MK", float, int)  # AnyModifierKey
-_MV = TypeVar("_MV", bound=AnyModifierVal)  # AnyModifierValue
-
-
-_AnyFunc: TypeAlias = Callable[
-    Concatenate[tuple[AnyModifierVal, ...], ...], AnyModelModifierVal
-]  # TODO: consider resticting at least one previous output
-#############################################################################
 
 
 #############################################################################

@@ -1,15 +1,21 @@
+from __future__ import annotations
+
 import pickle
-from collections.abc import Iterable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import sober._pymoo_namespace as pm
 import sober.config as cf
 from sober._evolver import _algorithm, _PymooProblem, _sampling
 from sober._io_managers import _InputManager, _OutputManager
 from sober._multiplier import _multiply
-from sober._typing import AnyPymooCallback, AnyStrPath
-from sober.input import AnyModelModifier, WeatherModifier
 from sober.output import RVICollector, ScriptCollector, _Collector
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from sober._typing import AnyPymooCallback, AnyStrPath
+    from sober.input import AnyModelModifier, WeatherModifier
 
 
 #############################################################################

@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 import csv
 import itertools as it
 import os.path
 import shutil
 import warnings
-from collections.abc import Callable, Iterable, Iterator
 from io import StringIO
-from pathlib import Path
-from typing import Any, Final, TypeAlias, cast
+from typing import TYPE_CHECKING, cast
 
 from eppy import openidf
 
@@ -19,43 +19,46 @@ from sober._simulator import (
     _split_model,
 )
 from sober._tools import (
-    AnyParallel,
     _natural_width,
     _recorded_batch,
     _rectified_str_iterable,
     _write_records,
 )
-from sober._typing import (
-    AnyCoreLevel,
-    AnyCtrlKeyVec,
-    AnyModelModifierVal,
-    AnyModelType,
-    AnyModifierVal,
-)
+from sober._typing import AnyModifierVal  # cast
 from sober.input import (
-    AnyModelModifier,
     FunctionalModifier,
     WeatherModifier,
     _IDFTagger,
     _IntegralModifier,
-    _Modifier,
     _RealModifier,
     _TextTagger,
 )
 from sober.output import RVICollector, _Collector, _CopyCollector
 
-##############################  module typing  ##############################
-_AnyModelTask: TypeAlias = tuple[AnyModelModifierVal, ...]
-_AnyTask: TypeAlias = tuple[Path, *_AnyModelTask]
-_AnyTaskItem: TypeAlias = tuple[str, _AnyTask]
-_AnyJob: TypeAlias = tuple[_AnyTaskItem, ...]
-_AnyJobItem: TypeAlias = tuple[str, _AnyJob]
-_AnyBatch: TypeAlias = tuple[_AnyJobItem, ...]
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Iterator
+    from pathlib import Path
+    from typing import Any, Final, TypeAlias
 
-_AnyConverter: TypeAlias = Callable[[float], float]
-_AnyUIDs: TypeAlias = tuple[str, ...]
-_AnyBatchOutputs: TypeAlias = tuple[tuple[float, ...], ...]
-#############################################################################
+    from sober._tools import AnyParallel
+    from sober._typing import (
+        AnyCoreLevel,
+        AnyCtrlKeyVec,
+        AnyModelModifierVal,
+        AnyModelType,
+    )
+    from sober.input import AnyModelModifier, _Modifier
+
+    _AnyModelTask: TypeAlias = tuple[AnyModelModifierVal, ...]
+    _AnyTask: TypeAlias = tuple[Path, *_AnyModelTask]
+    _AnyTaskItem: TypeAlias = tuple[str, _AnyTask]
+    _AnyJob: TypeAlias = tuple[_AnyTaskItem, ...]
+    _AnyJobItem: TypeAlias = tuple[str, _AnyJob]
+    _AnyBatch: TypeAlias = tuple[_AnyJobItem, ...]
+
+    _AnyConverter: TypeAlias = Callable[[float], float]
+    _AnyUIDs: TypeAlias = tuple[str, ...]
+    _AnyBatchOutputs: TypeAlias = tuple[tuple[float, ...], ...]
 
 
 #############################################################################

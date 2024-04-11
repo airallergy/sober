@@ -1,18 +1,37 @@
+from __future__ import annotations
+
 import enum
 import itertools as it
 import shutil
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
 from pathlib import Path
-from typing import Literal, TypeAlias, get_args
+from typing import TYPE_CHECKING
 
 import sober.config as cf
 from sober._simulator import _run_readvars
 from sober._tools import _rectified_str_iterable, _run, _uuid
-from sober._typing import AnyCoreLevel, AnyStrPath
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from typing import Literal, TypeAlias
+
+    from sober._typing import AnyCoreLevel, AnyStrPath
+
+    _AnyDirection: TypeAlias = Literal["minimise", "maximise"]
+    _AnyBounds: TypeAlias = (
+        tuple[None, float] | tuple[float, None] | tuple[float, float]
+    )
+    _AnyEPOutputType: TypeAlias = Literal["variable", "meter"]
+
+    # TODO: below goes to tests when made
+    # assert [
+    #     item.upper() for item in get_args(_AnyDirection)
+    # ] == _Direction._member_names_
+    # assert [
+    #     item.upper() for item in get_args(_AnyEPOutputType)
+    # ] == _EPOutputType._member_names_
 
 
-##############################  module typing  ##############################
 @enum.unique
 class _Direction(enum.IntEnum):
     MINIMISE = 1
@@ -23,18 +42,6 @@ class _Direction(enum.IntEnum):
 class _EPOutputType(enum.StrEnum):
     VARIABLE = "eplusout.eso"
     METER = "eplusout.mtr"
-
-
-_AnyDirection: TypeAlias = Literal["minimise", "maximise"]
-_AnyBounds: TypeAlias = tuple[None, float] | tuple[float, None] | tuple[float, float]
-_AnyEPOutputType: TypeAlias = Literal["variable", "meter"]
-
-# TODO: below goes to tests when made
-assert [item.upper() for item in get_args(_AnyDirection)] == _Direction._member_names_
-assert [
-    item.upper() for item in get_args(_AnyEPOutputType)
-] == _EPOutputType._member_names_
-#############################################################################
 
 
 #############################################################################
