@@ -289,16 +289,18 @@ def _operators(
         "nsga3": {"crossover": 30, "mutation": 20},
     }
 
-    crossover_kwargs = dict(prob=p_crossover, eta=etas[algorithm_name]["crossover"])
+    crossover_kwargs = {"prob": p_crossover, "eta": etas[algorithm_name]["crossover"]}
 
     # NOTE: in pymoo0.6 mutation
     #           prob (0.5) -> prob_var, controlling mutation for each gene/variable
     #           prob controls the whole mutation operation
     #           see https://github.com/anyoptimization/pymoo/discussions/360
     #           though the answer is not entirely correct
-    mutation_kwargs = dict(
-        prob=1.0, prob_var=p_mutation, eta=etas[algorithm_name]["mutation"]
-    )
+    mutation_kwargs = {
+        "prob": 1.0,
+        "prob_var": p_mutation,
+        "eta": etas[algorithm_name]["mutation"],
+    }
 
     return {
         "sampling": sampling,

@@ -75,11 +75,11 @@ class Problem:
             self._input_manager._model_type,
             self._input_manager._has_templates,
             any(isinstance(item, RVICollector) for item in self._output_manager),
-            set(
+            {
                 item._language
                 for item in self._output_manager
                 if isinstance(item, ScriptCollector)
-            ),
+            },
         )
 
     def run_sample(self, size: int, /, *, seed: int | None = None) -> None:
