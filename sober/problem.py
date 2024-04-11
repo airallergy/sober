@@ -14,8 +14,8 @@ from sober.output import RVICollector, ScriptCollector, _Collector
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from sober._typing import AnyPymooCallback, AnyStrPath
-    from sober.input import AnyModelModifier, WeatherModifier
+    from sober._typing import AnyModelModifier, AnyPymooCallback, AnyStrPath
+    from sober.input import WeatherModifier
 
 
 #############################################################################

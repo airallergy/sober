@@ -44,10 +44,11 @@ if TYPE_CHECKING:
     from sober._typing import (
         AnyCoreLevel,
         AnyCtrlKeyVec,
+        AnyModelModifier,
         AnyModelModifierVal,
         AnyModelType,
     )
-    from sober.input import AnyModelModifier, _Modifier
+    from sober.input import _Modifier
 
     _AnyModelTask: TypeAlias = tuple[AnyModelModifierVal, ...]
     _AnyTask: TypeAlias = tuple[Path, *_AnyModelTask]

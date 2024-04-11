@@ -26,6 +26,12 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     import sober._pymoo_namespace as pm
+    from sober.input import (
+        CategoricalModifier,
+        ContinuousModifier,
+        DiscreteModifier,
+        FunctionalModifier,
+    )
 
     # python
     AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
@@ -33,6 +39,14 @@ if TYPE_CHECKING:
     # config
     AnyModelType: TypeAlias = Literal[".idf", ".imf"]
     AnyLanguage: TypeAlias = Literal["python"]
+
+    # input
+    # TODO: use Intersection after python/typing#213
+    AnyIntegralModelModifier: TypeAlias = (
+        DiscreteModifier | CategoricalModifier | FunctionalModifier
+    )
+    AnyRealModelModifier: TypeAlias = ContinuousModifier
+    AnyModelModifier: TypeAlias = AnyRealModelModifier | AnyIntegralModelModifier
 
     # pymoo
     AnyPymooCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None

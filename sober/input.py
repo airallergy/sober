@@ -420,14 +420,3 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
     def _hype_ctrl_val(self) -> AnyModelModifierVal:
         # assert not self._is_ctrl  # no need, as hardcoded in __init__
         return self._options[0]
-
-
-#############################  package typing  ##############################
-# this technically belongs to _typing.py, but put here to avoid circular import
-# TODO: use Intersection after python/typing#213
-AnyIntegralModelModifier: TypeAlias = (
-    DiscreteModifier | CategoricalModifier | FunctionalModifier
-)
-AnyRealModelModifier: TypeAlias = ContinuousModifier
-AnyModelModifier: TypeAlias = AnyRealModelModifier | AnyIntegralModelModifier
-#############################################################################
