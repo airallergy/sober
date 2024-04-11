@@ -34,12 +34,15 @@ extend-select = [
     "PERF",
     "PGH",
     "PLE",
+    "PT",
     "RET",
     "RUF",
     "RUF022",
     "SIM",
+    "T20",
     "TID",
     "UP",
+    "YTT",
 ]
 ignore = ["E741", "RET505"]
 preview = true

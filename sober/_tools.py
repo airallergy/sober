@@ -28,7 +28,8 @@ _R = TypeVar("_R", covariant=True)
 def _natural_width(x: int) -> int:
     """returns the digit count of a natural number"""
 
-    assert isinstance(x, int) and x > 0
+    assert isinstance(x, int)  # TODO: remove runtime type checks that have been typed
+    assert x > 0
 
     return int(math.log10(x)) + 1
 
