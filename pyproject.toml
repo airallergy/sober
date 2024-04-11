@@ -25,8 +25,23 @@ build-backend = "poetry.core.masonry.api"
 target-version = "py311"
 
 [tool.ruff.lint]
-extend-select = ["B", "C4", "I", "N", "PGH", "RUF", "RUF022", "TID", "UP"]
-ignore = ["E741"]
+extend-select = [
+    "B",
+    "C4",
+    "I",
+    "ISC",
+    "N",
+    "PERF",
+    "PGH",
+    "PLE",
+    "RET",
+    "RUF",
+    "RUF022",
+    "SIM",
+    "TID",
+    "UP",
+]
+ignore = ["E741", "RET505"]
 preview = true
 explicit-preview-rules = true
 

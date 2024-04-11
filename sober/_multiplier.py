@@ -57,7 +57,8 @@ class _LazyCartesianProduct(Generic[_T]):
         if isinstance(key, int):
             if key < -self._n_products or key > self._n_products - 1:
                 raise IndexError("index out of range.")
-            elif key < 0:
+
+            if key < 0:
                 key += self._n_products
 
             return tuple(

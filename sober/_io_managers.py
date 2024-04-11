@@ -192,36 +192,35 @@ class _InputManager:
     def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> _AnyJob:
         if self._has_real_noises:
             raise NotImplementedError("real noise vars have not been implemented.")
-        else:
-            # align ctrl and noise keys and convert non-functional keys
-            aligned = tuple(
-                it.product(
-                    *(
-                        tuple(cast(_IntegralModifier[AnyModifierVal], input))  # mypy
-                        if input._is_noise
-                        else (input(key) if input._is_ctrl else key,)
-                        for input, key in zip(self, ctrl_key_vec, strict=True)
-                    )
+        # align ctrl and noise keys and convert non-functional keys
+        aligned = tuple(
+            it.product(
+                *(
+                    tuple(cast(_IntegralModifier[AnyModifierVal], input))  # mypy
+                    if input._is_noise
+                    else (input(key) if input._is_ctrl else key,)
+                    for input, key in zip(self, ctrl_key_vec, strict=True)
                 )
             )
+        )
 
-            # generate task uids
-            n_tasks = len(aligned)
-            i_task_width = _natural_width(n_tasks)
+        # generate task uids
+        n_tasks = len(aligned)
+        i_task_width = _natural_width(n_tasks)
 
-            # get functional vals
-            return tuple(
-                (
-                    f"T{i:0{i_task_width}}",
-                    tuple(
-                        input(item, *(aligned[i][j] for j in input._input_indices))
-                        if isinstance(input, FunctionalModifier)
-                        else item
-                        for input, item in zip(self, task, strict=True)
-                    ),
-                )
-                for i, task in enumerate(aligned)
+        # get functional vals
+        return tuple(
+            (
+                f"T{i:0{i_task_width}}",
+                tuple(
+                    input(item, *(aligned[i][j] for j in input._input_indices))
+                    if isinstance(input, FunctionalModifier)
+                    else item
+                    for input, item in zip(self, task, strict=True)
+                ),
             )
+            for i, task in enumerate(aligned)
+        )
 
     def _job_items(self, *ctrl_key_vecs: AnyCtrlKeyVec) -> _AnyBatch:
         # generate job uids
