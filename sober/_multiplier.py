@@ -77,6 +77,7 @@ def each_item_is_non_empty(
     args: tuple[tuple[_T, ...], ...],
 ) -> TypeGuard[tuple[tuple[_T, *tuple[_T, ...]], ...]]:
     # python/mypy#3497
+    # may be removed after python/mypy#4573, python/mypy#7853
     return all(len(item) >= 1 for item in args)
 
 
@@ -103,7 +104,7 @@ def _multiply(
         )
 
     ctrl_lens = tuple(
-        len(cast(_IntegralModifier[AnyModifierVal], item))
+        len(cast(_IntegralModifier[AnyModifierVal], item))  # mypy
         if item._is_ctrl
         else item._hype_ctrl_len()
         for item in input_manager

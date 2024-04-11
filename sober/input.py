@@ -232,7 +232,10 @@ class IndexTagger(_IDFTagger):
                 "each index trio should contain exactly three elements: class_name, object_name, field_name."
             )
 
-        # TODO: cast may be removed after python/mypy#1178
+        # cast: python/mypy#4573, python/mypy#7853, below works already
+        # >>> x = _index_trios[0]
+        # >>> assert len(x) == 3
+        # >>> reveal_type(x)  # x: tuple[str, str, str]
         _index_trios = cast(tuple[tuple[str, str, str], ...], _index_trios)
 
         # remove duplicate trios
@@ -280,7 +283,7 @@ class StringTagger(_TextTagger):
         # assign empty string to prefix/suffix if absent
         _string_trios = tuple(item + ("",) * (3 - len(item)) for item in _string_trios)
 
-        # TODO: cast may be removed after python/mypy#1178
+        # cast: python/mypy#4573, python/mypy#7853 may help, but the above assignment is too dynamic
         _string_trios = cast(tuple[tuple[str, str, str], ...], _string_trios)
 
         for string, prefix, suffix in _string_trios:
