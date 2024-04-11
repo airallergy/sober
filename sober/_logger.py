@@ -32,7 +32,7 @@ _P = ParamSpec("_P")
 _R = TypeVar("_R", covariant=True)
 #############################################################################
 
-HOST_STEM = platform.node().split(".")[0]
+HOST_STEM: Final = platform.node().split(".")[0]
 
 
 def _logger_identifier(cwd: Path) -> str:

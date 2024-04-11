@@ -8,7 +8,7 @@ from collections.abc import Callable, Iterable, Iterator
 from multiprocessing import get_context
 from multiprocessing.pool import Pool
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Self, TypeAlias, TypeVar, TypeVarTuple
+from typing import TYPE_CHECKING, Any, Final, Self, TypeAlias, TypeVar, TypeVarTuple
 
 from sober._logger import _log
 from sober._typing import AnyCmdArgs
@@ -79,9 +79,9 @@ def _rectified_str_iterable(s: str | Iterable[str]) -> tuple[str, ...]:
 # follow the use of sys.platform by multiprocessing, see also python/mypy#8166
 # don't use fork on posix, better safe than sorry
 if sys.platform != "win32":
-    _MULTIPROCESSING_CONTEXT = get_context("forkserver")
+    _MULTIPROCESSING_CONTEXT: Final = get_context("forkserver")
 else:
-    _MULTIPROCESSING_CONTEXT = get_context("spawn")
+    _MULTIPROCESSING_CONTEXT: Final = get_context("spawn")
 
 # [1] quite a few mypy complaints due to typeshed,
 #     stemmed from the implementation of starmap/starimap

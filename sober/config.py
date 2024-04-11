@@ -1,7 +1,7 @@
 import platform
 import warnings
 from pathlib import Path
-from typing import Required, TypedDict
+from typing import Final, Required, TypedDict
 
 import psutil
 
@@ -34,7 +34,7 @@ class _RecordsFilenames(TypedDict):
 #############################################################################
 #######                       GLOBAL CONSTANTS                        #######
 #############################################################################
-_RECORDS_FILENAMES: _RecordsFilenames = {
+_RECORDS_FILENAMES: Final[_RecordsFilenames] = {  # python/typing#1388
     "task": "task_records.csv",
     "job": "job_records.csv",
     "batch": "batch_records.csv",
