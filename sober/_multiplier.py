@@ -15,14 +15,9 @@ from sober.input import AnyModifierVal, _IntegralModifier
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import TypeGuard
+    from typing import TypeGuard  # this interestingly needs no runtime import
 
     from sober._io_managers import _InputManager, _OutputManager
-
-    def each_item_is_non_empty(
-        args: tuple[tuple[_T, ...], ...],
-    ) -> TypeGuard[tuple[tuple[_T, *tuple[_T, ...]], ...]]:
-        return all(len(item) >= 1 for item in args)
 
 
 ##############################  module typing  ##############################
@@ -76,6 +71,13 @@ class _LazyCartesianProduct(Generic[_T]):
             return tuple(self[item] for item in key)
         else:
             raise TypeError("index must be integers or a sequence of integers.")
+
+
+def each_item_is_non_empty(
+    args: tuple[tuple[_T, ...], ...],
+) -> TypeGuard[tuple[tuple[_T, *tuple[_T, ...]], ...]]:
+    # python/mypy#3497
+    return all(len(item) >= 1 for item in args)
 
 
 def _multiply(
