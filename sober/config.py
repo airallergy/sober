@@ -167,7 +167,8 @@ def config_parallel(*, n_processes: int | None = None) -> None:
 
     if ("n.processes" in _config) and (_config["n.processes"] != n_processes):
         warnings.warn(
-            f"n_processes has been configured to '{_config['n.processes']}', and will be overriden by '{n_processes}'."
+            f"n_processes has been configured to '{_config['n.processes']}', and will be overriden by '{n_processes}'.",
+            stacklevel=2,
         )
 
     # the default number of processes is the number of physical cores - 1
@@ -192,7 +193,8 @@ def config_script(*, python_exec: AnyStrPath | None = None) -> None:
             != Path(python_exec).resolve(True)
         ):
             warnings.warn(
-                f"python_exec has been configured to '{_config['exec.python']}', and will be overriden by '{python_exec}'."
+                f"python_exec has been configured to '{_config['exec.python']}', and will be overriden by '{python_exec}'.",
+                stacklevel=2,
             )
 
         _config["exec.python"] = str(Path(python_exec).resolve(strict=True))

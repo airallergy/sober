@@ -1,4 +1,5 @@
 import csv
+import functools as ft
 import itertools as it
 import math
 import subprocess as sp
@@ -10,6 +11,7 @@ from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, Self, TypeAlias, TypeVar, TypeVarTuple
 
+import sober.config as cf
 from sober._logger import _log
 from sober._typing import AnyCmdArgs
 
@@ -57,6 +59,18 @@ def _write_records(
         writer.writerow(header_row)
         # write values
         writer.writerows(record_rows)
+
+
+@ft.cache  # NOTE: ruff: B019  # TODO: consider generalised to _read_records
+def _recorded_batch(batch_dir: Path) -> tuple[tuple[str, ...], ...]:
+    # read job records
+    with (batch_dir / cf._RECORDS_FILENAMES["job"]).open("rt", newline="") as fp:
+        reader = csv.reader(fp, dialect="excel")
+
+        # skip the header row
+        next(reader)
+
+        return tuple(map(tuple, reader))
 
 
 def _rectified_str_iterable(s: str | Iterable[str]) -> tuple[str, ...]:

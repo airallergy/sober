@@ -1,5 +1,4 @@
 import csv
-import functools as ft
 import itertools as it
 import os.path
 import shutil
@@ -22,6 +21,7 @@ from sober._simulator import (
 from sober._tools import (
     AnyParallel,
     _natural_width,
+    _recorded_batch,
     _rectified_str_iterable,
     _write_records,
 )
@@ -132,7 +132,9 @@ class _InputManager:
 
             if has_names:
                 if not input._name:
-                    warnings.warn(f"no name is specified for '{input._label}'.")
+                    warnings.warn(
+                        f"no name is specified for '{input._label}'.", stacklevel=2
+                    )
 
                 input._label += f":{input._name}"
 
@@ -528,7 +530,8 @@ class _OutputManager:
                             pass
                         else:
                             warnings.warn(
-                                f"multiple output lines found in '{output._filename}', only the first collected."
+                                f"multiple output lines found in '{output._filename}', only the first collected.",
+                                stacklevel=2,
                             )
 
         # write records
@@ -607,17 +610,6 @@ class _OutputManager:
         for item, _ in zip(uid_pairs, scheduled, strict=True):
             _log(batch_dir, f"cleaned {'-'.join(item)}")
 
-    @ft.cache
-    def _recorded_batch(self, batch_dir: Path) -> tuple[tuple[str, ...], ...]:
-        # read job records
-        with (batch_dir / cf._RECORDS_FILENAMES["job"]).open("rt", newline="") as fp:
-            reader = csv.reader(fp, dialect="excel")
-
-            # skip the header row
-            next(reader)
-
-            return tuple(map(tuple, reader))
-
     def _recorded_objectives(self, batch_dir: Path) -> _AnyBatchOutputs:
         # slice objective values
         return tuple(
@@ -627,7 +619,7 @@ class _OutputManager:
                     self._objective_indices, self._to_objectives, strict=True
                 )
             )
-            for job_values in self._recorded_batch(batch_dir)
+            for job_values in _recorded_batch(batch_dir)
         )
 
     def _recorded_constraints(self, batch_dir: Path) -> _AnyBatchOutputs:
@@ -639,5 +631,5 @@ class _OutputManager:
                     self._constraint_indices, self._to_constraints, strict=True
                 )
             )
-            for job_values in self._recorded_batch(batch_dir)
+            for job_values in _recorded_batch(batch_dir)
         )
