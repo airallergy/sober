@@ -191,7 +191,7 @@ class _InputManager:
             if isinstance(tagger, _IDFTagger):
                 idf = tagger._tagged(idf)
 
-        return macros + idf.idfstr()
+        return macros + cast(str, idf.idfstr())  # eppy
 
     def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> _AnyJob:
         if self._has_real_noises:

@@ -71,6 +71,16 @@ ban-relative-imports = "all"
 skip-magic-trailing-comma = true
 
 [tool.mypy]
-ignore_missing_imports = true
+# strict except 'untyped' related flags
+check_untyped_defs = true
 disallow_any_generics = true
+extra_checks = true
+no_implicit_reexport = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+# extra
 enable_incomplete_feature = ["PreciseTupleTypes"]
+ignore_missing_imports = true

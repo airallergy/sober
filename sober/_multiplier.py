@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, Generic, TypeVar, cast, overload
 import numpy as np
 
 from sober._evaluator import _evaluate
-from sober.input import AnyModifierVal, _IntegralModifier
+from sober._typing import AnyModifierVal
+from sober.input import _IntegralModifier
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

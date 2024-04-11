@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Literal, TypeAlias
 
-    from sober._typing import AnyCoreLevel, AnyStrPath
+    from sober._typing import AnyCoreLevel, AnyLanguage, AnyStrPath
 
     _AnyDirection: TypeAlias = Literal["minimise", "maximise"]
     _AnyBounds: TypeAlias = (
@@ -236,7 +236,7 @@ class ScriptCollector(_Collector):
     """collects script outputs"""
 
     _script_file: Path
-    _language: cf.AnyLanguage
+    _language: AnyLanguage
     _extra_args: tuple[str, ...]
 
     __slots__ = ("_script_file", "_language", "_extra_args")
@@ -244,7 +244,7 @@ class ScriptCollector(_Collector):
     def __init__(
         self,
         script_file: AnyStrPath,
-        language: cf.AnyLanguage,
+        language: AnyLanguage,
         filename: str,
         /,
         *extra_args: str,

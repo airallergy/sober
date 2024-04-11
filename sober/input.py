@@ -46,7 +46,7 @@ class _Noise(Any):
     def __new__(cls, s: str) -> Self:
         self = super().__new__(cls)
         self._s = s
-        return self
+        return self  # type: ignore[no-any-return]
 
     def __str__(self) -> str:
         """controls csv.writer"""
