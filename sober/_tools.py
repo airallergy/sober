@@ -1,11 +1,12 @@
 import csv
 import itertools as it
 import math
-import multiprocessing as mp
 import subprocess as sp
 import sys
 import uuid
 from collections.abc import Callable, Iterable, Iterator
+from multiprocessing import get_context
+from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self, TypeAlias, TypeVar, TypeVarTuple
 
@@ -78,9 +79,9 @@ def _rectified_str_iterable(s: str | Iterable[str]) -> tuple[str, ...]:
 # follow the use of sys.platform by multiprocessing, see also python/mypy#8166
 # don't use fork on posix, better safe than sorry
 if sys.platform != "win32":
-    _MULTIPROCESSING_CONTEXT = mp.get_context("forkserver")
+    _MULTIPROCESSING_CONTEXT = get_context("forkserver")
 else:
-    _MULTIPROCESSING_CONTEXT = mp.get_context("spawn")
+    _MULTIPROCESSING_CONTEXT = get_context("spawn")
 
 # [1] quite a few mypy complaints due to typeshed,
 #     stemmed from the implementation of starmap/starimap
@@ -98,7 +99,7 @@ else:
     from multiprocessing.pool import IMapIterator, starmapstar
 
 
-class _Pool(mp.pool.Pool):
+class _Pool(Pool):
     """a helper class for multiprocessing.pool.Pool
     this includes setting defaults, unifying method names and implementing starimap"""
 
@@ -132,7 +133,7 @@ class _Pool(mp.pool.Pool):
 
         self._check_running()
 
-        task_batches = self._get_tasks(func, iterable, 1)
+        task_batches = _Pool._get_tasks(func, iterable, 1)
         result = IMapIterator(self)
         self._taskqueue.put(
             (
