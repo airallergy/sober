@@ -67,7 +67,7 @@ class _LazyCartesianProduct(Generic[_T]):
         elif isinstance(key, Sequence) and all(isinstance(item, int) for item in key):
             return tuple(self[item] for item in key)
         else:
-            raise TypeError("index must be integers or a collection of integers.")
+            raise TypeError("index must be integers or a sequence of integers.")
 
 
 def _multiply(
