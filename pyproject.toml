@@ -25,9 +25,11 @@ build-backend = "poetry.core.masonry.api"
 target-version = "py311"
 
 [tool.ruff.lint]
-extend-select = [
+select = [
     "B",
     "C4",
+    "E",
+    "F",
     "FLY",
     "FURB",
     "I",
@@ -51,8 +53,13 @@ extend-select = [
     "UP",
     "YTT",
 ]
-ignore = ["E741", "TRY003", "RET505", "RUF023"]
+extend-select = ["RUF022"] # explicit preview rules
+# consider removing:
+#   - E501: long line
+#   - TRY003: long raise message
+ignore = ["E266", "E501", "E741", "TRY003", "RET505"]
 preview = true
+explicit-preview-rules = true
 
 [tool.ruff.lint.isort]
 split-on-trailing-comma = false
