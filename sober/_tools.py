@@ -174,7 +174,7 @@ class _Loop:
     def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *args) -> None:
+    def __exit__(self, *args: object) -> None:
         pass
 
     def _map(self, func: Callable[[_T], _R], iterable: Iterable[_T]) -> Iterator[_R]:

@@ -36,7 +36,7 @@ _MV = TypeVar("_MV", bound=AnyModifierVal)  # AnyModifierValue
 
 
 @final
-class _Noise(Any):
+class _Noise(Any):  # type: ignore[misc]
     """a helper class for _hype_ctrl_val"""
 
     _s: str
@@ -200,7 +200,7 @@ class _ModelModifierMixin(ABC):
     __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
 
     @abstractmethod
-    def __init__(self, tagger: _Tagger, *args, **kwargs) -> None:
+    def __init__(self, tagger: _Tagger, *args: object, **kwargs: object) -> None:
         self._tagger = tagger  # type: ignore[misc]  # [1] microsoft/pyright#2039
 
         super().__init__(*args, **kwargs)  # NOTE: to _RealModifier/_IntegralModifier
@@ -387,8 +387,8 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
 
     _func: _AnyFunc
     _input_indices: tuple[int, ...]
-    _args: tuple[Any, ...]  # TODO: restrict this for serialisation
-    _kwargs: dict[str, Any]  # TODO: restrict this for serialisation
+    _args: tuple[object, ...]  # TODO: restrict this for serialisation
+    _kwargs: dict[str, object]  # TODO: restrict this for serialisation
 
     __slots__ = ("_tagger", "_func", "_input_indices", "_args", "_kwargs")
 
@@ -397,9 +397,9 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
         tagger: _Tagger,
         func: _AnyFunc,
         input_indices: Iterable[int],
-        *args,
+        *args: object,
         name: str = "",
-        **kwargs,
+        **kwargs: object,
     ) -> None:
         self._func = func
         self._input_indices = tuple(input_indices)

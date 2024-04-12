@@ -57,7 +57,9 @@ class _LazyCartesianProduct(Generic[_T]):
     def __getitem__(self, key: int) -> tuple[_T, ...]: ...
     @overload
     def __getitem__(self, key: Sequence[int]) -> tuple[tuple[_T, ...], ...]: ...
-    def __getitem__(self, key):
+    def __getitem__(
+        self, key: int | Sequence[int]
+    ) -> tuple[_T, ...] | tuple[tuple[_T, ...], ...]:
         if isinstance(key, int):
             if key < -self._n_products or key > self._n_products - 1:
                 raise IndexError("index out of range.")

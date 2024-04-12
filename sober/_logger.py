@@ -169,7 +169,7 @@ class _LoggerManager(ContextDecorator):
             self.logger.addHandler(sh)
         return self
 
-    def __exit__(self, *args) -> None:
+    def __exit__(self, *args: object) -> None:
         # manually delete all handlers
         self.logger.handlers.clear()
 
@@ -196,7 +196,7 @@ class _SubprocessLogger:
         self._logger.info(f"started '{self._cmd}'")
         return self
 
-    def __exit__(self, *args) -> None:
+    def __exit__(self, *args: object) -> None:
         result = self._result
         self._logger.debug(result.stdout.strip("\n"))  # stderr was merged into stdout
         self._logger.info(f"completed with exit code {result.returncode}")

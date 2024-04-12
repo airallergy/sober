@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 #############################################################################
 #######                   PYMOO PROBLEM CHILD CLASS                   #######
 #############################################################################
-class _PymooProblem(pm.Problem):
+class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
     """interfaces the pymoo problem"""
 
     _input_manager: _InputManager
@@ -87,9 +87,9 @@ class _PymooProblem(pm.Problem):
         self,
         x: Iterable[_AnyPymooX],
         out: _PymooOut,
-        *args,
+        *args: object,
         algorithm: pm.Algorithm,
-        **kwargs,
+        **kwargs: object,
     ) -> None:
         # NOTE: in pymoo0.6
         #           n_gen follows 1, 2, 3, ...
@@ -347,13 +347,13 @@ def _algorithm(
     reference_directions: pm.ReferenceDirectionFactory,
 ) -> pm.NSGA3: ...
 def _algorithm(
-    algorithm_name,
-    population_size,
-    p_crossover,
-    p_mutation,
-    sampling,
-    reference_directions=None,
-):
+    algorithm_name: Literal["nsga2", "nsga3"],
+    population_size: int,
+    p_crossover: float,
+    p_mutation: float,
+    sampling: pm.Population,
+    reference_directions: None | pm.ReferenceDirectionFactory = None,
+) -> pm.NSGA2 | pm.NSGA3:
     """a pymoo algorithm constructor"""
 
     if algorithm_name == "nsga2":
