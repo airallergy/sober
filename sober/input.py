@@ -13,9 +13,16 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
     from typing import Concatenate, Protocol, Self, TypeAlias
 
-    from eppy.modeleditor import IDF
+    from eppy.bunch_subclass import EpBunch
 
     from sober._typing import AnyStrPath
+
+    class _IDF(Protocol):
+        """a minimum stub to help mypy recognise variance"""
+
+        __slots__ = ()
+
+        def getobject(self, key: str, name: str) -> EpBunch: ...
 
     class _SupportsStr(Protocol):
         __slots__ = ()
@@ -70,7 +77,7 @@ class _Tagger(ABC):
         )
 
     @abstractmethod
-    def _tagged(self, model: Any) -> IDF | str: ...
+    def _tagged(self, model: Any) -> _IDF | str: ...
 
     def _detagged(self, tagged_model: str, *values: _SupportsStr) -> str:
         match len(values):
@@ -93,7 +100,7 @@ class _IDFTagger(_Tagger):
     __slots__ = ()
 
     @abstractmethod
-    def _tagged(self, model: IDF) -> IDF: ...
+    def _tagged(self, model: _IDF) -> _IDF: ...
 
 
 class _TextTagger(_Tagger):
@@ -243,7 +250,7 @@ class IndexTagger(_IDFTagger):
 
         super().__init__(*self._index_trios)
 
-    def _tagged(self, model: IDF) -> IDF:
+    def _tagged(self, model: _IDF) -> _IDF:
         for (class_name, object_name, field_name), tag in zip(
             self._index_trios, self._tags, strict=True
         ):
