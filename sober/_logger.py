@@ -103,7 +103,7 @@ class _LoggerManager(ContextDecorator):
     __slots__ = ("_cwd_index", "_is_first", "_name", "_level", "_log_file", "_logger")
 
     if TYPE_CHECKING:
-        _recreate_cm: Callable[..., Any]
+        _recreate_cm: Callable[[], Self]
 
     def __init__(self, cwd_index: int, is_first: bool = False) -> None:
         self._cwd_index = cwd_index

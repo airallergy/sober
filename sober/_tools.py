@@ -36,9 +36,9 @@ if TYPE_CHECKING:
 
     class IMapIterator(IMapIterator_[Any]):
         _job: int
-        _set_length: Callable[..., Any]
+        _set_length: Callable[..., object]
 
-    starmapstar: Callable[..., Any]
+    starmapstar: Callable[..., object]
 else:
     # [1]
     from multiprocessing.pool import IMapIterator, starmapstar
@@ -73,7 +73,7 @@ def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
 
 
 def _write_records(
-    record_file: Path, header_row: Iterable[Any], *record_rows: Iterable[Any]
+    record_file: Path, header_row: Iterable[object], *record_rows: Iterable[object]
 ) -> None:
     with record_file.open("wt", newline="") as fp:
         writer = csv.writer(fp, dialect="excel")
@@ -128,10 +128,10 @@ class _Pool(Pool):
     if TYPE_CHECKING:
         # [1]
         _processes: int
-        _check_running: Callable[..., Any]
-        _get_tasks: Callable[..., Any]
-        _taskqueue: SimpleQueue[Any]
-        _guarded_task_generation: Callable[..., Any]
+        _check_running: Callable[..., object]
+        _get_tasks: Callable[..., object]
+        _taskqueue: SimpleQueue[object]
+        _guarded_task_generation: Callable[..., object]
 
     def __init__(
         self,

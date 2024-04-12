@@ -100,7 +100,7 @@ class _InputManager:
         self._model_inputs = tuple(model_inputs)
         self._has_templates = has_templates
 
-    def __iter__(self) -> Iterator[_Modifier[Any, Any]]:
+    def __iter__(self) -> Iterator[_Modifier[Any, AnyModifierVal]]:
         yield self._weather_input
         yield from self._model_inputs
 
@@ -245,7 +245,7 @@ class _InputManager:
         self,
         level: AnyCoreLevel,
         record_dir: Path,
-        record_rows: Iterable[Iterable[Any]],
+        record_rows: Iterable[Iterable[object]],
     ) -> None:
         header_row = (f"{level.capitalize()}UID", *(input._label for input in self))
 

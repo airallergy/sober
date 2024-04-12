@@ -18,14 +18,14 @@ from sober.input import _RealModifier
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Any, Literal, TypeAlias, TypedDict
+    from typing import Literal, TypeAlias, TypedDict
 
-    from numpy.typing import NDArray
+    from numpy.typing import NBitBase, NDArray
 
     from sober._io_managers import _InputManager, _OutputManager
     from sober._typing import AnyPymooCallback
 
-    _AnyPymooX: TypeAlias = dict[str, np.integer[Any] | np.floating[Any]]
+    _AnyPymooX: TypeAlias = dict[str, np.integer[NBitBase] | np.floating[NBitBase]]
 
     class _PymooOut(TypedDict):
         F: NDArray[np.float_] | None
@@ -165,7 +165,7 @@ class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
         # convert pymoo x to ctrl val vecs
         ctrl_key_vecs = tuple(
             tuple(
-                individual.X[item._label].item()
+                cast(_AnyPymooX, individual.X)[item._label].item()  # cast: pymoo
                 if item._is_ctrl
                 else item._hype_ctrl_key()
                 for item in self._input_manager

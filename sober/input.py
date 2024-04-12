@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 # https://github.com/python/typing/issues/60#issuecomment-869757075
 # this can be removed with the new type syntax from py3.12
 _MK = TypeVar("_MK", float, int)  # AnyModifierKey
-_MV = TypeVar("_MV", bound=AnyModifierVal)  # AnyModifierValue
+_MV = TypeVar("_MV", bound=AnyModifierVal, covariant=True)  # AnyModifierValue
 #############################################################################
 
 
@@ -70,7 +70,7 @@ class _Tagger(ABC):
         )
 
     @abstractmethod
-    def _tagged(self, model: Any) -> Any: ...
+    def _tagged(self, model: Any) -> IDF | str: ...
 
     def _detagged(self, tagged_model: str, *values: _SupportsStr) -> str:
         match len(values):
@@ -133,7 +133,7 @@ class _Modifier(ABC, Generic[_MK, _MV]):
         # as FunctionalModifier needs the index info assigned by _InputManager
         ...
 
-    def _hype_ctrl_key(self) -> _MK:
+    def _hype_ctrl_key(self) -> int:
         assert not self._is_ctrl
         return 0  # assuming the hype ctrl is an integral variable with one item
 
