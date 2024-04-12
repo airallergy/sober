@@ -106,7 +106,7 @@ def _rectified_str_iterable(s: str | Iterable[str]) -> tuple[str, ...]:
 
 
 def _check_path_exists(path: AnyStrPath, kind: str) -> None:
-    if os.path.exists(path):
+    if not os.path.exists(path):
         raise FileNotFoundError(f"{kind} not found: '{path}'.")
 
 
