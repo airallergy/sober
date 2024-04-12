@@ -186,8 +186,7 @@ def config_script(*, python_exec: AnyStrPath | None = None) -> None:
 
     if python_exec is not None:
         if ("exec.python" in _config) and (
-            Path(_config["exec.python"]).resolve(True)
-            != Path(python_exec).resolve(True)
+            not Path(_config["exec.python"]).samefile(python_exec)
         ):
             warnings.warn(
                 f"python_exec has been configured to '{_config['exec.python']}', and will be overriden by '{python_exec}'.",
