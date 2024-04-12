@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast, final
+from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, cast, final
 
 from eppy.bunchhelpers import makefieldname
 
@@ -11,18 +11,11 @@ from sober._typing import AnyModelModifierVal, AnyModifierVal
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
-    from typing import Concatenate, Protocol, Self, TypeAlias
+    from typing import Concatenate, Self, TypeAlias
 
     from eppy.bunch_subclass import EpBunch
 
     from sober._typing import AnyStrPath
-
-    class _IDF(Protocol):
-        """a minimum stub to help mypy recognise variance"""
-
-        __slots__ = ()
-
-        def getobject(self, key: str, name: str) -> EpBunch: ...
 
     class _SupportsStr(Protocol):
         __slots__ = ()
@@ -37,6 +30,16 @@ if TYPE_CHECKING:
 ##############################  module typing  ##############################
 # https://github.com/python/typing/issues/60#issuecomment-869757075
 # this can be removed with the new type syntax from py3.12
+
+
+class _IDF(Protocol):
+    """a minimum stub to help mypy recognise variance"""
+
+    __slots__ = ()
+
+    def getobject(self, key: str, name: str) -> EpBunch: ...
+
+
 _TM = TypeVar("_TM", _IDF, str)  # AnyTaggerModel
 _MK = TypeVar("_MK", float, int)  # AnyModifierKey
 _MV = TypeVar("_MV", bound=AnyModifierVal, covariant=True)  # AnyModifierValue

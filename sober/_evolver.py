@@ -165,7 +165,11 @@ class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
         # convert pymoo x to ctrl val vecs
         ctrl_key_vecs = tuple(
             tuple(
-                cast(_AnyPymooX, individual.X)[item._label].item()  # cast: pymoo
+                (
+                    cast(_AnyPymooX, individual.X)  # cast: pymoo, ugly!
+                    if TYPE_CHECKING
+                    else individual.X
+                )[item._label].item()
                 if item._is_ctrl
                 else item._hype_ctrl_key()
                 for item in self._input_manager
