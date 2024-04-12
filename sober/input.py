@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 ##############################  module typing  ##############################
 # https://github.com/python/typing/issues/60#issuecomment-869757075
 # this can be removed with the new type syntax from py3.12
+_TM = TypeVar("_TM", _IDF, str)  # AnyTaggerModel
 _MK = TypeVar("_MK", float, int)  # AnyModifierKey
 _MV = TypeVar("_MV", bound=AnyModifierVal, covariant=True)  # AnyModifierValue
 #############################################################################
@@ -63,7 +64,7 @@ class _Noise(Any):  # type: ignore[misc]
 #############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
-class _Tagger(ABC):
+class _Tagger(ABC, Generic[_TM]):
     """an abstract base class for taggers"""
 
     _tags: tuple[str, ...]
@@ -77,7 +78,7 @@ class _Tagger(ABC):
         )
 
     @abstractmethod
-    def _tagged(self, model: Any) -> _IDF | str: ...
+    def _tagged(self, model: _TM) -> _TM: ...
 
     def _detagged(self, tagged_model: str, *values: _SupportsStr) -> str:
         match len(values):
@@ -94,7 +95,7 @@ class _Tagger(ABC):
         return tagged_model
 
 
-class _IDFTagger(_Tagger):
+class _IDFTagger(_Tagger[_IDF]):
     """an abstract base class for taggers in the IDF format"""
 
     __slots__ = ()
@@ -103,13 +104,17 @@ class _IDFTagger(_Tagger):
     def _tagged(self, model: _IDF) -> _IDF: ...
 
 
-class _TextTagger(_Tagger):
+class _TextTagger(_Tagger[str]):
     """an abstract base class for taggers in the text format"""
 
     __slots__ = ()
 
     @abstractmethod
     def _tagged(self, model: str) -> str: ...
+
+
+if TYPE_CHECKING:
+    _AnyTagger: TypeAlias = _IDFTagger | _TextTagger
 
 
 class _Modifier(ABC, Generic[_MK, _MV]):
@@ -203,11 +208,11 @@ class _ModelModifierMixin(ABC):
     """an abstract base class for common functions in model modification
     (as opposed to the weather modifier)"""
 
-    _tagger: _Tagger
+    _tagger: _AnyTagger
     __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
 
     @abstractmethod
-    def __init__(self, tagger: _Tagger, *args: object, **kwargs: object) -> None:
+    def __init__(self, tagger: _AnyTagger, *args: object, **kwargs: object) -> None:
         self._tagger = tagger  # type: ignore[misc]  # [1] microsoft/pyright#2039
 
         super().__init__(*args, **kwargs)  # NOTE: to _RealModifier/_IntegralModifier
@@ -345,7 +350,7 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
 
     def __init__(
         self,
-        tagger: _Tagger,
+        tagger: _AnyTagger,
         low: float,
         high: float,
         /,
@@ -367,7 +372,11 @@ class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
     __slots__ = ("_tagger",)
 
     def __init__(
-        self, tagger: _Tagger, *options: float, is_noise: bool = False, name: str = ""
+        self,
+        tagger: _AnyTagger,
+        *options: float,
+        is_noise: bool = False,
+        name: str = "",
     ) -> None:
         super().__init__(tagger, options, is_noise, name)
 
@@ -381,7 +390,7 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
     __slots__ = ("_tagger",)
 
     def __init__(
-        self, tagger: _Tagger, *options: str, is_noise: bool = False, name: str = ""
+        self, tagger: _AnyTagger, *options: str, is_noise: bool = False, name: str = ""
     ) -> None:
         super().__init__(tagger, options, is_noise, name)
 
@@ -401,7 +410,7 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
 
     def __init__(
         self,
-        tagger: _Tagger,
+        tagger: _AnyTagger,
         func: _AnyFunc,
         input_indices: Iterable[int],
         *args: object,
