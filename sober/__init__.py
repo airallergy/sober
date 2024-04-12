@@ -28,3 +28,5 @@ __all__ = (
     "config_parallel",
     "config_script",
 )
+
+# TODO: check all raises and asserts, and unify error messages

@@ -92,17 +92,17 @@ def _check_config(
             )
 
 
-def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> Path:
+def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> str:
     """returns the default EnergyPlus installation directory"""
 
     version = f"{major}-{minor}-{patch}"
     match platform.system():
         case "Linux":
-            return Path(f"/usr/local/EnergyPlus-{version}")
+            return f"/usr/local/EnergyPlus-{version}"
         case "Darwin":
-            return Path(f"/Applications/EnergyPlus-{version}")
+            return f"/Applications/EnergyPlus-{version}"
         case "Windows":
-            return Path(rf"C:\EnergyPlusV{version}")
+            return rf"C:\EnergyPlusV{version}"
         case _ as system_name:
             raise NotImplementedError(f"unsupported system: '{system_name}'.")
 
@@ -119,6 +119,7 @@ def config_energyplus(
 ) -> None:
     """sets EnergyPlus-related configuration
     this initialise _config, so needs to happen before all others"""
+    # TODO: change this to non-mandatory when metamodelling is supported
 
     global _config
 
@@ -126,30 +127,28 @@ def config_energyplus(
         root = _default_energyplus_root(*version.split("."))
 
     if root is not None:
-        root = Path(root)
+        root = Path(root).resolve(True)
         schema = root / "Energy+.idd"
         energyplus_exec = root / "energyplus"
         epmacro_exec = root / "EPMacro"
         expandobjects_exec = root / "ExpandObjects"
         readvars_exec = root / "PostProcess" / "ReadVarsESO"
 
-    if (energyplus_exec is None) or (schema is None):
+    if (schema is None) or (energyplus_exec is None):
         raise ValueError(
-            "One of version_parts, root, (schema, energyplus_exec) needs to be provided."
+            "One of version, root or (schema, energyplus_exec) needs to be provided."
         )
 
     _config = {
-        "schema.energyplus": str(Path(schema).resolve(strict=True)),
-        "exec.energyplus": str(Path(energyplus_exec).resolve(strict=True)),
+        "schema.energyplus": str(Path(schema).resolve(True)),
+        "exec.energyplus": str(Path(energyplus_exec).resolve(True)),
     }
     if epmacro_exec is not None:
-        _config["exec.epmacro"] = str(Path(epmacro_exec).resolve(strict=True))
+        _config["exec.epmacro"] = str(Path(epmacro_exec).resolve(True))
     if expandobjects_exec is not None:
-        _config["exec.expandobjects"] = str(
-            Path(expandobjects_exec).resolve(strict=True)
-        )
+        _config["exec.expandobjects"] = str(Path(expandobjects_exec).resolve(True))
     if readvars_exec is not None:
-        _config["exec.readvars"] = str(Path(readvars_exec).resolve(strict=True))
+        _config["exec.readvars"] = str(Path(readvars_exec).resolve(True))
 
 
 def _check_config_init() -> None:
@@ -185,12 +184,14 @@ def config_script(*, python_exec: AnyStrPath | None = None) -> None:
     _check_config_init()
 
     if python_exec is not None:
+        python_exec = Path(python_exec).resolve(True)
+
         if ("exec.python" in _config) and (
-            not Path(_config["exec.python"]).samefile(python_exec)
+            not python_exec.samefile(_config["exec.python"])
         ):
             warnings.warn(
                 f"python_exec has been configured to '{_config['exec.python']}', and will be overriden by '{python_exec}'.",
                 stacklevel=2,
             )
 
-        _config["exec.python"] = str(Path(python_exec).resolve(strict=True))
+        _config["exec.python"] = str(python_exec)

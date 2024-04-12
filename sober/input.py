@@ -146,7 +146,10 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     def _check_args(self) -> None:
         # called by _InputManager
         # as FunctionalModifier needs the index info assigned by _InputManager
-        ...
+
+        low, high = self._bounds
+        if low > high:
+            raise ValueError(f"the low '{low}' is greater than the high '{high}'.")
 
     def _hype_ctrl_key(self) -> int:
         assert not self._is_ctrl
@@ -337,9 +340,12 @@ class WeatherModifier(_IntegralModifier[Path]):
         super().__init__(tuple(Path(item) for item in options), is_noise, name)
 
     def _check_args(self) -> None:
+        super()._check_args()
+
         for item in self._options:
             # check existence
-            item.resolve(True)
+            if not item.exists():
+                raise FileNotFoundError(f"weather file not found: '{item}'")
 
             # check suffix
             if item.suffix != ".epw":
@@ -364,9 +370,11 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
         super().__init__(tagger, (low, high), is_noise, name)
 
     def _check_args(self) -> None:
+        super()._check_args()
+
         low, high = self._bounds
-        if low >= high:
-            raise ValueError(f"the low '{low}' is not less than the high '{high}'.")
+        if low == high:
+            raise ValueError(f"the low '{low}' is equal to the high '{high}'.")
 
 
 class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
@@ -384,7 +392,7 @@ class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
         super().__init__(tagger, options, is_noise, name)
 
     def _check_args(self) -> None:
-        pass
+        super()._check_args()
 
 
 class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
@@ -398,7 +406,7 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
         super().__init__(tagger, options, is_noise, name)
 
     def _check_args(self) -> None:
-        pass
+        super()._check_args()
 
 
 class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifierVal]):
@@ -434,6 +442,8 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
         return self._func(input_vals, *self._args, **self._kwargs)
 
     def _check_args(self) -> None:
+        super()._check_args()
+
         if any(item >= self._index for item in self._input_indices):
             raise ValueError(
                 f"only previous inputs can be referred to: {self._index}, {self._input_indices}."

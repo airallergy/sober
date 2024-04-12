@@ -90,6 +90,7 @@ class _Collector(ABC):
         self._is_final = is_final
         self._is_copied = False
 
+    @abstractmethod
     def _check_args(self) -> None:
         if self._objectives:
             if (self._level != "job") and (not self._is_copied):
@@ -263,6 +264,12 @@ class ScriptCollector(_Collector):
             filename, level, objectives, constraints, direction, bounds, is_final
         )
 
+    def _check_args(self) -> None:
+        super()._check_args()
+
+        if not self._script_file.exists():
+            raise FileNotFoundError(f"script file not found: '{self._script_file}'")
+
     def _collect(self, cwd: Path) -> None:
         language_exec = cf._config["exec." + self._language]  # type: ignore[literal-required]  # python/mypy#12554
 
@@ -301,6 +308,10 @@ class _CopyCollector(_Collector):
         self._bounds = bounds
         self._is_final = True
         self._is_copied = False
+
+    def _check_args(self) -> None:
+        # all args have been checked
+        pass
 
     def _collect(self, cwd: Path) -> None:
         shutil.copyfile(cwd / "T0" / self._filename, cwd / self._filename)

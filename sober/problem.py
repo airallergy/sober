@@ -52,7 +52,7 @@ class Problem:
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
     ) -> None:
-        self._model_file = Path(model_file).resolve(strict=True)
+        self._model_file = Path(model_file)
         self._input_manager = _InputManager(weather_input, model_inputs, has_templates)
         self._output_manager = _OutputManager(outputs, clean_patterns)
         self._evaluation_dir = (
@@ -64,7 +64,13 @@ class Problem:
 
         self._prepare(n_processes, python_exec)
 
+    def _check_args(self) -> None:
+        if not self._model_file.exists():
+            raise FileNotFoundError(f"model file not found: '{self._model_file}'")
+
     def _prepare(self, n_processes: int | None, python_exec: AnyStrPath | None) -> None:
+        self._check_args()
+
         # mkdir
         # intentionally assumes parents exist
         self._evaluation_dir.mkdir(exist_ok=True)
@@ -232,14 +238,18 @@ class Problem:
         # TODO: also consider moving this func outside Problem to be called directly
         # TODO: termination may not be necessary, as the old one may be reused
 
-        checkpoint_file = Path(checkpoint_file).resolve(True)
+        checkpoint_file = Path(checkpoint_file)
+
+        if not checkpoint_file.exists():
+            raise FileNotFoundError(f"checkpoint file not found: '{checkpoint_file}'")
+
         with checkpoint_file.open("rb") as fp:
             epoch_dir, result = pickle.load(fp)
 
         # checks validity of the check point file
         # currently only checks the object type, but there might be better checks
         if not (isinstance(epoch_dir, Path) and isinstance(result, pm.Result)):
-            raise TypeError(f"invalid checkpoint file: {checkpoint_file.resolve()}.")
+            raise TypeError(f"invalid checkpoint file: {checkpoint_file}.")
 
         return result.algorithm.problem._evolve_epoch(
             epoch_dir,

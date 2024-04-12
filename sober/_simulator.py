@@ -69,6 +69,8 @@ def _run_readvars(cwd: Path, rvi_file: Path, frequency: str) -> None:
 def _resolved_path(path: AnyStrPath, default_parent: Path) -> Path:
     """a helper function to resolve paths of mixed absolute and relative"""
 
+    # inclined to consider 'resolve' here as debug info for users
+
     pure_path = PurePath(path)
     if pure_path.is_absolute():
         return Path(pure_path).resolve()
