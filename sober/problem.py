@@ -9,6 +9,7 @@ import sober.config as cf
 from sober._evolver import _algorithm, _PymooProblem, _sampling
 from sober._io_managers import _InputManager, _OutputManager
 from sober._multiplier import _multiply
+from sober._tools import _check_path_exists
 from sober.output import RVICollector, ScriptCollector, _Collector
 
 if TYPE_CHECKING:
@@ -65,8 +66,7 @@ class Problem:
         self._prepare(n_processes, python_exec)
 
     def _check_args(self) -> None:
-        if not self._model_file.exists():
-            raise FileNotFoundError(f"model file not found: '{self._model_file}'")
+        _check_path_exists(self._model_file, "model file")
 
     def _prepare(self, n_processes: int | None, python_exec: AnyStrPath | None) -> None:
         self._check_args()
@@ -240,8 +240,7 @@ class Problem:
 
         checkpoint_file = Path(checkpoint_file)
 
-        if not checkpoint_file.exists():
-            raise FileNotFoundError(f"checkpoint file not found: '{checkpoint_file}'")
+        _check_path_exists(checkpoint_file, "checkpoint file")
 
         with checkpoint_file.open("rb") as fp:
             epoch_dir, result = pickle.load(fp)

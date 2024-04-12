@@ -4,6 +4,7 @@ import csv
 import functools as ft
 import itertools as it
 import math
+import os.path
 import subprocess as sp
 import sys
 import uuid
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
     from queue import SimpleQueue
     from typing import Any, Final, Self, TypeAlias, TypeVar, TypeVarTuple
 
-    from sober._typing import AnyCmdArgs
+    from sober._typing import AnyCmdArgs, AnyStrPath
 
     _InitArgs = TypeVarTuple("_InitArgs")
     _T_contra = TypeVar("_T_contra", contravariant=True)
@@ -102,6 +103,11 @@ def _rectified_str_iterable(s: str | Iterable[str]) -> tuple[str, ...]:
         return (s,)
     else:
         return tuple(s)
+
+
+def _check_path_exists(path: AnyStrPath, kind: str) -> None:
+    if os.path.exists(path):
+        raise FileNotFoundError(f"{kind} not found: '{path}'.")
 
 
 #############################################################################

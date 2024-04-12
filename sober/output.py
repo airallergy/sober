@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import sober.config as cf
 from sober._simulator import _run_readvars
-from sober._tools import _rectified_str_iterable, _run, _uuid
+from sober._tools import _check_path_exists, _rectified_str_iterable, _run, _uuid
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -267,8 +267,7 @@ class ScriptCollector(_Collector):
     def _check_args(self) -> None:
         super()._check_args()
 
-        if not self._script_file.exists():
-            raise FileNotFoundError(f"script file not found: '{self._script_file}'")
+        _check_path_exists(self._script_file, "script file")
 
     def _collect(self, cwd: Path) -> None:
         language_exec = cf._config["exec." + self._language]  # type: ignore[literal-required]  # python/mypy#12554
