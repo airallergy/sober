@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import platform
 import warnings
 from pathlib import Path
@@ -140,15 +141,17 @@ def config_energyplus(
         )
 
     _config = {
-        "schema.energyplus": str(Path(schema).resolve(True)),
-        "exec.energyplus": str(Path(energyplus_exec).resolve(True)),
+        "schema.energyplus": os.fsdecode(Path(schema).resolve(True)),
+        "exec.energyplus": os.fsdecode(Path(energyplus_exec).resolve(True)),
     }
     if epmacro_exec is not None:
-        _config["exec.epmacro"] = str(Path(epmacro_exec).resolve(True))
+        _config["exec.epmacro"] = os.fsdecode(Path(epmacro_exec).resolve(True))
     if expandobjects_exec is not None:
-        _config["exec.expandobjects"] = str(Path(expandobjects_exec).resolve(True))
+        _config["exec.expandobjects"] = os.fsdecode(
+            Path(expandobjects_exec).resolve(True)
+        )
     if readvars_exec is not None:
-        _config["exec.readvars"] = str(Path(readvars_exec).resolve(True))
+        _config["exec.readvars"] = os.fsdecode(Path(readvars_exec).resolve(True))
 
 
 def _check_config_init() -> None:
@@ -194,4 +197,4 @@ def config_script(*, python_exec: AnyStrPath | None = None) -> None:
                 stacklevel=2,
             )
 
-        _config["exec.python"] = str(python_exec)
+        _config["exec.python"] = os.fsdecode(python_exec)

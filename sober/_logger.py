@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools as ft
 import inspect
 import logging
+import os
 import platform
 import sys
 from contextlib import ContextDecorator
@@ -44,7 +45,7 @@ def _logger_identifier(cwd: Path) -> str:
 
     # TODO: ruff: LOG002
 
-    return str(cwd)
+    return os.fsdecode(cwd)
 
 
 class _Filter(logging.Filter):

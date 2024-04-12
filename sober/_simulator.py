@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path, PurePath
 from typing import TYPE_CHECKING
 
@@ -95,7 +96,7 @@ def _resolved_macros(macro_lines: Sequence[str], model_dir: Path) -> list[str]:
             # resolve include paths using current fileprefix
             # len("##include") == 9
             resolved_macro_lines.append(
-                "##include " + str(_resolved_path(line[10:], fileprefix))
+                "##include " + os.fsdecode(_resolved_path(line[10:], fileprefix))
             )
         else:
             # leave macro commands of other types as is
