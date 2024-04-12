@@ -198,7 +198,7 @@ class _SubprocessLogger:
         self, logger: logging.LoggerAdapter[logging.Logger], cmd_args: AnyCmdArgs
     ) -> None:
         self._logger = logger
-        self._cmd = " ".join(str(cmd_arg) for cmd_arg in cmd_args)
+        self._cmd = " ".join(map(str, cmd_args))
 
     def __enter__(self) -> Self:
         self._logger.info(f"started '{self._cmd}'")

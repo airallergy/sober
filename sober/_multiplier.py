@@ -43,7 +43,7 @@ class _LazyCartesianProduct(Generic[_T]):
     __slots__ = ("_tuples", "_n_tuples", "_n_products", "_divs", "_mods")
 
     def __init__(self, *iterables: Iterable[_T]):
-        self._tuples = tuple(tuple(item) for item in iterables)  # python/mypy#11682
+        self._tuples = tuple(map(tuple, iterables))
         self._n_tuples = len(self._tuples)
 
         tuple_lens = tuple(map(len, self._tuples))

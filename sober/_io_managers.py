@@ -383,7 +383,7 @@ class _OutputManager:
 
         # parse clean patterns without duplicates
         self._clean_patterns = frozenset(
-            os.path.normpath(item) for item in _rectified_str_iterable(clean_patterns)
+            map(os.path.normpath, _rectified_str_iterable(clean_patterns))
         )
 
     def __iter__(self) -> Iterator[_Collector]:

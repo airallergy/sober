@@ -243,7 +243,7 @@ class IndexTagger(_IDFTagger):
     __slots__ = ("_index_trios",)
 
     def __init__(self, /, *index_trios: Iterable[str]) -> None:
-        _index_trios = tuple(tuple(item) for item in index_trios)  # python/mypy#11682
+        _index_trios = tuple(map(tuple, index_trios))
 
         if any(len(item) != 3 for item in _index_trios):
             raise ValueError(
@@ -287,7 +287,7 @@ class StringTagger(_TextTagger):
     __slots__ = ("_string_trios",)
 
     def __init__(self, /, *string_trios: Iterable[str]) -> None:
-        _string_trios = tuple(tuple(item) for item in string_trios)  # python/mypy#11682
+        _string_trios = tuple(map(tuple, string_trios))
 
         if any(len(item) == 0 for item in _string_trios):
             raise ValueError(
@@ -337,7 +337,7 @@ class WeatherModifier(_IntegralModifier[Path]):
     def __init__(
         self, *options: AnyStrPath, is_noise: bool = False, name: str = ""
     ) -> None:
-        super().__init__(tuple(Path(item) for item in options), is_noise, name)
+        super().__init__(tuple(map(Path, options)), is_noise, name)
 
     def _check_args(self) -> None:
         super()._check_args()
