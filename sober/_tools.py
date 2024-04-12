@@ -23,8 +23,8 @@ if TYPE_CHECKING:
     from sober._typing import AnyCmdArgs
 
     _InitArgs = TypeVarTuple("_InitArgs")
-    _T = TypeVar("_T", contravariant=True)
-    _R = TypeVar("_R", covariant=True)
+    _T_contra = TypeVar("_T_contra", contravariant=True)
+    _R_co = TypeVar("_R_co", covariant=True)
 
     # [1] quite a few mypy complaints due to typeshed,
     #     stemmed from the implementation of starmap/starimap
@@ -68,7 +68,7 @@ def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
     # run subprocess and pass the result object to logging
     with _log(cwd, caller_depth=1, cmd_args=cmd_args) as l:
         l._result = sp.run(
-            cmd_args, stdout=sp.PIPE, stderr=sp.STDOUT, cwd=cwd, text=True
+            cmd_args, stdout=sp.PIPE, stderr=sp.STDOUT, cwd=cwd, text=True, check=False
         )
 
 
@@ -143,12 +143,14 @@ class _Pool(Pool):
             processes, initialiser, initargs, context=_MULTIPROCESSING_CONTEXT
         )
 
-    def _map(self, func: Callable[[_T], _R], iterable: Iterable[_T]) -> Iterator[_R]:
+    def _map(
+        self, func: Callable[[_T_contra], _R_co], iterable: Iterable[_T_contra]
+    ) -> Iterator[_R_co]:
         return super().imap(func, iterable, 1)
 
     def _starmap(
-        self, func: Callable[..., _R], iterable: Iterable[Iterable[Any]]
-    ) -> Iterator[_R]:
+        self, func: Callable[..., _R_co], iterable: Iterable[Iterable[Any]]
+    ) -> Iterator[_R_co]:
         """an implementation of starimap
         borrowed from https://stackoverflow.com/a/57364423"""
 
@@ -177,12 +179,14 @@ class _Loop:
     def __exit__(self, *args: object) -> None:
         pass
 
-    def _map(self, func: Callable[[_T], _R], iterable: Iterable[_T]) -> Iterator[_R]:
+    def _map(
+        self, func: Callable[[_T_contra], _R_co], iterable: Iterable[_T_contra]
+    ) -> Iterator[_R_co]:
         return map(func, iterable)
 
     def _starmap(
-        self, func: Callable[..., _R], iterable: Iterable[Iterable[Any]]
-    ) -> Iterator[_R]:
+        self, func: Callable[..., _R_co], iterable: Iterable[Iterable[Any]]
+    ) -> Iterator[_R_co]:
         return it.starmap(func, iterable)
 
 

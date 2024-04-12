@@ -39,7 +39,7 @@ select = [
     "PERF",
     "PGH",
     "PIE",
-    "PLE",
+    "PL",
     "PT",
     "PYI",
     "RET",
@@ -56,8 +56,19 @@ select = [
 extend-select = ["RUF022"] # explicit preview rules
 # consider removing:
 #   - E501: long line
+#   - PLR2004: magic number
+#   - PLW0603: use global
 #   - TRY003: long raise message
-ignore = ["E266", "E501", "E741", "TRY003", "RET505"]
+ignore = [
+    "E266",
+    "E501",
+    "E741",
+    "PLR0913",
+    "PLR2004",
+    "PLW0603",
+    "RET505",
+    "TRY003",
+]
 preview = true
 explicit-preview-rules = true
 

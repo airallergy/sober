@@ -41,8 +41,8 @@ class _IDF(Protocol):
 
 
 _TM = TypeVar("_TM", _IDF, str)  # AnyTaggerModel
-_MK = TypeVar("_MK", float, int)  # AnyModifierKey
-_MV = TypeVar("_MV", bound=AnyModifierVal, covariant=True)  # AnyModifierValue
+_MK_contra = TypeVar("_MK_contra", float, int, contravariant=True)  # AnyModifierKey
+_MV_co = TypeVar("_MV_co", bound=AnyModifierVal, covariant=True)  # AnyModifierValue
 #############################################################################
 
 
@@ -120,7 +120,7 @@ if TYPE_CHECKING:
     _AnyTagger: TypeAlias = _IDFTagger | _TextTagger
 
 
-class _Modifier(ABC, Generic[_MK, _MV]):
+class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     """an abstract base class for input modifiers"""
 
     _bounds: tuple[float, float]
@@ -140,7 +140,7 @@ class _Modifier(ABC, Generic[_MK, _MV]):
         self._name = name
 
     @abstractmethod
-    def __call__(self, key: _MK) -> _MV: ...
+    def __call__(self, key: _MK_contra) -> _MV_co: ...
 
     @abstractmethod
     def _check_args(self) -> None:
@@ -153,7 +153,7 @@ class _Modifier(ABC, Generic[_MK, _MV]):
         return 0  # assuming the hype ctrl is an integral variable with one item
 
     @abstractmethod
-    def _hype_ctrl_val(self) -> _MV: ...
+    def _hype_ctrl_val(self) -> _MV_co: ...
 
     def _hype_ctrl_len(self) -> int:
         assert not self._is_ctrl
@@ -175,33 +175,33 @@ class _RealModifier(_Modifier[float, float]):
         return _Noise("(...)")
 
 
-class _IntegralModifier(_Modifier[int, _MV]):
+class _IntegralModifier(_Modifier[int, _MV_co]):
     """an abstract base class for input modifiers of integral variables"""
 
-    _options: tuple[_MV, ...]
+    _options: tuple[_MV_co, ...]
 
     __slots__ = ("_options",)
 
     @abstractmethod
-    def __init__(self, options: tuple[_MV, ...], is_noise: bool, name: str) -> None:
+    def __init__(self, options: tuple[_MV_co, ...], is_noise: bool, name: str) -> None:
         self._options = options
 
         bounds = (0, len(self) - 1)
         super().__init__(bounds, is_noise, name)
 
-    def __iter__(self) -> Iterator[_MV]:
+    def __iter__(self) -> Iterator[_MV_co]:
         yield from self._options
 
     def __len__(self) -> int:
         return len(self._options)
 
-    def __getitem__(self, key: int) -> _MV:
+    def __getitem__(self, key: int) -> _MV_co:
         return self._options[key]
 
-    def __call__(self, key: int) -> _MV:
+    def __call__(self, key: int) -> _MV_co:
         return self[key]
 
-    def _hype_ctrl_val(self) -> _MV:
+    def _hype_ctrl_val(self) -> _MV_co:
         # FunctionalModifier overwrites later
         assert not self._is_ctrl
         return _Noise("{...}")

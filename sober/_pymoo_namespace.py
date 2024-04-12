@@ -20,6 +20,7 @@ from pymoo.termination.max_gen import MaximumGenerationTermination
 from pymoo.util.ref_dirs.energy import RieszEnergyReferenceDirectionFactory
 
 if TYPE_CHECKING:
+    # ruff: noqa: PLC0414  # astral-sh/ruff#3711
     from pymoo.algorithms.base.genetic import GeneticAlgorithm as GeneticAlgorithm
     from pymoo.core.algorithm import Algorithm as Algorithm
     from pymoo.core.callback import Callback as Callback

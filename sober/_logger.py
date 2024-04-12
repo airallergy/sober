@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
     _T = TypeVar("_T")
     _P = ParamSpec("_P")
-    _R = TypeVar("_R", covariant=True)
+    _R_co = TypeVar("_R_co", covariant=True)
 
 HOST_STEM: Final = platform.node().split(".")[0]
 
@@ -118,10 +118,12 @@ class _LoggerManager(ContextDecorator):
         self._is_first = is_first
 
     def __call__(  # type: ignore[override]
-        self, func: Callable[Concatenate[_T, Path, _P], _R]
-    ) -> Callable[Concatenate[_T, Path, _P], _R]:
+        self, func: Callable[Concatenate[_T, Path, _P], _R_co]
+    ) -> Callable[Concatenate[_T, Path, _P], _R_co]:
         @ft.wraps(func)
-        def wrapper(arg: _T, cwd: Path, /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
+        def wrapper(
+            arg: _T, cwd: Path, /, *args: _P.args, **kwargs: _P.kwargs
+        ) -> _R_co:
             # mkdir for all level folders happens here currently
             # this may not make logical sense (mkdir in logging)
             # will look to move this to main modules later

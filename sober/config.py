@@ -164,8 +164,6 @@ def config_parallel(*, n_processes: int | None = None) -> None:
 
     _check_config_init()
 
-    global _config
-
     if ("n.processes" in _config) and (_config["n.processes"] != n_processes):
         warnings.warn(
             f"n_processes has been configured to '{_config['n.processes']}', and will be overriden by '{n_processes}'.",
@@ -185,8 +183,6 @@ def config_script(*, python_exec: AnyStrPath | None = None) -> None:
     # TODO: **kwargs from PEP 692/3.12
 
     _check_config_init()
-
-    global _config
 
     if python_exec is not None:
         if ("exec.python" in _config) and (
