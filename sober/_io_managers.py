@@ -254,7 +254,7 @@ class _InputManager:
             record_dir / cf._RECORDS_FILENAMES[level], header_row, *record_rows
         )
 
-    @_LoggerManager(cwd_index=1, is_first=True)
+    @_LoggerManager(is_first=True)
     def _make_task(self, task_dir: Path, task: _AnyTask) -> None:
         # copy the task weather file
         task_epw_file = task_dir / "in.epw"
@@ -280,7 +280,7 @@ class _InputManager:
 
         _log(task_dir, "created in.idf")
 
-    @_LoggerManager(cwd_index=1, is_first=True)
+    @_LoggerManager(is_first=True)
     def _make_job(self, job_dir: Path, job: _AnyJob) -> None:
         # make tasks
         for task_uid, task in job:
@@ -294,7 +294,7 @@ class _InputManager:
 
         _log(job_dir, "recorded inputs")
 
-    @_LoggerManager(cwd_index=1, is_first=True)
+    @_LoggerManager(is_first=True)
     def _make_batch(
         self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
     ) -> None:
@@ -321,12 +321,12 @@ class _InputManager:
 
         _log(batch_dir, "recorded inputs")
 
-    @_LoggerManager(cwd_index=1)
+    @_LoggerManager()
     def _simulate_task(self, task_dir: Path) -> None:
         # simulate the task mdoel
         _run_energyplus(task_dir)
 
-    @_LoggerManager(cwd_index=1)
+    @_LoggerManager()
     def _simulate_batch(
         self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
     ) -> None:
@@ -542,13 +542,13 @@ class _OutputManager:
             record_dir / cf._RECORDS_FILENAMES[level], header_row, *record_rows
         )
 
-    @_LoggerManager(cwd_index=1)
+    @_LoggerManager()
     def _collect_task(self, task_dir: Path) -> None:
         # collect task outputs
         for item in self._task_outputs:
             item._collect(task_dir)
 
-    @_LoggerManager(cwd_index=1)
+    @_LoggerManager()
     def _collect_job(self, job_dir: Path, task_uids: _AnyUIDs) -> None:
         # collect tasks
         for task_uid in task_uids:
@@ -564,7 +564,7 @@ class _OutputManager:
         for item in self._job_outputs:
             item._collect(job_dir)
 
-    @_LoggerManager(cwd_index=1)
+    @_LoggerManager()
     def _collect_batch(
         self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
     ) -> None:
@@ -585,7 +585,7 @@ class _OutputManager:
 
         _log(batch_dir, "recorded final outputs")
 
-    @_LoggerManager(cwd_index=1)
+    @_LoggerManager()
     def _clean_task(self, task_dir: Path) -> None:
         # clean task files
         for path in task_dir.glob("*"):
@@ -597,7 +597,7 @@ class _OutputManager:
 
                 _log(task_dir, f"deleted {path.relative_to(task_dir)}")
 
-    @_LoggerManager(cwd_index=1)
+    @_LoggerManager()
     def _clean_batch(
         self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
     ) -> None:

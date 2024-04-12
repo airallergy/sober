@@ -6,7 +6,6 @@ import logging
 import platform
 import sys
 from contextlib import ContextDecorator
-from pathlib import Path
 from typing import TYPE_CHECKING, get_args
 
 import sober.config as cf
@@ -14,7 +13,17 @@ from sober._typing import AnyLevel  # get_args
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Any, Final, Literal, ParamSpec, Protocol, Self, TypeVar
+    from pathlib import Path
+    from typing import (
+        Any,
+        Concatenate,
+        Final,
+        Literal,
+        ParamSpec,
+        Protocol,
+        Self,
+        TypeVar,
+    )
 
     from sober._typing import AnyCmdArgs
 
@@ -22,6 +31,7 @@ if TYPE_CHECKING:
         returncode: int
         stdout: str
 
+    _T = TypeVar("_T")
     _P = ParamSpec("_P")
     _R = TypeVar("_R", covariant=True)
 
@@ -93,30 +103,25 @@ class _LoggerManager(ContextDecorator):
     each directory/log file has their own logger
     differentiated by the logger name"""
 
-    _cwd_index: int
     _is_first: bool
     _name: str
     _level: AnyLevel
     _log_file: Path
     _logger: logging.Logger
 
-    __slots__ = ("_cwd_index", "_is_first", "_name", "_level", "_log_file", "_logger")
+    __slots__ = ("_is_first", "_name", "_level", "_log_file", "_logger")
 
     if TYPE_CHECKING:
         _recreate_cm: Callable[[], Self]
 
-    def __init__(self, cwd_index: int, is_first: bool = False) -> None:
-        self._cwd_index = cwd_index
+    def __init__(self, is_first: bool = False) -> None:
         self._is_first = is_first
 
-    def __call__(self, func: Callable[_P, _R]) -> Callable[_P, _R]:  # type: ignore[override]
+    def __call__(  # type: ignore[override]
+        self, func: Callable[Concatenate[_T, Path, _P], _R]
+    ) -> Callable[Concatenate[_T, Path, _P], _R]:
         @ft.wraps(func)
-        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-            # get the cwd of the decorated func
-            cwd = args[self._cwd_index]
-            assert isinstance(
-                cwd, Path
-            ), f"the {self._cwd_index}th argument is no Path."
+        def wrapper(arg: _T, cwd: Path, /, *args: _P.args, **kwargs: _P.kwargs) -> _R:
             # mkdir for all level folders happens here currently
             # this may not make logical sense (mkdir in logging)
             # will look to move this to main modules later
@@ -140,7 +145,7 @@ class _LoggerManager(ContextDecorator):
                 self._log_file.unlink(missing_ok=True)
 
             with self._recreate_cm():
-                return func(*args, **kwargs)
+                return func(arg, cwd, *args, **kwargs)
 
         return wrapper
 

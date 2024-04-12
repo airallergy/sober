@@ -200,7 +200,7 @@ class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
             record_dir / cf._RECORDS_FILENAMES[level], header_row, *record_rows
         )
 
-    @_LoggerManager(cwd_index=1, is_first=True)
+    @_LoggerManager(is_first=True)
     def _evolve_epoch(
         self,
         epoch_dir: Path,
