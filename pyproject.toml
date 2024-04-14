@@ -79,6 +79,7 @@ split-on-trailing-comma = false
 ban-relative-imports = "all"
 
 [tool.ruff.format]
+line-ending = "lf"
 skip-magic-trailing-comma = true
 
 [tool.mypy]

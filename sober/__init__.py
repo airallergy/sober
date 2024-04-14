@@ -30,3 +30,4 @@ __all__ = (
 )
 
 # TODO: check all raises and asserts, and unify error messages
+# TODO: py3.12: python/mypy#14072, python/mypy#15238
