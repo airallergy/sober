@@ -29,6 +29,8 @@ if TYPE_CHECKING:
     from sober._typing import AnyCmdArgs
 
     class _SubprocessResult(Protocol):
+        __slots__ = ("returncode", "stdout")
+
         returncode: int
         stdout: str
 
@@ -104,13 +106,13 @@ class _LoggerManager(ContextDecorator):
     each directory/log file has their own logger
     differentiated by the logger name"""
 
+    __slots__ = ("_is_first", "_name", "_level", "_log_file", "_logger")
+
     _is_first: bool
     _name: str
     _level: AnyLevel
     _log_file: Path
     _logger: logging.Logger
-
-    __slots__ = ("_is_first", "_name", "_level", "_log_file", "_logger")
 
     if TYPE_CHECKING:
         _recreate_cm: Callable[[], Self]
@@ -188,11 +190,11 @@ class _LoggerManager(ContextDecorator):
 class _SubprocessLogger:
     """facilitates retrieving stdout/stderr from a subprocess"""
 
+    __slots__ = ("_logger", "_cmd", "_result")
+
     _logger: logging.LoggerAdapter[logging.Logger]
     _cmd: str
     _result: _SubprocessResult
-
-    __slots__ = ("_logger", "_cmd", "_result")
 
     def __init__(
         self, logger: logging.LoggerAdapter[logging.Logger], cmd_args: AnyCmdArgs

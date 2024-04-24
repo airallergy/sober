@@ -50,9 +50,9 @@ _MV_co = TypeVar("_MV_co", bound=AnyModifierVal, covariant=True)  # AnyModifierV
 class _Noise(Any):  # type: ignore[misc]
     """a helper class for _hype_ctrl_val"""
 
-    _s: str
-
     __slots__ = ("_s",)
+
+    _s: str
 
     def __new__(cls, s: str) -> Self:
         self = super().__new__(cls)
@@ -70,9 +70,9 @@ class _Noise(Any):  # type: ignore[misc]
 class _Tagger(ABC, Generic[_TM]):
     """an abstract base class for taggers"""
 
-    _tags: tuple[str, ...]
-
     __slots__ = ("_tags",)
+
+    _tags: tuple[str, ...]
 
     @abstractmethod
     def __init__(self, *feature_groups: tuple[str, ...]) -> None:
@@ -123,14 +123,14 @@ if TYPE_CHECKING:
 class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     """an abstract base class for input modifiers"""
 
+    __slots__ = ("_bounds", "_is_ctrl", "_is_noise", "_name", "_index", "_label")
+
     _bounds: tuple[float, float]
     _is_ctrl: bool
     _is_noise: bool
     _name: str
     _index: int
     _label: str
-
-    __slots__ = ("_bounds", "_is_ctrl", "_is_noise", "_name", "_index", "_label")
 
     @abstractmethod
     def __init__(self, bounds: tuple[float, float], is_noise: bool, name: str) -> None:
@@ -166,6 +166,8 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
 class _RealModifier(_Modifier[float, float]):
     """an abstract base class for input modifiers of real variables"""
 
+    __slots__ = ()
+
     @abstractmethod
     def __init__(self, bounds: tuple[float, float], is_noise: bool, name: str) -> None:
         super().__init__(bounds, is_noise, name)
@@ -181,9 +183,9 @@ class _RealModifier(_Modifier[float, float]):
 class _IntegralModifier(_Modifier[int, _MV_co]):
     """an abstract base class for input modifiers of integral variables"""
 
-    _options: tuple[_MV_co, ...]
-
     __slots__ = ("_options",)
+
+    _options: tuple[_MV_co, ...]
 
     @abstractmethod
     def __init__(self, options: tuple[_MV_co, ...], is_noise: bool, name: str) -> None:
@@ -214,8 +216,9 @@ class _ModelModifierMixin(ABC):
     """an abstract base class for common functions in model modification
     (as opposed to the weather modifier)"""
 
-    _tagger: _AnyTagger
     __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
+
+    _tagger: _AnyTagger
 
     @abstractmethod
     def __init__(self, tagger: _AnyTagger, *args: object, **kwargs: object) -> None:
@@ -238,9 +241,9 @@ class IndexTagger(_IDFTagger):
     no support for nested regular commands inside macro files
     """
 
-    _index_trios: tuple[tuple[str, str, str], ...]
-
     __slots__ = ("_index_trios",)
+
+    _index_trios: tuple[tuple[str, str, str], ...]
 
     def __init__(self, /, *index_trios: Iterable[str]) -> None:
         _index_trios = tuple(map(tuple, index_trios))
@@ -282,9 +285,9 @@ class StringTagger(_TextTagger):
     no support for nested macro commands inside macro files
     """
 
-    _string_trios: tuple[tuple[str, str, str], ...]
-
     __slots__ = ("_string_trios",)
+
+    _string_trios: tuple[tuple[str, str, str], ...]
 
     def __init__(self, /, *string_trios: Iterable[str]) -> None:
         _string_trios = tuple(map(tuple, string_trios))
@@ -411,12 +414,12 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
 class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifierVal]):
     """modifies functional inputs"""
 
+    __slots__ = ("_tagger", "_func", "_input_indices", "_args", "_kwargs")
+
     _func: _AnyFunc
     _input_indices: tuple[int, ...]
     _args: tuple[object, ...]  # TODO: restrict this for serialisation
     _kwargs: dict[str, object]  # TODO: restrict this for serialisation
-
-    __slots__ = ("_tagger", "_func", "_input_indices", "_args", "_kwargs")
 
     def __init__(
         self,

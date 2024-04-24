@@ -25,12 +25,6 @@ if TYPE_CHECKING:
 class Problem:
     """defines the parametrics/optimisation problem"""
 
-    _model_file: Path
-    _input_manager: _InputManager
-    _output_manager: _OutputManager
-    _evaluation_dir: Path
-    _config_dir: Path
-
     __slots__ = (
         "_model_file",
         "_input_manager",
@@ -38,6 +32,12 @@ class Problem:
         "_evaluation_dir",
         "_config_dir",
     )
+
+    _model_file: Path
+    _input_manager: _InputManager
+    _output_manager: _OutputManager
+    _evaluation_dir: Path
+    _config_dir: Path
 
     def __init__(
         self,

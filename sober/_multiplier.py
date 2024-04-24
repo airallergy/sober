@@ -34,13 +34,13 @@ class _LazyCartesianProduct(Generic[_T]):
     adapted from: https://github.com/tylerburdsall/lazy-cartesian-product-python
     see also: https://medium.com/hackernoon/generating-the-nth-cartesian-product-e48db41bed3f"""
 
+    __slots__ = ("_tuples", "_n_tuples", "_n_products", "_divs", "_mods")
+
     _tuples: tuple[tuple[_T, ...], ...]
     _n_tuples: int
     _n_products: int
     _divs: tuple[int, ...]
     _mods: tuple[int, ...]
-
-    __slots__ = ("_tuples", "_n_tuples", "_n_products", "_divs", "_mods")
 
     def __init__(self, *iterables: Iterable[_T]):
         self._tuples = tuple(map(tuple, iterables))

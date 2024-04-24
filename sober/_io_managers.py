@@ -70,15 +70,6 @@ class _InputManager:
 
     MODEL_TYPES: Final = frozenset({".idf", ".imf"})
 
-    _weather_input: WeatherModifier
-    _model_inputs: tuple[AnyModelModifier, ...]
-    _has_templates: bool
-    _tagged_model: str
-    _model_type: AnyModelType
-    _has_noises: bool
-    _has_real_ctrls: bool
-    _has_real_noises: bool
-
     __slots__ = (
         "_weather_input",
         "_model_inputs",
@@ -89,6 +80,15 @@ class _InputManager:
         "_has_real_ctrls",
         "_has_real_noises",
     )
+
+    _weather_input: WeatherModifier
+    _model_inputs: tuple[AnyModelModifier, ...]
+    _has_templates: bool
+    _tagged_model: str
+    _model_type: AnyModelType
+    _has_noises: bool
+    _has_real_ctrls: bool
+    _has_real_noises: bool
 
     def __init__(
         self,
@@ -351,16 +351,6 @@ class _OutputManager:
 
     _DEFAULT_CLEAN_PATTERNS: Final = ("*.audit", "*.end", "sqlite.err")
 
-    _task_outputs: tuple[_Collector, ...]
-    _job_outputs: tuple[_Collector, ...]
-    _clean_patterns: frozenset[str]
-    _objectives: tuple[str, ...]
-    _constraints: tuple[str, ...]
-    _objective_indices: tuple[int, ...]
-    _constraint_indices: tuple[int, ...]
-    _to_objectives: tuple[_AnyConverter, ...]
-    _to_constraints: tuple[_AnyConverter, ...]
-
     __slots__ = (
         "_task_outputs",
         "_job_outputs",
@@ -372,6 +362,16 @@ class _OutputManager:
         "_to_objectives",
         "_to_constraints",
     )
+
+    _task_outputs: tuple[_Collector, ...]
+    _job_outputs: tuple[_Collector, ...]
+    _clean_patterns: frozenset[str]
+    _objectives: tuple[str, ...]
+    _constraints: tuple[str, ...]
+    _objective_indices: tuple[int, ...]
+    _constraint_indices: tuple[int, ...]
+    _to_objectives: tuple[_AnyConverter, ...]
+    _to_constraints: tuple[_AnyConverter, ...]
 
     def __init__(
         self, outputs: Iterable[_Collector], clean_patterns: str | Iterable[str]

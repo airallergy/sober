@@ -50,15 +50,6 @@ class _EPOutputType(enum.StrEnum):
 class _Collector(ABC):
     """an abstract base class for output collector"""
 
-    _filename: str
-    _level: AnyCoreLevel
-    _objectives: tuple[str, ...]
-    _constraints: tuple[str, ...]
-    _direction: _Direction
-    _bounds: _AnyBounds
-    _is_final: bool
-    _is_copied: bool
-
     __slots__ = (
         "_filename",
         "_level",
@@ -69,6 +60,15 @@ class _Collector(ABC):
         "_is_final",
         "_is_copied",
     )
+
+    _filename: str
+    _level: AnyCoreLevel
+    _objectives: tuple[str, ...]
+    _constraints: tuple[str, ...]
+    _direction: _Direction
+    _bounds: _AnyBounds
+    _is_final: bool
+    _is_copied: bool
 
     @abstractmethod
     def __init__(
@@ -157,12 +157,6 @@ class RVICollector(_Collector):
 
     # TODO: consider switching to/adding EP native csv once NREL/EnergyPlus#9395
 
-    _ep_output_names: tuple[str, ...]
-    _ep_output_type: _EPOutputType
-    _keys: tuple[str, ...]
-    _frequency: str
-    _rvi_file: Path
-
     __slots__ = (
         "_ep_output_names",
         "_ep_output_type",
@@ -170,6 +164,12 @@ class RVICollector(_Collector):
         "_frequency",
         "_rvi_file",
     )
+
+    _ep_output_names: tuple[str, ...]
+    _ep_output_type: _EPOutputType
+    _keys: tuple[str, ...]
+    _frequency: str
+    _rvi_file: Path
 
     def __init__(
         self,
@@ -236,11 +236,11 @@ class RVICollector(_Collector):
 class ScriptCollector(_Collector):
     """collects script outputs"""
 
+    __slots__ = ("_script_file", "_language", "_extra_args")
+
     _script_file: Path
     _language: AnyLanguage
     _extra_args: tuple[str, ...]
-
-    __slots__ = ("_script_file", "_language", "_extra_args")
 
     def __init__(
         self,
