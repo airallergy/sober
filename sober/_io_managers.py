@@ -20,8 +20,8 @@ from sober._simulator import (
 )
 from sober._tools import (
     _natural_width,
+    _parsed_str_iterable,
     _recorded_batch,
-    _rectified_str_iterable,
     _write_records,
 )
 from sober._typing import AnyModifierVal  # cast
@@ -383,7 +383,7 @@ class _OutputManager:
 
         # parse clean patterns without duplicates
         self._clean_patterns = frozenset(
-            map(os.path.normpath, _rectified_str_iterable(clean_patterns))
+            map(os.path.normpath, _parsed_str_iterable(clean_patterns))
         )
 
     def __iter__(self) -> Iterator[_Collector]:

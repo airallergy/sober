@@ -4,15 +4,15 @@ import enum
 import itertools as it
 import shutil
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import sober.config as cf
 from sober._simulator import _run_readvars
-from sober._tools import _check_path_exists, _rectified_str_iterable, _run, _uuid
+from sober._tools import _parsed_path, _parsed_str_iterable, _run, _uuid
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from pathlib import Path
     from typing import Literal, TypeAlias
 
     from sober._typing import AnyCoreLevel, AnyLanguage, AnyStrPath
@@ -83,8 +83,8 @@ class _Collector(ABC):
     ) -> None:
         self._filename = filename
         self._level = level
-        self._objectives = _rectified_str_iterable(objectives)
-        self._constraints = _rectified_str_iterable(constraints)
+        self._objectives = _parsed_str_iterable(objectives)
+        self._constraints = _parsed_str_iterable(constraints)
         self._direction = _Direction[direction.upper()]
         self._bounds = bounds
         self._is_final = is_final
@@ -186,9 +186,9 @@ class RVICollector(_Collector):
         bounds: _AnyBounds = (None, 0),
         is_final: bool = True,
     ) -> None:
-        self._ep_output_names = _rectified_str_iterable(ep_output_names)
+        self._ep_output_names = _parsed_str_iterable(ep_output_names)
         self._ep_output_type = _EPOutputType[ep_output_type.upper()]
-        self._keys = _rectified_str_iterable(keys)
+        self._keys = _parsed_str_iterable(keys)
         self._frequency = frequency
 
         super().__init__(
@@ -256,7 +256,7 @@ class ScriptCollector(_Collector):
         bounds: _AnyBounds = (None, 0),
         is_final: bool = True,
     ) -> None:
-        self._script_file = Path(script_file)
+        self._script_file = _parsed_path(script_file, "script file")
         self._language = language
         self._extra_args = extra_args
 
@@ -266,8 +266,6 @@ class ScriptCollector(_Collector):
 
     def _check_args(self) -> None:
         super()._check_args()
-
-        _check_path_exists(self._script_file, "script file")
 
     def _collect(self, cwd: Path) -> None:
         language_exec = cf._config["exec." + self._language]  # type: ignore[literal-required]  # python/mypy#12554
@@ -298,7 +296,7 @@ class _CopyCollector(_Collector):
         direction: _Direction,
         bounds: _AnyBounds,
     ) -> None:
-        # overwrite _Collector's __init__, as all args have been rectified
+        # overwrite _Collector's __init__, as all args have been parsed
         self._filename = filename
         self._level = "job"
         self._objectives = objectives

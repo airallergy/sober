@@ -4,12 +4,12 @@ import csv
 import functools as ft
 import itertools as it
 import math
-import os.path
 import subprocess as sp
 import sys
 import uuid
 from multiprocessing import get_context
 from multiprocessing.pool import Pool
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import sober.config as cf
@@ -17,7 +17,6 @@ from sober._logger import _log
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
-    from pathlib import Path
     from queue import SimpleQueue
     from typing import Any, Final, Self, TypeAlias, TypeVar, TypeVarTuple
 
@@ -97,7 +96,10 @@ def _recorded_batch(batch_dir: Path) -> tuple[tuple[str, ...], ...]:
         return tuple(map(tuple, reader))
 
 
-def _rectified_str_iterable(s: str | Iterable[str]) -> tuple[str, ...]:
+#############################################################################
+#######                   ARGUMENT PARSE FUNCTIONS                    #######
+#############################################################################
+def _parsed_str_iterable(s: str | Iterable[str]) -> tuple[str, ...]:
     """converts str or an iterable of str to a tuple of str"""
     if isinstance(s, str):
         return (s,)
@@ -105,9 +107,17 @@ def _rectified_str_iterable(s: str | Iterable[str]) -> tuple[str, ...]:
         return tuple(s)
 
 
-def _check_path_exists(path: AnyStrPath, kind: str) -> None:
-    if not os.path.exists(path):
+def _parsed_path(path: AnyStrPath, kind: str = "") -> Path:
+    """converts path to a Path object
+    and checks existence if kind is specified (i.e. non-empty str)
+    """
+
+    path = Path(path).resolve()
+
+    if kind and not path.exists():
         raise FileNotFoundError(f"{kind} not found: '{path}'.")
+
+    return path
 
 
 #############################################################################

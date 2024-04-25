@@ -3,10 +3,11 @@ from __future__ import annotations
 import os
 import platform
 import warnings
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import psutil
+
+from sober._tools import _parsed_path
 
 if TYPE_CHECKING:
     from typing import Final, Required, TypedDict
@@ -113,7 +114,7 @@ def config_energyplus(
     version: str | None = None,
     root: AnyStrPath | None = None,
     schema: AnyStrPath | None = None,
-    energyplus_exec: AnyStrPath | None = None,
+    exec: AnyStrPath | None = None,
     epmacro_exec: AnyStrPath | None = None,
     expandobjects_exec: AnyStrPath | None = None,
     readvars_exec: AnyStrPath | None = None,
@@ -128,30 +129,32 @@ def config_energyplus(
         root = _default_energyplus_root(*version.split("."))
 
     if root is not None:
-        root = Path(root).resolve(True)
+        root = _parsed_path(root, "energyplus root")
         schema = root / "Energy+.idd"
-        energyplus_exec = root / "energyplus"
+        exec = root / "energyplus"
         epmacro_exec = root / "EPMacro"
         expandobjects_exec = root / "ExpandObjects"
         readvars_exec = root / "PostProcess" / "ReadVarsESO"
 
-    if (schema is None) or (energyplus_exec is None):
-        raise ValueError(
-            "One of version, root or (schema, energyplus_exec) needs to be provided."
-        )
+    if (schema is None) or (exec is None):
+        raise ValueError("One of version, root or (schema, exec) needs to be provided.")
 
     _config = {
-        "schema.energyplus": os.fsdecode(Path(schema).resolve(True)),
-        "exec.energyplus": os.fsdecode(Path(energyplus_exec).resolve(True)),
+        "schema.energyplus": os.fsdecode(_parsed_path(schema, "energyplus schema")),
+        "exec.energyplus": os.fsdecode(_parsed_path(exec, "energyplus executable")),
     }
     if epmacro_exec is not None:
-        _config["exec.epmacro"] = os.fsdecode(Path(epmacro_exec).resolve(True))
+        _config["exec.epmacro"] = os.fsdecode(
+            _parsed_path(epmacro_exec, "epmacro executable")
+        )
     if expandobjects_exec is not None:
         _config["exec.expandobjects"] = os.fsdecode(
-            Path(expandobjects_exec).resolve(True)
+            _parsed_path(expandobjects_exec, "expandobjects executable")
         )
     if readvars_exec is not None:
-        _config["exec.readvars"] = os.fsdecode(Path(readvars_exec).resolve(True))
+        _config["exec.readvars"] = os.fsdecode(
+            _parsed_path(readvars_exec, "readvars executable")
+        )
 
 
 def _check_config_init() -> None:
@@ -187,7 +190,7 @@ def config_script(*, python_exec: AnyStrPath | None = None) -> None:
     _check_config_init()
 
     if python_exec is not None:
-        python_exec = Path(python_exec).resolve(True)
+        python_exec = _parsed_path(python_exec, "python executable")
 
         if ("exec.python" in _config) and (
             not python_exec.samefile(_config["exec.python"])

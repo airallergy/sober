@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, cast, final
 
 from eppy.bunchhelpers import makefieldname
 
-from sober._tools import _check_path_exists, _uuid
+from sober._tools import _parsed_path, _uuid
 from sober._typing import AnyModelModifierVal, AnyModifierVal
 
 if TYPE_CHECKING:
@@ -340,15 +340,16 @@ class WeatherModifier(_IntegralModifier[Path]):
     def __init__(
         self, *options: AnyStrPath, is_noise: bool = False, name: str = ""
     ) -> None:
-        super().__init__(tuple(map(Path, options)), is_noise, name)
+        super().__init__(
+            tuple(_parsed_path(item, "weather file") for item in options),
+            is_noise,
+            name,
+        )
 
     def _check_args(self) -> None:
         super()._check_args()
 
         for item in self._options:
-            # check existence
-            _check_path_exists(item, "weather file")
-
             # check suffix
             if item.suffix != ".epw":
                 raise ValueError(f"'{item}' is no epw file.")

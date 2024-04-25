@@ -9,7 +9,7 @@ import sober.config as cf
 from sober._evolver import _algorithm, _PymooProblem, _sampling
 from sober._io_managers import _InputManager, _OutputManager
 from sober._multiplier import _multiply
-from sober._tools import _check_path_exists
+from sober._tools import _parsed_path
 from sober.output import RVICollector, ScriptCollector, _Collector
 
 if TYPE_CHECKING:
@@ -53,20 +53,20 @@ class Problem:
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
     ) -> None:
-        self._model_file = Path(model_file)
+        self._model_file = _parsed_path(model_file, "model file")
         self._input_manager = _InputManager(weather_input, model_inputs, has_templates)
         self._output_manager = _OutputManager(outputs, clean_patterns)
         self._evaluation_dir = (
             self._model_file.parent / "evaluation"
             if evaluation_dir is None
-            else Path(evaluation_dir)
+            else _parsed_path(evaluation_dir)
         )
         self._config_dir = self._evaluation_dir / ("." + __package__.split(".")[-1])
 
         self._prepare(n_processes, python_exec)
 
     def _check_args(self) -> None:
-        _check_path_exists(self._model_file, "model file")
+        pass
 
     def _prepare(self, n_processes: int | None, python_exec: AnyStrPath | None) -> None:
         self._check_args()
@@ -238,9 +238,7 @@ class Problem:
         # TODO: also consider moving this func outside Problem to be called directly
         # TODO: termination may not be necessary, as the old one may be reused
 
-        checkpoint_file = Path(checkpoint_file)
-
-        _check_path_exists(checkpoint_file, "checkpoint file")
+        checkpoint_file = _parsed_path(checkpoint_file, "checkpoint file")
 
         with checkpoint_file.open("rb") as fp:
             epoch_dir, result = pickle.load(fp)
