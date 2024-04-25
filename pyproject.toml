@@ -11,6 +11,7 @@ python = "^3.11"
 pymoo = "^0.6.1"
 eppy = "^0.5.63"
 numpy = "^1.23"
+scipy = "^1.12"
 psutil = "^5.9.5"
 
 [tool.poetry.group.dev.dependencies]

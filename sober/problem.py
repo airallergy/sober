@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import pickle
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -8,14 +9,19 @@ import sober._pymoo_namespace as pm
 import sober.config as cf
 from sober._evolver import _algorithm, _PymooProblem, _sampling
 from sober._io_managers import _InputManager, _OutputManager
-from sober._multiplier import _multiply
+from sober._multiplier import _cartesian_multiply, _elementwise_multiply
 from sober._tools import _parsed_path
 from sober.output import RVICollector, ScriptCollector, _Collector
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from sober._typing import AnyModelModifier, AnyPymooCallback, AnyStrPath
+    from sober._typing import (
+        AnyModelModifier,
+        AnyPymooCallback,
+        AnySampleMethod,
+        AnyStrPath,
+    )
     from sober.input import WeatherModifier
 
 
@@ -94,25 +100,55 @@ class Problem:
             },
         )
 
-    def run_sample(self, size: int, /, *, seed: int | None = None) -> None:
-        """runs a sample of the full search space"""
+    def run_randomised_sample(
+        self, size: int, /, *, method: AnySampleMethod, seed: int | None = None
+    ) -> None:
+        """runs a sample of the randomised search space"""
 
         cf._has_batches = False
 
-        _multiply(
+        _elementwise_multiply(
+            self._input_manager,
+            self._output_manager,
+            self._evaluation_dir,
+            size,
+            method,
+            seed,
+        )
+
+    def run_factorial_sample(self, size: int, /, *, seed: int | None = None) -> None:
+        """runs a sample of the factorial search space"""
+
+        if self._input_manager._has_real_ctrls:
+            frames = inspect.stack()
+            caller_name = ""
+            for item in frames:
+                if item.function.startswith("run_") and ("self" in item.frame.f_locals):
+                    caller_name = item.function
+                else:
+                    assert caller_name
+                    break
+
+            raise ValueError(
+                f"incompatible with real control variables: '{caller_name}'."
+            )
+
+        cf._has_batches = False
+
+        _cartesian_multiply(
             self._input_manager, self._output_manager, self._evaluation_dir, size, seed
         )
 
     def run_brute_force(self) -> None:
         """runs the full search space"""
 
-        self.run_sample(-1)
+        self.run_factorial_sample(-1)
 
     def run_each_option(self, *, seed: int | None = None) -> None:
         """runs a minimum sample of the full search space that contains all control options
         this helps check the validity of each option"""
 
-        self.run_sample(0, seed=seed)
+        self.run_factorial_sample(0, seed=seed)
 
     def _to_pymoo(
         self,

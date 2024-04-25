@@ -48,5 +48,8 @@ if TYPE_CHECKING:
     AnyRealModelModifier: TypeAlias = ContinuousModifier
     AnyModelModifier: TypeAlias = AnyRealModelModifier | AnyIntegralModelModifier
 
+    # multiplier
+    AnySampleMethod: TypeAlias = Literal["random", "latin hypercube"]
+
     # pymoo
     AnyPymooCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None

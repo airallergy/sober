@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import math
+import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, cast, final
 
+import scipy.stats
 from eppy.bunchhelpers import makefieldname
 
 from sober._tools import _parsed_path, _uuid
@@ -13,15 +16,25 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
     from typing import Concatenate, Self, TypeAlias
 
+    import numpy as np
     from eppy.bunch_subclass import EpBunch
+    from numpy.typing import NDArray
 
     from sober._typing import AnyStrPath
 
     class _SupportsStr(Protocol):
         __slots__ = ()
 
-        @abstractmethod
         def __str__(self) -> str: ...
+
+    _RVV = TypeVar("_RVV", np.float_, np.int_)  # AnyRandomVarVal
+
+    class _SupportsPPF(Protocol):
+        # NOTE: not yet seeing a benefit differing float and int
+        __slots__ = ()
+
+        def support(self) -> tuple[_RVV, _RVV]: ...
+        def ppf(self, q: Iterable[float]) -> NDArray[np.float_]: ...
 
     _AnyFunc: TypeAlias = Callable[
         Concatenate[tuple[AnyModifierVal, ...], ...], AnyModelModifierVal
@@ -123,9 +136,18 @@ if TYPE_CHECKING:
 class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     """an abstract base class for input modifiers"""
 
-    __slots__ = ("_bounds", "_is_ctrl", "_is_noise", "_name", "_index", "_label")
+    __slots__ = (
+        "_bounds",
+        "_distribution",
+        "_is_ctrl",
+        "_is_noise",
+        "_name",
+        "_index",
+        "_label",
+    )
 
     _bounds: tuple[float, float]
+    _distribution: _SupportsPPF
     _is_ctrl: bool
     _is_noise: bool
     _name: str
@@ -133,8 +155,15 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     _label: str
 
     @abstractmethod
-    def __init__(self, bounds: tuple[float, float], is_noise: bool, name: str) -> None:
+    def __init__(
+        self,
+        bounds: tuple[float, float],
+        distribution: _SupportsPPF,
+        is_noise: bool,
+        name: str,
+    ) -> None:
         self._bounds = bounds
+        self._distribution = distribution
         self._is_ctrl = not is_noise  # FunctionalModifier is neither, overwrites later
         self._is_noise = is_noise
         self._name = name
@@ -148,8 +177,26 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
         # as FunctionalModifier needs the index info assigned by _InputManager
 
         low, high = self._bounds
+        distribution_low, distribution_high = self._distribution.support()
+
         if low > high:
             raise ValueError(f"the low '{low}' is greater than the high '{high}'.")
+
+        if math.isinf(distribution_low) or math.isinf(distribution_high):
+            warnings.warn(
+                f"the support of the distribution is infinite: '{self._distribution}'.",
+                stacklevel=2,
+            )
+        elif distribution_low != low or distribution_high != high:
+            raise ValueError(
+                f"the support of the distribution is inconsistent: '{self._distribution}'."
+            )
+
+    @abstractmethod
+    def _key_sample(self, quantile_sample: Iterable[float]) -> tuple[float, ...]:
+        # NOTE: scipy rv_discrete ppf does not convert to int, but rvs does
+        #       this surprising behaviour is handled manually
+        return tuple(self._distribution.ppf(quantile_sample).tolist())
 
     def _hype_ctrl_key(self) -> int:
         assert not self._is_ctrl
@@ -169,11 +216,24 @@ class _RealModifier(_Modifier[float, float]):
     __slots__ = ()
 
     @abstractmethod
-    def __init__(self, bounds: tuple[float, float], is_noise: bool, name: str) -> None:
-        super().__init__(bounds, is_noise, name)
+    def __init__(
+        self,
+        bounds: tuple[float, float],
+        distribution: _SupportsPPF | None,
+        is_noise: bool,
+        name: str,
+    ) -> None:
+        if distribution is None:
+            low, high = bounds
+            distribution = scipy.stats.uniform(loc=low, scale=high - low)
+
+        super().__init__(bounds, distribution, is_noise, name)
 
     def __call__(self, key: float) -> float:
         return key
+
+    def _key_sample(self, quantile_sample: Iterable[float]) -> tuple[float, ...]:
+        return super()._key_sample(quantile_sample)
 
     def _hype_ctrl_val(self) -> float:
         assert not self._is_ctrl
@@ -188,11 +248,22 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
     _options: tuple[_MV_co, ...]
 
     @abstractmethod
-    def __init__(self, options: tuple[_MV_co, ...], is_noise: bool, name: str) -> None:
+    def __init__(
+        self,
+        options: tuple[_MV_co, ...],
+        distribution: _SupportsPPF | None,
+        is_noise: bool,
+        name: str,
+    ) -> None:
         self._options = options
 
         bounds = (0, len(self) - 1)
-        super().__init__(bounds, is_noise, name)
+
+        if distribution is None:
+            low, high = bounds
+            distribution = scipy.stats.randint(low=low, high=high + 1)
+
+        super().__init__(bounds, distribution, is_noise, name)
 
     def __iter__(self) -> Iterator[_MV_co]:
         yield from self._options
@@ -205,6 +276,9 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
 
     def __call__(self, key: int) -> _MV_co:
         return self[key]
+
+    def _key_sample(self, quantile_sample: Iterable[float]) -> tuple[int, ...]:
+        return tuple(map(int, super()._key_sample(quantile_sample)))
 
     def _hype_ctrl_val(self) -> _MV_co:
         # FunctionalModifier overwrites later
@@ -338,10 +412,15 @@ class WeatherModifier(_IntegralModifier[Path]):
     __slots__ = ()
 
     def __init__(
-        self, *options: AnyStrPath, is_noise: bool = False, name: str = ""
+        self,
+        *options: AnyStrPath,
+        distribution: _SupportsPPF | None = None,
+        is_noise: bool = False,
+        name: str = "",
     ) -> None:
         super().__init__(
             tuple(_parsed_path(item, "weather file") for item in options),
+            distribution,
             is_noise,
             name,
         )
@@ -367,10 +446,11 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
         high: float,
         /,
         *,
+        distribution: _SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
     ) -> None:
-        super().__init__(tagger, (low, high), is_noise, name)
+        super().__init__(tagger, (low, high), distribution, is_noise, name)
 
     def _check_args(self) -> None:
         super()._check_args()
@@ -389,10 +469,11 @@ class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
         self,
         tagger: _AnyTagger,
         *options: float,
+        distribution: _SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
     ) -> None:
-        super().__init__(tagger, options, is_noise, name)
+        super().__init__(tagger, options, distribution, is_noise, name)
 
     def _check_args(self) -> None:
         super()._check_args()
@@ -404,9 +485,14 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
     __slots__ = ("_tagger",)
 
     def __init__(
-        self, tagger: _AnyTagger, *options: str, is_noise: bool = False, name: str = ""
+        self,
+        tagger: _AnyTagger,
+        *options: str,
+        distribution: _SupportsPPF | None = None,
+        is_noise: bool = False,
+        name: str = "",
     ) -> None:
-        super().__init__(tagger, options, is_noise, name)
+        super().__init__(tagger, options, distribution, is_noise, name)
 
     def _check_args(self) -> None:
         super()._check_args()

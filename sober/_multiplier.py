@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import itertools as it
 import math
 import operator
@@ -8,6 +7,7 @@ from collections.abc import Sequence  # isinstance
 from typing import TYPE_CHECKING, Generic, TypeVar, cast, overload
 
 import numpy as np
+import scipy.stats.qmc
 
 from sober._evaluator import _evaluate
 from sober._typing import AnyModifierVal
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from typing import TypeGuard  # this interestingly needs no runtime import
 
     from sober._io_managers import _InputManager, _OutputManager
+    from sober._typing import AnySampleMethod
 
 
 ##############################  module typing  ##############################
@@ -28,6 +29,68 @@ _T = TypeVar("_T")
 #############################################################################
 
 
+def each_tuple_is_non_empty_and_starts_with_int(
+    args: tuple[tuple[_T, ...], ...],
+) -> TypeGuard[tuple[tuple[int, *tuple[_T, ...]], ...]]:
+    # python/mypy#3497
+    # the non empty check may be removed after python/mypy#4573, python/mypy#7853
+    return all(len(item) >= 1 for item in args) and all(
+        isinstance(item[0], int) for item in args
+    )
+
+
+#############################################################################
+#######                      ELEMENTWISE PRODUCT                      #######
+#############################################################################
+def _elementwise_multiply(
+    input_manager: _InputManager,
+    output_manager: _OutputManager,
+    evaluation_dir: Path,
+    sample_size: int,
+    sample_method: AnySampleMethod,
+    seed: int | None,
+) -> None:
+    """populates parametrics in the randomised search space"""
+    rng = np.random.default_rng(seed)
+    n_inputs = len(input_manager)
+
+    if sample_method == "random":
+        quantile_samples = rng.uniform(size=(n_inputs, sample_size)).tolist()
+    else:
+        sampler = scipy.stats.qmc.LatinHypercube(n_inputs, seed=rng)
+        quantile_samples = sampler.random(sample_size).T.tolist()
+
+    quantile_samples = cast(list[list[float]], quantile_samples)  # numpy shape
+
+    ctrl_key_vecs = tuple(
+        zip(
+            *(
+                item._key_sample(sample)
+                if item._is_ctrl
+                else it.repeat(item._hype_ctrl_key())
+                for item, sample in zip(input_manager, quantile_samples, strict=True)
+            ),
+            strict=False,
+        )
+    )
+    # cast: python/mypy#5247
+    ctrl_key_vecs = cast(tuple[tuple[float | int, ...], ...], ctrl_key_vecs)
+
+    if each_tuple_is_non_empty_and_starts_with_int(ctrl_key_vecs):
+        _evaluate(
+            *ctrl_key_vecs,
+            input_manager=input_manager,
+            output_manager=output_manager,
+            batch_dir=evaluation_dir,
+        )
+    else:
+        # impossible, there is at least the weather modifer
+        raise IndexError("no modifiers are defined.")
+
+
+#############################################################################
+#######                       CARTESIAN PRODUCT                       #######
+#############################################################################
 class _LazyCartesianProduct(Generic[_T]):
     """allows indexing a Cartesian product without evaluating all
     which enables super fast sampling
@@ -77,35 +140,14 @@ class _LazyCartesianProduct(Generic[_T]):
             raise TypeError("index must be integers or a sequence of integers.")
 
 
-def each_item_is_non_empty(
-    args: tuple[tuple[_T, ...], ...],
-) -> TypeGuard[tuple[tuple[_T, *tuple[_T, ...]], ...]]:
-    # python/mypy#3497
-    # may be removed after python/mypy#4573, python/mypy#7853
-    return all(len(item) >= 1 for item in args)
-
-
-def _multiply(
+def _cartesian_multiply(
     input_manager: _InputManager,
     output_manager: _OutputManager,
     evaluation_dir: Path,
     sample_size: int,
     seed: int | None,
 ) -> None:
-    """populates parametrics by subsetting the full search space"""
-    if input_manager._has_real_ctrls:
-        frames = inspect.stack()
-        caller_name = ""
-        for item in frames[1:]:
-            if item.function.startswith("run_") and ("self" in item.frame.f_locals):
-                caller_name = item.function
-            else:
-                assert caller_name
-                break
-
-        raise NotImplementedError(
-            f"'{caller_name}' for real control variables has yet to be implemented."
-        )
+    """populates parametrics in the factorial search space"""
 
     ctrl_lens = tuple(
         len(cast(_IntegralModifier[AnyModifierVal], item))  # mypy
@@ -150,7 +192,7 @@ def _multiply(
         sample_idxes = tuple(map(int, sample_idxes_))
         ctrl_key_vecs = search_space[sample_idxes]
 
-    if each_item_is_non_empty(ctrl_key_vecs):
+    if each_tuple_is_non_empty_and_starts_with_int(ctrl_key_vecs):
         _evaluate(
             *ctrl_key_vecs,
             input_manager=input_manager,
