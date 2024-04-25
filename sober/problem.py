@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-import inspect
 import pickle
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import sober._pymoo_namespace as pm
 import sober.config as cf
 from sober._evolver import _algorithm, _PymooProblem, _sampling
 from sober._io_managers import _InputManager, _OutputManager
-from sober._multiplier import _cartesian_multiply, _elementwise_multiply
+from sober._multiplier import _CartesianMultiplier, _ElementwiseMultiplier
 from sober._tools import _parsed_path
 from sober.output import RVICollector, ScriptCollector, _Collector
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from typing import Literal
 
     from sober._typing import (
         AnyModelModifier,
@@ -37,6 +37,8 @@ class Problem:
         "_output_manager",
         "_evaluation_dir",
         "_config_dir",
+        "_randomised",
+        "_factorial",
     )
 
     _model_file: Path
@@ -44,6 +46,8 @@ class Problem:
     _output_manager: _OutputManager
     _evaluation_dir: Path
     _config_dir: Path
+    _randomised: _ElementwiseMultiplier
+    _factorial: _CartesianMultiplier
 
     def __init__(
         self,
@@ -70,6 +74,30 @@ class Problem:
         self._config_dir = self._evaluation_dir / ("." + __package__.split(".")[-1])
 
         self._prepare(n_processes, python_exec)
+
+    @overload
+    def __getattr__(self, name: Literal["_randomised"]) -> _ElementwiseMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
+    @overload
+    def __getattr__(self, name: Literal["_factorial"]) -> _CartesianMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
+    def __getattr__(  # type: ignore[misc]  # python/mypy#8203
+        self, name: Literal["_randomised", "_factorial"]
+    ) -> _ElementwiseMultiplier | _CartesianMultiplier:
+        """lazily set these attributes when they are called for the first time"""
+        match name:
+            case "_randomised":
+                self._randomised = _ElementwiseMultiplier(
+                    self._input_manager, self._output_manager, self._evaluation_dir
+                )
+                return self._randomised
+            case "_factorial":
+                self._factorial = _CartesianMultiplier(
+                    self._input_manager, self._output_manager, self._evaluation_dir
+                )
+                return self._factorial
+            case _:
+                raise AttributeError(
+                    f"'{self.__class__.__name__}' object has no attribute '{name}'."
+                )
 
     def _check_args(self) -> None:
         pass
@@ -105,39 +133,12 @@ class Problem:
     ) -> None:
         """runs a sample of the randomised search space"""
 
-        cf._has_batches = False
-
-        _elementwise_multiply(
-            self._input_manager,
-            self._output_manager,
-            self._evaluation_dir,
-            size,
-            method,
-            seed,
-        )
+        self._randomised._sample(size, method, seed)
 
     def run_factorial_sample(self, size: int, /, *, seed: int | None = None) -> None:
         """runs a sample of the factorial search space"""
 
-        if self._input_manager._has_real_ctrls:
-            frames = inspect.stack()
-            caller_name = ""
-            for item in frames:
-                if item.function.startswith("run_") and ("self" in item.frame.f_locals):
-                    caller_name = item.function
-                else:
-                    assert caller_name
-                    break
-
-            raise ValueError(
-                f"incompatible with real control variables: '{caller_name}'."
-            )
-
-        cf._has_batches = False
-
-        _cartesian_multiply(
-            self._input_manager, self._output_manager, self._evaluation_dir, size, seed
-        )
+        self._factorial._sample(size, seed)
 
     def run_brute_force(self) -> None:
         """runs the full search space"""
