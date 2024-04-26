@@ -92,10 +92,38 @@ class _Multiplier(ABC):
 #############################################################################
 #######                      ELEMENTWISE PRODUCT                      #######
 #############################################################################
+class _InverseTransformQuantile:
+    __slots__ = ("_n_dims",)
+
+    _n_dims: int
+
+    def __init__(self, n_dims: int) -> None:
+        self._n_dims = n_dims
+
+    def _random(self, size: int, seed: int | None) -> list[list[float]]:
+        rng = np.random.default_rng(seed)
+
+        sample_quantile_vecs = rng.uniform(size=(self._n_dims, size)).tolist()
+
+        # cast: numpy/numpy#16544
+        return cast(list[list[float]], sample_quantile_vecs)
+
+    def _latin_hypercube(self, size: int, seed: int | None) -> list[list[float]]:
+        rng = np.random.default_rng(seed)
+
+        sampler = scipy.stats.qmc.LatinHypercube(self._n_dims, seed=rng)
+        sample_quantile_vecs = sampler.random(size).T.tolist()
+
+        # cast: numpy/numpy#16544
+        return cast(list[list[float]], sample_quantile_vecs)
+
+
 class _ElementwiseMultiplier(_Multiplier):
     """samples an elementwise product"""
 
-    __slots__ = ()
+    __slots__ = ("_quantile",)
+
+    _quantile: _InverseTransformQuantile
 
     def __call__(self, *proxies: Iterable[float]) -> None:
         ctrl_key_vecs = tuple(
@@ -118,26 +146,19 @@ class _ElementwiseMultiplier(_Multiplier):
     def _check_args(self) -> None:
         pass
 
+    def _prepare(self) -> None:
+        super()._prepare()
+
+        # set the quantile
+        self._quantile = _InverseTransformQuantile(len(self._input_manager))
+
     def _random(self, size: int, seed: int | None) -> None:
-        rng = np.random.default_rng(seed)
-        n_inputs = len(self._input_manager)
-
-        sample_quantile_vecs = rng.uniform(size=(n_inputs, size)).tolist()
-
-        # cast: numpy/numpy#16544
-        sample_quantile_vecs = cast(list[list[float]], sample_quantile_vecs)
+        sample_quantile_vecs = self._quantile._random(size, seed)
 
         self(*sample_quantile_vecs)
 
     def _latin_hypercube(self, size: int, seed: int | None) -> None:
-        rng = np.random.default_rng(seed)
-        n_inputs = len(self._input_manager)
-
-        sampler = scipy.stats.qmc.LatinHypercube(n_inputs, seed=rng)
-        sample_quantile_vecs = sampler.random(size).T.tolist()
-
-        # cast: numpy/numpy#16544
-        sample_quantile_vecs = cast(list[list[float]], sample_quantile_vecs)
+        sample_quantile_vecs = self._quantile._latin_hypercube(size, seed)
 
         self(*sample_quantile_vecs)
 
@@ -159,7 +180,7 @@ class _LazyCartesianProduct(Generic[_T]):
     _divs: tuple[int, ...]
     _mods: tuple[int, ...]
 
-    def __init__(self, *iterables: Iterable[_T]):
+    def __init__(self, *iterables: Iterable[_T]) -> None:
         self._tuples = tuple(map(tuple, iterables))
         self._n_tuples = len(self._tuples)
 
