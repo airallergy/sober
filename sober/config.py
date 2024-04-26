@@ -12,7 +12,7 @@ from sober._tools import _parsed_path
 if TYPE_CHECKING:
     from typing import Final, Required, TypedDict
 
-    from sober._typing import AnyLanguage, AnyModelType, AnyStrPath
+    from sober._typing import AnyLanguage, AnyModelType, AnyStrPath, NoiseSampleKwargs
 
     _Config = TypedDict(
         "_Config",
@@ -47,9 +47,11 @@ _RECORDS_FILENAMES: Final[_RecordsFilenames] = {  # python/typing#1388
 #############################################################################
 #######                       GLOBAL VARIABLES                        #######
 #############################################################################
-_has_batches: bool = True  # only used in the parent process
-
 _config: _Config
+
+# only used in the parent process
+_has_batches: bool = True  # TODO: refactor evolver per multiplier to remove assignment
+_noise_sample_kwargs: NoiseSampleKwargs | None
 
 
 #############################################################################

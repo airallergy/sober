@@ -16,7 +16,12 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Literal, TypeAlias
 
-    from sober._typing import AnyModelModifier, AnyPymooCallback, AnyStrPath
+    from sober._typing import (
+        AnyModelModifier,
+        AnyPymooCallback,
+        AnyStrPath,
+        NoiseSampleKwargs,
+    )
     from sober.input import WeatherModifier
 
     _AnyRandomMode: TypeAlias = Literal["elementwise", "cartesian", "auto"]
@@ -59,6 +64,7 @@ class Problem:
         clean_patterns: str | Iterable[str] = _OutputManager._DEFAULT_CLEAN_PATTERNS,
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
+        noise_sample_kwargs: NoiseSampleKwargs | None = None,
     ) -> None:
         self._model_file = _parsed_path(model_file, "model file")
         self._input_manager = _InputManager(weather_input, model_inputs, has_templates)
@@ -70,7 +76,7 @@ class Problem:
         )
         self._config_dir = self._evaluation_dir / ("." + __package__.split(".")[-1])
 
-        self._prepare(n_processes, python_exec)
+        self._prepare(n_processes, python_exec, noise_sample_kwargs)
 
     @overload
     def __getattr__(self, name: Literal["_elementwise"]) -> _ElementwiseMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
@@ -99,7 +105,12 @@ class Problem:
     def _check_args(self) -> None:
         pass
 
-    def _prepare(self, n_processes: int | None, python_exec: AnyStrPath | None) -> None:
+    def _prepare(
+        self,
+        n_processes: int | None,
+        python_exec: AnyStrPath | None,
+        noise_sample_kwargs: NoiseSampleKwargs | None,
+    ) -> None:
         self._check_args()
 
         # mkdir
@@ -124,6 +135,7 @@ class Problem:
                 if isinstance(item, ScriptCollector)
             },
         )
+        cf._noise_sample_kwargs = noise_sample_kwargs
 
     def run_random(
         self, size: int, /, *, mode: _AnyRandomMode = "auto", seed: int | None = None

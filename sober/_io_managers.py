@@ -13,6 +13,7 @@ from eppy import openidf
 
 import sober.config as cf
 from sober._logger import _log, _LoggerManager
+from sober._multiplier import _InverseTransformQuantile
 from sober._simulator import (
     _run_energyplus,
     _run_epmacro,
@@ -206,19 +207,49 @@ class _InputManager:
         return macros + cast(str, idf.idfstr())  # eppy
 
     def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> _AnyJob:
-        if self._has_real_noises:
-            raise NotImplementedError("real noise vars have not been implemented.")
         # align ctrl and noise keys and convert non-functional keys
-        aligned = tuple(
-            it.product(
-                *(
-                    tuple(cast(_IntegralModifier[AnyModifierVal], input))  # mypy
-                    if input._is_noise
-                    else (input(key) if input._is_ctrl else key,)
-                    for input, key in zip(self, ctrl_key_vec, strict=True)
+        if self._has_real_noises:
+            if not cf._noise_sample_kwargs:
+                raise ValueError("'noise_sample_kwargs' is not specified in 'Problem'.")
+
+            size = cf._noise_sample_kwargs["size"]
+            method = cf._noise_sample_kwargs["method"]
+            seed = cf._noise_sample_kwargs.get("seed", None)
+
+            quantile = _InverseTransformQuantile(len(self))
+
+            if method == "random":
+                sample_quantile_vecs = quantile._random(size, seed)
+            else:
+                sample_quantile_vecs = quantile._latin_hypercube(size, seed)
+
+            aligned = tuple(
+                zip(
+                    *(
+                        map(input, input._key_icdf(*quantiles))
+                        if input._is_noise
+                        else it.repeat(input(key) if input._is_ctrl else key)
+                        for input, key, quantiles in zip(
+                            self, ctrl_key_vec, sample_quantile_vecs, strict=True
+                        )
+                    ),
+                    strict=False,
                 )
             )
-        )
+
+            # cast: python/mypy#5247
+            aligned = cast(tuple[tuple[AnyModifierVal, ...], ...], aligned)
+        else:
+            aligned = tuple(
+                it.product(
+                    *(
+                        tuple(cast(_IntegralModifier[AnyModifierVal], input))  # mypy
+                        if input._is_noise
+                        else (input(key) if input._is_ctrl else key,)
+                        for input, key in zip(self, ctrl_key_vec, strict=True)
+                    )
+                )
+            )
 
         # generate task uids
         n_tasks = len(aligned)

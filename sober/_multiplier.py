@@ -93,6 +93,8 @@ class _Multiplier(ABC):
 #######                      ELEMENTWISE PRODUCT                      #######
 #############################################################################
 class _InverseTransformQuantile:
+    """generates quantiles for inverse transform sampling"""
+
     __slots__ = ("_n_dims",)
 
     _n_dims: int

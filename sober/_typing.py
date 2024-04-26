@@ -24,6 +24,7 @@ AnyLevel: TypeAlias = Literal[AnyCoreLevel, "batch", "epoch"]
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import NotRequired, TypedDict
 
     import sober._pymoo_namespace as pm
     from sober.input import (
@@ -39,6 +40,11 @@ if TYPE_CHECKING:
     # config
     AnyModelType: TypeAlias = Literal[".idf", ".imf"]
     AnyLanguage: TypeAlias = Literal["python"]
+
+    class NoiseSampleKwargs(TypedDict):
+        size: int
+        method: Literal["random", "latin hypercube"]
+        seed: NotRequired[int]
 
     # input
     # TODO: use Intersection after python/typing#213
