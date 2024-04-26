@@ -527,7 +527,9 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
 
         self._is_ctrl = False
 
-    def __call__(self, key: int, *input_vals: AnyModifierVal) -> AnyModelModifierVal:
+    def __call__(self, key: object, *input_vals: AnyModifierVal) -> AnyModelModifierVal:
+        # NOTE: 'key' is (should be) never used
+        #       it is technically int, but typed as object to avoid a few casts in loops
         return self._func(input_vals, *self._args, **self._kwargs)
 
     def _check_args(self) -> None:

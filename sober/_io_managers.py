@@ -6,6 +6,7 @@ import os.path
 import shutil
 import warnings
 from io import StringIO
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from eppy import openidf
@@ -37,8 +38,7 @@ from sober.output import RVICollector, _Collector, _CopyCollector
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
-    from pathlib import Path
-    from typing import Any, Final, TypeAlias
+    from typing import Any, Final, TypeAlias, TypeGuard
 
     from sober._tools import AnyParallel
     from sober._typing import (
@@ -60,6 +60,18 @@ if TYPE_CHECKING:
     _AnyConverter: TypeAlias = Callable[[float], float]
     _AnyUIDs: TypeAlias = tuple[str, ...]
     _AnyBatchOutputs: TypeAlias = tuple[tuple[float, ...], ...]
+
+
+def each_job_is_non_empty_and_starts_with_path(
+    args: tuple[tuple[str, tuple[AnyModelModifierVal | AnyModifierVal, ...]], ...],
+) -> TypeGuard[tuple[tuple[str, tuple[Path, *tuple[AnyModelModifierVal, ...]]], ...]]:
+    # a first-item-being-Path issue
+    # consider changing all relevant batch/job/task items to dict after py3.13 pep728
+    # they are now in a dict.items() structure
+    # they could all benefit from pep728
+    return all(len(item) >= 1 for _, item in args) and all(
+        isinstance(item[0], Path) for _, item in args
+    )
 
 
 #############################################################################
@@ -213,7 +225,7 @@ class _InputManager:
         i_task_width = _natural_width(n_tasks)
 
         # get functional vals
-        return tuple(
+        job = tuple(
             (
                 f"T{i:0{i_task_width}}",
                 tuple(
@@ -225,6 +237,12 @@ class _InputManager:
             )
             for i, task in enumerate(aligned)
         )
+
+        if each_job_is_non_empty_and_starts_with_path(job):
+            return job
+        else:
+            # impossible, there is at least the weather modifer
+            raise IndexError("no modifiers are defined.")
 
     def _job_items(self, *ctrl_key_vecs: AnyCtrlKeyVec) -> _AnyBatch:
         # generate job uids
