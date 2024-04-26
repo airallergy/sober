@@ -14,15 +14,12 @@ from sober.output import RVICollector, ScriptCollector, _Collector
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Literal
+    from typing import Literal, TypeAlias
 
-    from sober._typing import (
-        AnyModelModifier,
-        AnyPymooCallback,
-        AnySampleMethod,
-        AnyStrPath,
-    )
+    from sober._typing import AnyModelModifier, AnyPymooCallback, AnyStrPath
     from sober.input import WeatherModifier
+
+    _AnyRandomMode: TypeAlias = Literal["elementwise", "cartesian", "auto"]
 
 
 #############################################################################
@@ -37,8 +34,8 @@ class Problem:
         "_output_manager",
         "_evaluation_dir",
         "_config_dir",
-        "_randomised",
-        "_factorial",
+        "_elementwise",
+        "_cartesian",
     )
 
     _model_file: Path
@@ -46,8 +43,8 @@ class Problem:
     _output_manager: _OutputManager
     _evaluation_dir: Path
     _config_dir: Path
-    _randomised: _ElementwiseMultiplier
-    _factorial: _CartesianMultiplier
+    _elementwise: _ElementwiseMultiplier
+    _cartesian: _CartesianMultiplier
 
     def __init__(
         self,
@@ -76,24 +73,24 @@ class Problem:
         self._prepare(n_processes, python_exec)
 
     @overload
-    def __getattr__(self, name: Literal["_randomised"]) -> _ElementwiseMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
+    def __getattr__(self, name: Literal["_elementwise"]) -> _ElementwiseMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
     @overload
-    def __getattr__(self, name: Literal["_factorial"]) -> _CartesianMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
+    def __getattr__(self, name: Literal["_cartesian"]) -> _CartesianMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
     def __getattr__(  # type: ignore[misc]  # python/mypy#8203
-        self, name: Literal["_randomised", "_factorial"]
+        self, name: Literal["_elementwise", "_cartesian"]
     ) -> _ElementwiseMultiplier | _CartesianMultiplier:
         """lazily set these attributes when they are called for the first time"""
         match name:
-            case "_randomised":
-                self._randomised = _ElementwiseMultiplier(
+            case "_elementwise":
+                self._elementwise = _ElementwiseMultiplier(
                     self._input_manager, self._output_manager, self._evaluation_dir
                 )
-                return self._randomised
-            case "_factorial":
-                self._factorial = _CartesianMultiplier(
+                return self._elementwise
+            case "_cartesian":
+                self._cartesian = _CartesianMultiplier(
                     self._input_manager, self._output_manager, self._evaluation_dir
                 )
-                return self._factorial
+                return self._cartesian
             case _:
                 raise AttributeError(
                     f"'{self.__class__.__name__}' object has no attribute '{name}'."
@@ -128,28 +125,28 @@ class Problem:
             },
         )
 
-    def run_randomised_sample(
-        self, size: int, /, *, method: AnySampleMethod, seed: int | None = None
+    def run_random(
+        self, size: int, /, *, mode: _AnyRandomMode = "auto", seed: int | None = None
     ) -> None:
-        """runs a sample of the randomised search space"""
+        """runs a random sample"""
 
-        self._randomised._sample(size, method, seed)
+        if mode == "auto":
+            mode = "elementwise" if self._input_manager._has_real_ctrls else "cartesian"
 
-    def run_factorial_sample(self, size: int, /, *, seed: int | None = None) -> None:
-        """runs a sample of the factorial search space"""
+        if mode == "elementwise":
+            self._elementwise._random(size, seed)
+        else:
+            self._cartesian._random(size, seed)
 
-        self._factorial._sample(size, seed)
+    def run_latin_hypercube(self, size: int, /, *, seed: int | None = None) -> None:
+        """runs a latin hypercube sample"""
 
-    def run_brute_force(self) -> None:
-        """runs the full search space"""
+        self._elementwise._latin_hypercube(size, seed)
 
-        self.run_factorial_sample(-1)
+    def run_exhaustive(self) -> None:
+        """runs the exhaustive sample"""
 
-    def run_each_option(self, *, seed: int | None = None) -> None:
-        """runs a minimum sample of the full search space that contains all control options
-        this helps check the validity of each option"""
-
-        self.run_factorial_sample(0, seed=seed)
+        self._cartesian._exhaustive()
 
     def _to_pymoo(
         self,

@@ -193,10 +193,10 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
             )
 
     @abstractmethod
-    def _key_sample(self, quantile_sample: Iterable[float]) -> tuple[float, ...]:
+    def _key_icdf(self, *quantiles: float) -> tuple[float, ...]:
         # NOTE: scipy rv_discrete ppf does not convert to int, but rvs does
         #       this surprising behaviour is handled manually
-        return tuple(self._distribution.ppf(quantile_sample).tolist())
+        return tuple(self._distribution.ppf(quantiles).tolist())
 
     def _hype_ctrl_key(self) -> int:
         assert not self._is_ctrl
@@ -232,8 +232,8 @@ class _RealModifier(_Modifier[float, float]):
     def __call__(self, key: float) -> float:
         return key
 
-    def _key_sample(self, quantile_sample: Iterable[float]) -> tuple[float, ...]:
-        return super()._key_sample(quantile_sample)
+    def _key_icdf(self, *quantiles: float) -> tuple[float, ...]:
+        return super()._key_icdf(*quantiles)
 
     def _hype_ctrl_val(self) -> float:
         assert not self._is_ctrl
@@ -277,8 +277,8 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
     def __call__(self, key: int) -> _MV_co:
         return self[key]
 
-    def _key_sample(self, quantile_sample: Iterable[float]) -> tuple[int, ...]:
-        return tuple(map(int, super()._key_sample(quantile_sample)))
+    def _key_icdf(self, *quantiles: float) -> tuple[int, ...]:
+        return tuple(map(int, super()._key_icdf(*quantiles)))
 
     def _hype_ctrl_val(self) -> _MV_co:
         # FunctionalModifier overwrites later

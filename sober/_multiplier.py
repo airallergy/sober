@@ -19,10 +19,9 @@ from sober.input import _IntegralModifier
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import TypeGuard  # this interestingly needs no runtime import
+    from typing import Any, TypeGuard  # this interestingly needs no runtime import
 
     from sober._io_managers import _InputManager, _OutputManager
-    from sober._typing import AnySampleMethod
 
 
 ##############################  module typing  ##############################
@@ -46,6 +45,8 @@ def each_tuple_is_non_empty_and_starts_with_int(
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Multiplier(ABC):
+    """an abstract base class for multipliers"""
+
     __slots__ = ("_input_manager", "_output_manager", "_evaluation_dir")
 
     _input_manager: _InputManager
@@ -65,6 +66,9 @@ class _Multiplier(ABC):
         self._prepare()
 
     @abstractmethod
+    def __call__(self, *proxies: Any) -> None: ...
+
+    @abstractmethod
     def _check_args(self) -> None: ...
 
     def _prepare(self) -> None:
@@ -72,46 +76,7 @@ class _Multiplier(ABC):
 
         cf._has_batches = False
 
-
-#############################################################################
-#######                      ELEMENTWISE PRODUCT                      #######
-#############################################################################
-class _ElementwiseMultiplier(_Multiplier):
-    __slots__ = ()
-
-    def _check_args(self) -> None:
-        pass
-
-    def _elementwise_multiply(
-        self, sample_size: int, sample_method: AnySampleMethod, seed: int | None
-    ) -> None:
-        rng = np.random.default_rng(seed)
-        n_inputs = len(self._input_manager)
-
-        if sample_method == "random":
-            quantile_samples = rng.uniform(size=(n_inputs, sample_size)).tolist()
-        else:
-            sampler = scipy.stats.qmc.LatinHypercube(n_inputs, seed=rng)
-            quantile_samples = sampler.random(sample_size).T.tolist()
-
-        quantile_samples = cast(list[list[float]], quantile_samples)  # numpy shape
-
-        ctrl_key_vecs = tuple(
-            zip(
-                *(
-                    item._key_sample(sample)
-                    if item._is_ctrl
-                    else it.repeat(item._hype_ctrl_key())
-                    for item, sample in zip(
-                        self._input_manager, quantile_samples, strict=True
-                    )
-                ),
-                strict=False,
-            )
-        )
-        # cast: python/mypy#5247
-        ctrl_key_vecs = cast(tuple[tuple[float | int, ...], ...], ctrl_key_vecs)
-
+    def _evaluate(self, *ctrl_key_vecs: tuple[float, ...]) -> None:
         if each_tuple_is_non_empty_and_starts_with_int(ctrl_key_vecs):
             _evaluate(
                 *ctrl_key_vecs,
@@ -123,8 +88,58 @@ class _ElementwiseMultiplier(_Multiplier):
             # impossible, there is at least the weather modifer
             raise IndexError("no modifiers are defined.")
 
-    def _sample(self, size: int, method: AnySampleMethod, seed: int | None) -> None:
-        self._elementwise_multiply(size, method, seed)
+
+#############################################################################
+#######                      ELEMENTWISE PRODUCT                      #######
+#############################################################################
+class _ElementwiseMultiplier(_Multiplier):
+    """samples an elementwise product"""
+
+    __slots__ = ()
+
+    def __call__(self, *proxies: Iterable[float]) -> None:
+        ctrl_key_vecs = tuple(
+            zip(
+                *(
+                    item._key_icdf(*proxy)
+                    if item._is_ctrl
+                    else it.repeat(item._hype_ctrl_key())
+                    for item, proxy in zip(self._input_manager, proxies, strict=True)
+                ),
+                strict=False,
+            )
+        )
+
+        # cast: python/mypy#5247
+        ctrl_key_vecs = cast(tuple[tuple[float | int, ...], ...], ctrl_key_vecs)
+
+        self._evaluate(*ctrl_key_vecs)
+
+    def _check_args(self) -> None:
+        pass
+
+    def _random(self, size: int, seed: int | None) -> None:
+        rng = np.random.default_rng(seed)
+        n_inputs = len(self._input_manager)
+
+        sample_quantile_vecs = rng.uniform(size=(n_inputs, size)).tolist()
+
+        # cast: numpy/numpy#16544
+        sample_quantile_vecs = cast(list[list[float]], sample_quantile_vecs)
+
+        self(*sample_quantile_vecs)
+
+    def _latin_hypercube(self, size: int, seed: int | None) -> None:
+        rng = np.random.default_rng(seed)
+        n_inputs = len(self._input_manager)
+
+        sampler = scipy.stats.qmc.LatinHypercube(n_inputs, seed=rng)
+        sample_quantile_vecs = sampler.random(size).T.tolist()
+
+        # cast: numpy/numpy#16544
+        sample_quantile_vecs = cast(list[list[float]], sample_quantile_vecs)
+
+        self(*sample_quantile_vecs)
 
 
 #############################################################################
@@ -180,7 +195,16 @@ class _LazyCartesianProduct(Generic[_T]):
 
 
 class _CartesianMultiplier(_Multiplier):
-    __slots__ = ()
+    """samples a cartesian product"""
+
+    __slots__ = ("_product",)
+
+    _product: _LazyCartesianProduct[int]
+
+    def __call__(self, *proxies: int) -> None:
+        ctrl_key_vecs = self._product[proxies]
+
+        self._evaluate(*ctrl_key_vecs)
 
     def _check_args(self) -> None:
         if self._input_manager._has_real_ctrls:
@@ -198,60 +222,43 @@ class _CartesianMultiplier(_Multiplier):
                 f"'{caller_name}' is incompatible with real control variables."
             )
 
-    def _cartesian_multiply(self, sample_size: int, seed: int | None) -> None:
+    def _prepare(self) -> None:
+        super()._prepare()
+
+        # set the lazy cartesian product
         ctrl_lens = tuple(
             len(cast(_IntegralModifier[AnyModifierVal], item))  # mypy
             if item._is_ctrl
             else item._hype_ctrl_len()
             for item in self._input_manager
         )
-        search_space = _LazyCartesianProduct(*map(range, ctrl_lens))
-        n_products = search_space._n_products
+        self._product = _LazyCartesianProduct(*map(range, ctrl_lens))
+
+    def _random(self, size: int, seed: int | None) -> None:
+        n_products = self._product._n_products
+
+        if size > n_products:
+            raise ValueError(
+                f"the sample size '{size}' is larger than the search space '{n_products}'."
+            )
 
         rng = np.random.default_rng(seed)
 
-        if sample_size < 0:
-            # brute force
+        sample_indices = rng.choice(n_products, size, replace=False).tolist()
 
-            if n_products > 1e7:
-                raise NotImplementedError(
-                    f"a search space of more than 1e7 candidates is forbidden due to high computing cost: {n_products}."
-                )
+        # cast: numpy/numpy#16544
+        sample_indices = cast(list[int], sample_indices)
 
-            sample_idxes = tuple(range(n_products))
-            ctrl_key_vecs = search_space[sample_idxes]
-        elif sample_size == 0:
-            # test each control options with fewest simulations
+        self(*sample_indices)
 
-            max_ctrl_len = max(ctrl_lens)
+    def _exhaustive(self) -> None:
+        n_products = self._product._n_products
 
-            # permute control keys
-            permuted = tuple(map(rng.permutation, ctrl_lens))
-
-            # fill each row to the longest one by cycling
-            filled = np.asarray(
-                tuple(np.resize(row, max_ctrl_len) for row in permuted), dtype=np.int_
+        if n_products > 1e7:
+            raise NotImplementedError(
+                f"a search space of more than 1e7 candidates is forbidden due to high computing cost: {n_products}."
             )
 
-            ctrl_key_vecs = tuple(tuple(map(int, row)) for row in filled.T)
-        else:
-            # proper subset
+        sample_indices = range(n_products)
 
-            sample_idxes_ = rng.choice(n_products, sample_size, replace=False)
-            sample_idxes_.sort()
-            sample_idxes = tuple(map(int, sample_idxes_))
-            ctrl_key_vecs = search_space[sample_idxes]
-
-        if each_tuple_is_non_empty_and_starts_with_int(ctrl_key_vecs):
-            _evaluate(
-                *ctrl_key_vecs,
-                input_manager=self._input_manager,
-                output_manager=self._output_manager,
-                batch_dir=self._evaluation_dir,
-            )
-        else:
-            # impossible, there is at least the weather modifer
-            raise IndexError("no modifiers are defined.")
-
-    def _sample(self, size: int, seed: int | None) -> None:
-        self._cartesian_multiply(size, seed)
+        self(*sample_indices)
