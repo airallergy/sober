@@ -38,6 +38,23 @@ if TYPE_CHECKING:
 
 
 #############################################################################
+#######                      SURVIVAL FUNCTIONS                       #######
+#############################################################################
+def _survival(
+    individuals: pm.Population, algorithm: pm.GeneticAlgorithm
+) -> pm.Population:
+    """evaluates survival of individuals"""
+    # remove duplicates
+    individuals = pm.MixedVariableDuplicateElimination().do(individuals)
+
+    # runs survival
+    # this resets the value of Individual().data["rank"] for each individual
+    algorithm.survival.do(algorithm.problem, individuals, algorithm=algorithm)
+
+    return individuals
+
+
+#############################################################################
 #######                   PYMOO PROBLEM CHILD CLASS                   #######
 #############################################################################
 class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
@@ -371,20 +388,3 @@ def _algorithm(
             population_size,
             **_operators(algorithm_name, p_crossover, p_mutation, sampling),
         )
-
-
-#############################################################################
-#######                      SURVIVAL FUNCTIONS                       #######
-#############################################################################
-def _survival(
-    individuals: pm.Population, algorithm: pm.GeneticAlgorithm
-) -> pm.Population:
-    """evaluates survival of individuals"""
-    # remove duplicates
-    individuals = pm.MixedVariableDuplicateElimination().do(individuals)
-
-    # runs survival
-    # this resets the value of Individual().data["rank"] for each individual
-    algorithm.survival.do(algorithm.problem, individuals, algorithm=algorithm)
-
-    return individuals
