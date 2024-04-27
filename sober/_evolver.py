@@ -78,9 +78,8 @@ class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
             requires_kwargs=True,
         )
 
-    def _config(self, saves_batches: bool, expected_n_generations: int) -> None:
+    def _config(self, saves_batches: bool) -> None:
         self._saves_batches = saves_batches
-        self._i_batch_width = _natural_width(expected_n_generations)
 
     def _evaluate(
         self,
@@ -98,6 +97,16 @@ class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
         #           out has to be a dict of numpy arrays
 
         i_batch = algorithm.n_gen - 1
+
+        # set self._i_batch_width in the initial generation
+        if i_batch == 0:
+            if isinstance(algorithm.termination, pm.MaximumGenerationTermination):
+                expected_n_generations = algorithm.termination.n_max_gen
+            else:
+                expected_n_generations = 9999
+
+            self._i_batch_width = _natural_width(expected_n_generations)
+
         batch_uid = f"B{i_batch:0{self._i_batch_width}}"
 
         # convert pymoo x to ctrl key vecs
@@ -461,12 +470,7 @@ class _PymooEvolver(_Evolver):
     ) -> pm.Result:
         """runs optimisation via the NSGA2 algorithm"""
 
-        if isinstance(termination, pm.MaximumGenerationTermination):
-            expected_n_generations = termination.n_max_gen
-        else:
-            expected_n_generations = 9999
-
-        self._problem._config(saves_batches, expected_n_generations)
+        self._problem._config(saves_batches)
 
         if init_population_size <= 0:
             init_population_size = population_size
@@ -500,12 +504,7 @@ class _PymooEvolver(_Evolver):
     ) -> pm.Result:
         """runs optimisation via the NSGA3 algorithm"""
 
-        if isinstance(termination, pm.MaximumGenerationTermination):
-            expected_n_generations = termination.n_max_gen
-        else:
-            expected_n_generations = 9999
-
-        self._problem._config(saves_batches, expected_n_generations)
+        self._problem._config(saves_batches)
 
         if init_population_size <= 0:
             init_population_size = population_size
