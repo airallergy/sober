@@ -61,6 +61,7 @@ class Problem:
         n_processes: int | None = None,
         python_exec: AnyStrPath | None = None,
         noise_sample_kwargs: NoiseSampleKwargs | None = None,
+        removes_subdirs: bool = False,
     ) -> None:
         self._model_file = _parsed_path(model_file, "model file")
         self._input_manager = _InputManager(weather_input, model_inputs, has_templates)
@@ -72,7 +73,7 @@ class Problem:
         )
         self._config_dir = self._evaluation_dir / ("." + __package__.split(".")[-1])
 
-        self._prepare(n_processes, python_exec, noise_sample_kwargs)
+        self._prepare(n_processes, python_exec, noise_sample_kwargs, removes_subdirs)
 
     @overload
     def __getattr__(self, name: Literal["_elementwise"]) -> _ElementwiseMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
@@ -113,6 +114,7 @@ class Problem:
         n_processes: int | None,
         python_exec: AnyStrPath | None,
         noise_sample_kwargs: NoiseSampleKwargs | None,
+        removes_subdirs: bool,
     ) -> None:
         self._check_args()
 
@@ -138,7 +140,10 @@ class Problem:
                 if isinstance(item, ScriptCollector)
             },
         )
+
+        # global variables
         cf._noise_sample_kwargs = noise_sample_kwargs
+        cf._removes_subdirs = removes_subdirs
 
     def run_random(
         self, size: int, /, *, mode: _AnyRandomMode = "auto", seed: int | None = None
@@ -173,7 +178,6 @@ class Problem:
         p_mutation: float = 0.2,
         init_population_size: int = -1,
         saves_history: bool = True,
-        saves_batches: bool = True,
         checkpoint_interval: int = 0,
         seed: int | None = None,
     ) -> pm.Result:
@@ -186,7 +190,6 @@ class Problem:
             p_mutation,
             init_population_size,
             saves_history,
-            saves_batches,
             checkpoint_interval,
             seed,
         )
@@ -202,7 +205,6 @@ class Problem:
         p_mutation: float = 0.2,
         init_population_size: int = -1,
         saves_history: bool = True,
-        saves_batches: bool = True,
         checkpoint_interval: int = 0,
         seed: int | None = None,
     ) -> pm.Result:
@@ -216,7 +218,6 @@ class Problem:
             p_mutation,
             init_population_size,
             saves_history,
-            saves_batches,
             checkpoint_interval,
             seed,
         )

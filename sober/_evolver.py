@@ -47,7 +47,6 @@ class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
     _input_manager: _InputManager
     _output_manager: _OutputManager
     _evaluation_dir: Path
-    _saves_batches: bool
     _i_batch_width: int
 
     def __init__(
@@ -77,9 +76,6 @@ class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
             vars=ctrl_vars,
             requires_kwargs=True,
         )
-
-    def _config(self, saves_batches: bool) -> None:
-        self._saves_batches = saves_batches
 
     def _evaluate(
         self,
@@ -137,10 +133,10 @@ class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
         if self._output_manager._constraints:
             out["G"] = np.asarray(constraints, dtype=np.float_)
 
-        if not self._saves_batches:
-            shutil.rmtree(self._evaluation_dir / batch_uid)
-
         _log(self._evaluation_dir, f"evaluated {batch_uid}")
+
+        if cf._removes_subdirs:
+            shutil.rmtree(self._evaluation_dir / batch_uid)
 
 
 #############################################################################
@@ -296,6 +292,7 @@ class _Evolver(ABC):
     def _prepare(self) -> None:
         self._check_args()
 
+        # global variables
         cf._has_batches = True
 
 
@@ -464,13 +461,10 @@ class _PymooEvolver(_Evolver):
         p_mutation: float,
         init_population_size: int,
         saves_history: bool,
-        saves_batches: bool,
         checkpoint_interval: int,
         seed: int | None,
     ) -> pm.Result:
         """runs optimisation via the NSGA2 algorithm"""
-
-        self._problem._config(saves_batches)
 
         if init_population_size <= 0:
             init_population_size = population_size
@@ -498,13 +492,10 @@ class _PymooEvolver(_Evolver):
         p_mutation: float,
         init_population_size: int,
         saves_history: bool,
-        saves_batches: bool,
         checkpoint_interval: int,
         seed: int | None,
     ) -> pm.Result:
         """runs optimisation via the NSGA3 algorithm"""
-
-        self._problem._config(saves_batches)
 
         if init_population_size <= 0:
             init_population_size = population_size

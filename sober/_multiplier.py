@@ -4,6 +4,7 @@ import inspect
 import itertools as it
 import math
 import operator
+import shutil
 from abc import ABC, abstractmethod
 from collections.abc import Sequence  # isinstance
 from typing import TYPE_CHECKING, Generic, TypeVar, cast, overload
@@ -74,6 +75,7 @@ class _Multiplier(ABC):
     def _prepare(self) -> None:
         self._check_args()
 
+        # global variables
         cf._has_batches = False
 
     def _evaluate(self, *ctrl_key_vecs: tuple[float, ...]) -> None:
@@ -87,6 +89,11 @@ class _Multiplier(ABC):
         else:
             # impossible, there is at least the weather modifer
             raise IndexError("no modifiers are defined.")
+
+        if cf._removes_subdirs:
+            for item in self._evaluation_dir.glob("*"):
+                if item.is_dir():
+                    shutil.rmtree(item)
 
 
 #############################################################################
