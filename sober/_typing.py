@@ -23,10 +23,8 @@ AnyLevel: TypeAlias = Literal[AnyCoreLevel, "batch", "epoch"]
 #############################################################################
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from typing import NotRequired, TypedDict
 
-    import sober._pymoo_namespace as pm
     from sober.input import (
         CategoricalModifier,
         ContinuousModifier,
@@ -53,6 +51,3 @@ if TYPE_CHECKING:
     )
     AnyRealModelModifier: TypeAlias = ContinuousModifier
     AnyModelModifier: TypeAlias = AnyRealModelModifier | AnyIntegralModelModifier
-
-    # pymoo
-    AnyPymooCallback: TypeAlias = pm.Callback | Callable[[pm.Algorithm], None] | None

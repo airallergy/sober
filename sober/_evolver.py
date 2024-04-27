@@ -3,6 +3,8 @@ from __future__ import annotations
 import itertools as it
 import pickle
 import shutil
+from abc import ABC
+from pathlib import Path
 from typing import TYPE_CHECKING, cast, overload
 
 import numpy as np
@@ -11,19 +13,18 @@ import sober._pymoo_namespace as pm
 import sober.config as cf
 from sober._evaluator import _evaluate
 from sober._logger import _log, _LoggerManager
-from sober._tools import _natural_width, _write_records
+from sober._tools import _natural_width, _parsed_path, _write_records
 from sober._typing import AnyCtrlKeyVec  # cast
 from sober.input import _RealModifier
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from pathlib import Path
-    from typing import Literal, TypeAlias, TypedDict
+    from typing import Literal, Protocol, TypeAlias, TypedDict
 
     from numpy.typing import NBitBase, NDArray
 
     from sober._io_managers import _InputManager, _OutputManager
-    from sober._typing import AnyPymooCallback
+    from sober._typing import AnyStrPath
 
     _AnyPymooX: TypeAlias = dict[str, np.integer[NBitBase] | np.floating[NBitBase]]
 
@@ -35,6 +36,9 @@ if TYPE_CHECKING:
         sampling: pm.Population
         mating: pm.MixedVariableMating
         eliminate_duplicates: pm.MixedVariableDuplicateElimination
+
+    class _EvolverProblem(Protocol):
+        _output_manager: _OutputManager
 
 
 #############################################################################
@@ -71,15 +75,10 @@ class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
         input_manager: _InputManager,
         output_manager: _OutputManager,
         evaluation_dir: Path,
-        callback: AnyPymooCallback,
-        saves_batches: bool,
-        expected_n_generations: int,
     ) -> None:
         self._input_manager = input_manager
         self._output_manager = output_manager
         self._evaluation_dir = evaluation_dir
-        self._saves_batches = saves_batches
-        self._i_batch_width = _natural_width(expected_n_generations)
 
         # NOTE: pymoo0.6 asks for a dict from input uids to pymoo variable types
         # only control variables are passed
@@ -96,9 +95,12 @@ class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
             n_obj=len(output_manager._objectives),
             n_ieq_constr=len(output_manager._constraints),
             vars=ctrl_vars,
-            callback=callback,
             requires_kwargs=True,
         )
+
+    def _config(self, saves_batches: bool, expected_n_generations: int) -> None:
+        self._saves_batches = saves_batches
+        self._i_batch_width = _natural_width(expected_n_generations)
 
     def _evaluate(
         self,
@@ -388,3 +390,165 @@ def _algorithm(
             population_size,
             **_operators(algorithm_name, p_crossover, p_mutation, sampling),
         )
+
+
+#############################################################################
+#######                     ABSTRACT BASE CLASSES                     #######
+#############################################################################
+class _Evolver(ABC):
+    """an abstract base class for evolvers"""
+
+    __slots__ = ("_problem",)
+
+    _problem: _EvolverProblem
+
+    def __init__(self) -> None:
+        self._prepare()
+
+    def _check_args(self) -> None:
+        if not len(self._problem._output_manager._objectives):
+            raise ValueError("optimisation needs at least one objective.")
+
+    def _prepare(self) -> None:
+        self._check_args()
+
+        cf._has_batches = True
+
+
+#############################################################################
+#######                        EVOLVER CLASSES                        #######
+#############################################################################
+class _PymooEvolver(_Evolver):
+    """evolves via pymoo"""
+
+    _problem: _PymooProblem
+
+    def __init__(
+        self,
+        input_manager: _InputManager,
+        output_manager: _OutputManager,
+        evaluation_dir: Path,
+    ) -> None:
+        self._problem = _PymooProblem(input_manager, output_manager, evaluation_dir)
+
+        super().__init__()
+
+    def _nsga2(
+        self,
+        population_size: int,
+        termination: pm.Termination,
+        p_crossover: float,
+        p_mutation: float,
+        init_population_size: int,
+        saves_history: bool,
+        saves_batches: bool,
+        checkpoint_interval: int,
+        seed: int | None,
+    ) -> pm.Result:
+        """runs optimisation via the NSGA2 algorithm"""
+
+        if isinstance(termination, pm.MaximumGenerationTermination):
+            expected_n_generations = termination.n_max_gen
+        else:
+            expected_n_generations = 9999
+
+        self._problem._config(saves_batches, expected_n_generations)
+
+        if init_population_size <= 0:
+            init_population_size = population_size
+        sampling = _sampling(self._problem, init_population_size)
+
+        algorithm = _algorithm(
+            "nsga2", population_size, p_crossover, p_mutation, sampling
+        )
+
+        return self._problem._evolve_epoch(
+            self._problem._evaluation_dir,
+            algorithm,
+            termination,
+            saves_history,
+            checkpoint_interval,
+            seed,
+        )
+
+    def _nsga3(
+        self,
+        population_size: int,
+        termination: pm.Termination,
+        reference_directions: pm.ReferenceDirectionFactory | None,
+        p_crossover: float,
+        p_mutation: float,
+        init_population_size: int,
+        saves_history: bool,
+        saves_batches: bool,
+        checkpoint_interval: int,
+        seed: int | None,
+    ) -> pm.Result:
+        """runs optimisation via the NSGA3 algorithm"""
+
+        if isinstance(termination, pm.MaximumGenerationTermination):
+            expected_n_generations = termination.n_max_gen
+        else:
+            expected_n_generations = 9999
+
+        self._problem._config(saves_batches, expected_n_generations)
+
+        if init_population_size <= 0:
+            init_population_size = population_size
+        sampling = _sampling(self._problem, init_population_size)
+
+        if not reference_directions:
+            reference_directions = pm.RieszEnergyReferenceDirectionFactory(
+                self._problem.n_obj, population_size, seed=seed
+            ).do()
+
+        algorithm = _algorithm(
+            "nsga3",
+            population_size,
+            p_crossover,
+            p_mutation,
+            sampling,
+            reference_directions,
+        )
+
+        return self._problem._evolve_epoch(
+            self._problem._evaluation_dir,
+            algorithm,
+            termination,
+            saves_history,
+            checkpoint_interval,
+            seed,
+        )
+
+    @staticmethod
+    def resume(
+        checkpoint_file: AnyStrPath,
+        termination: pm.Termination,
+        checkpoint_interval: int = 0,
+    ) -> pm.Result:
+        """resumes optimisation using checkpoint files"""
+        # NOTE: although seed will not be reset
+        #       randomness is not reproducible when resuming for some unknown reason
+        # TODO: explore implementing custom serialisation for Problem via TOML/YAML
+        # TODO: also consider moving this func outside Problem to be called directly
+        # TODO: termination may not be necessary, as the old one may be reused
+
+        checkpoint_file = _parsed_path(checkpoint_file, "checkpoint file")
+
+        with checkpoint_file.open("rb") as fp:
+            epoch_dir, result = pickle.load(fp)
+
+        # checks validity of the check point file
+        # currently only checks the object type, but there might be better checks
+        if not (isinstance(epoch_dir, Path) and isinstance(result, pm.Result)):
+            raise TypeError(f"invalid checkpoint file: {checkpoint_file}.")
+
+        return result.algorithm.problem._evolve_epoch(
+            epoch_dir,
+            result.problem,
+            result.algorithm,
+            termination,
+            result.algorithm.save_history,  # void
+            checkpoint_interval,
+            result.algorithm.seed,  # void
+        )  # void: only termination will be updated in algorithm

@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import pickle
-from pathlib import Path
 from typing import TYPE_CHECKING, overload
 
 import sober._pymoo_namespace as pm
 import sober.config as cf
-from sober._evolver import _algorithm, _PymooProblem, _sampling
+from sober._evolver import _PymooEvolver
 from sober._io_managers import _InputManager, _OutputManager
 from sober._multiplier import _CartesianMultiplier, _ElementwiseMultiplier
 from sober._tools import _parsed_path
@@ -14,14 +12,10 @@ from sober.output import RVICollector, ScriptCollector, _Collector
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from pathlib import Path
     from typing import Literal, TypeAlias
 
-    from sober._typing import (
-        AnyModelModifier,
-        AnyPymooCallback,
-        AnyStrPath,
-        NoiseSampleKwargs,
-    )
+    from sober._typing import AnyModelModifier, AnyStrPath, NoiseSampleKwargs
     from sober.input import WeatherModifier
 
     _AnyRandomMode: TypeAlias = Literal["elementwise", "cartesian", "auto"]
@@ -41,6 +35,7 @@ class Problem:
         "_config_dir",
         "_elementwise",
         "_cartesian",
+        "_pymoo",
     )
 
     _model_file: Path
@@ -50,6 +45,7 @@ class Problem:
     _config_dir: Path
     _elementwise: _ElementwiseMultiplier
     _cartesian: _CartesianMultiplier
+    _pymoo: _PymooEvolver
 
     def __init__(
         self,
@@ -82,9 +78,11 @@ class Problem:
     def __getattr__(self, name: Literal["_elementwise"]) -> _ElementwiseMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
     @overload
     def __getattr__(self, name: Literal["_cartesian"]) -> _CartesianMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
+    @overload
+    def __getattr__(self, name: Literal["_pymoo"]) -> _PymooEvolver: ...  # type: ignore[misc]  # python/mypy#8203
     def __getattr__(  # type: ignore[misc]  # python/mypy#8203
-        self, name: Literal["_elementwise", "_cartesian"]
-    ) -> _ElementwiseMultiplier | _CartesianMultiplier:
+        self, name: Literal["_elementwise", "_cartesian", "_pymoo"]
+    ) -> _ElementwiseMultiplier | _CartesianMultiplier | _PymooEvolver:
         """lazily set these attributes when they are called for the first time"""
         match name:
             case "_elementwise":
@@ -97,6 +95,11 @@ class Problem:
                     self._input_manager, self._output_manager, self._evaluation_dir
                 )
                 return self._cartesian
+            case "_pymoo":
+                self._pymoo = _PymooEvolver(
+                    self._input_manager, self._output_manager, self._evaluation_dir
+                )
+                return self._pymoo
             case _:
                 raise AttributeError(
                     f"'{self.__class__.__name__}' object has no attribute '{name}'."
@@ -140,7 +143,7 @@ class Problem:
     def run_random(
         self, size: int, /, *, mode: _AnyRandomMode = "auto", seed: int | None = None
     ) -> None:
-        """runs a random sample"""
+        """runs parametrics via a random sample"""
 
         if mode == "auto":
             mode = "elementwise" if self._input_manager._has_real_ctrls else "cartesian"
@@ -151,32 +154,14 @@ class Problem:
             self._cartesian._random(size, seed)
 
     def run_latin_hypercube(self, size: int, /, *, seed: int | None = None) -> None:
-        """runs a latin hypercube sample"""
+        """runs parametrics via a latin hypercube sample"""
 
         self._elementwise._latin_hypercube(size, seed)
 
     def run_exhaustive(self) -> None:
-        """runs the exhaustive sample"""
+        """runs parametrics via the exhaustive sample"""
 
         self._cartesian._exhaustive()
-
-    def _to_pymoo(
-        self,
-        callback: AnyPymooCallback,
-        saves_batches: bool,
-        expected_n_generations: int,
-    ) -> _PymooProblem:
-        if not len(self._output_manager._objectives):
-            raise ValueError("optimisation needs at least one objective.")
-
-        return _PymooProblem(
-            self._input_manager,
-            self._output_manager,
-            self._evaluation_dir,
-            callback,
-            saves_batches,
-            expected_n_generations,
-        )
 
     def run_nsga2(
         self,
@@ -187,33 +172,21 @@ class Problem:
         p_crossover: float = 1.0,
         p_mutation: float = 0.2,
         init_population_size: int = -1,
-        callback: AnyPymooCallback = None,
         saves_history: bool = True,
         saves_batches: bool = True,
         checkpoint_interval: int = 0,
-        expected_n_generations: int = 9999,
         seed: int | None = None,
     ) -> pm.Result:
-        """runs optimisation using the NSGA2 algorithm"""
+        """runs optimisation via the NSGA2 algorithm"""
 
-        if isinstance(termination, pm.MaximumGenerationTermination):
-            expected_n_generations = termination.n_max_gen
-
-        problem = self._to_pymoo(callback, saves_batches, expected_n_generations)
-
-        if init_population_size <= 0:
-            init_population_size = population_size
-        sampling = _sampling(problem, init_population_size)
-
-        algorithm = _algorithm(
-            "nsga2", population_size, p_crossover, p_mutation, sampling
-        )
-
-        return problem._evolve_epoch(
-            self._evaluation_dir,
-            algorithm,
+        return self._pymoo._nsga2(
+            population_size,
             termination,
+            p_crossover,
+            p_mutation,
+            init_population_size,
             saves_history,
+            saves_batches,
             checkpoint_interval,
             seed,
         )
@@ -228,78 +201,33 @@ class Problem:
         p_crossover: float = 1.0,
         p_mutation: float = 0.2,
         init_population_size: int = -1,
-        callback: AnyPymooCallback = None,
         saves_history: bool = True,
         saves_batches: bool = True,
         checkpoint_interval: int = 0,
-        expected_n_generations: int = 9999,
         seed: int | None = None,
     ) -> pm.Result:
-        """runs optimisation using the NSGA3 algorithm"""
+        """runs optimisation via the NSGA3 algorithm"""
 
-        if isinstance(termination, pm.MaximumGenerationTermination):
-            expected_n_generations = termination.n_max_gen
-
-        problem = self._to_pymoo(callback, saves_batches, expected_n_generations)
-
-        if init_population_size <= 0:
-            init_population_size = population_size
-        sampling = _sampling(problem, init_population_size)
-
-        if not reference_directions:
-            reference_directions = pm.RieszEnergyReferenceDirectionFactory(
-                problem.n_obj, population_size, seed=seed
-            ).do()
-
-        algorithm = _algorithm(
-            "nsga3",
+        return self._pymoo._nsga3(
             population_size,
+            termination,
+            reference_directions,
             p_crossover,
             p_mutation,
-            sampling,
-            reference_directions,
-        )
-
-        return problem._evolve_epoch(
-            self._evaluation_dir,
-            algorithm,
-            termination,
+            init_population_size,
             saves_history,
+            saves_batches,
             checkpoint_interval,
             seed,
         )
 
-    @staticmethod
     def resume(
+        self,
         checkpoint_file: AnyStrPath,
         termination: pm.Termination,
         /,
         *,
         checkpoint_interval: int = 0,
     ) -> pm.Result:
-        """resumes optimisation using checkpoint files"""
-        # NOTE: although seed will not be reset
-        #       randomness is not reproducible when resuming for some unknown reason
-        # TODO: explore implementing custom serialisation for Problem via TOML/YAML
-        # TODO: also consider moving this func outside Problem to be called directly
-        # TODO: termination may not be necessary, as the old one may be reused
-
-        checkpoint_file = _parsed_path(checkpoint_file, "checkpoint file")
-
-        with checkpoint_file.open("rb") as fp:
-            epoch_dir, result = pickle.load(fp)
-
-        # checks validity of the check point file
-        # currently only checks the object type, but there might be better checks
-        if not (isinstance(epoch_dir, Path) and isinstance(result, pm.Result)):
-            raise TypeError(f"invalid checkpoint file: {checkpoint_file}.")
-
-        return result.algorithm.problem._evolve_epoch(
-            epoch_dir,
-            result.problem,
-            result.algorithm,
-            termination,
-            result.algorithm.save_history,  # void
-            checkpoint_interval,
-            result.algorithm.seed,  # void
-        )  # void: only termination will be updated in algorithm
+        """resumes optimisation using a checkpoint file"""
+        return self._pymoo.resume(checkpoint_file, termination, checkpoint_interval)

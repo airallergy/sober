@@ -50,7 +50,7 @@ _RECORDS_FILENAMES: Final[_RecordsFilenames] = {  # python/typing#1388
 _config: _Config
 
 # only used in the parent process
-_has_batches: bool = True  # TODO: refactor evolver per multiplier to remove assignment
+_has_batches: bool
 _noise_sample_kwargs: NoiseSampleKwargs | None
 
 
