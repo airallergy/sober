@@ -19,7 +19,7 @@ from sober.input import _RealModifier
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Literal, Protocol, TypeAlias, TypedDict
+    from typing import Literal, TypeAlias, TypedDict
 
     from numpy.typing import NBitBase, NDArray
 
@@ -36,26 +36,6 @@ if TYPE_CHECKING:
         sampling: pm.Population
         mating: pm.MixedVariableMating
         eliminate_duplicates: pm.MixedVariableDuplicateElimination
-
-    class _EvolverProblem(Protocol):
-        _output_manager: _OutputManager
-
-
-#############################################################################
-#######                      SURVIVAL FUNCTIONS                       #######
-#############################################################################
-def _survival(
-    individuals: pm.Population, algorithm: pm.GeneticAlgorithm
-) -> pm.Population:
-    """evaluates survival of individuals"""
-    # remove duplicates
-    individuals = pm.MixedVariableDuplicateElimination().do(individuals)
-
-    # runs survival
-    # this resets the value of Individual().data["rank"] for each individual
-    algorithm.survival.do(algorithm.problem, individuals, algorithm=algorithm)
-
-    return individuals
 
 
 #############################################################################
@@ -152,139 +132,6 @@ class _PymooProblem(pm.Problem):  # type: ignore[misc]  # pymoo
             shutil.rmtree(self._evaluation_dir / batch_uid)
 
         _log(self._evaluation_dir, f"evaluated {batch_uid}")
-
-    def _record_survival(
-        self, level: Literal["batch"], record_dir: Path, result: pm.Result
-    ) -> None:
-        # get evaluated individuals
-        if result.algorithm.save_history:
-            # from all generations
-            _individuals = tuple(
-                it.chain.from_iterable(item.pop for item in result.history)
-            )
-        else:
-            # from the last generation
-            _individuals = tuple(result.pop)
-
-        # re-evaluate survival of individuals
-        individuals = pm.Population.create(
-            *sorted(_individuals, key=lambda x: tuple(x.X.values()))
-        )
-        individuals = _survival(individuals, result.algorithm)
-
-        # create header row
-        # TODO: consider prepending retrieved UIDs
-        header_row = (
-            tuple(item._label for item in self._input_manager)
-            + tuple(self._output_manager._objectives)
-            + tuple(self._output_manager._constraints)
-            + ("is_pareto", "is_feasible")
-        )
-
-        # convert pymoo x to ctrl val vecs
-        ctrl_key_vecs = tuple(
-            tuple(
-                (
-                    cast(_AnyPymooX, individual.X)  # cast: pymoo, ugly!
-                    if TYPE_CHECKING
-                    else individual.X
-                )[item._label].item()
-                if item._is_ctrl
-                else item._hype_ctrl_key()
-                for item in self._input_manager
-            )
-            for individual in individuals
-        )
-        ctrl_val_vecs = tuple(
-            tuple(
-                item(key) if item._is_ctrl else item._hype_ctrl_val()
-                for item, key in zip(self._input_manager, ctrl_key_vec, strict=True)
-            )
-            for ctrl_key_vec in ctrl_key_vecs
-        )
-
-        # create record rows
-        # NOTE: pymoo sums cvs of all constraints
-        #       hence all(individual.FEAS) == individual.FEAS[0]
-        record_rows = [
-            ctrl_val_vec
-            + tuple(item.F)
-            + tuple(item.G)
-            + (item.get("rank") == 0, all(item.FEAS))
-            for item, ctrl_val_vec in zip(individuals, ctrl_val_vecs, strict=True)
-        ]
-
-        # write records
-        _write_records(
-            record_dir / cf._RECORDS_FILENAMES[level], header_row, *record_rows
-        )
-
-    @_LoggerManager(is_first=True)
-    def _evolve_epoch(
-        self,
-        epoch_dir: Path,
-        algorithm: pm.Algorithm,
-        termination: pm.Termination,
-        save_history: bool,
-        checkpoint_interval: int,
-        seed: int | None,
-    ) -> pm.Result:
-        if checkpoint_interval <= 0:
-            result = pm.minimize(
-                self, algorithm, termination, save_history=save_history, seed=seed
-            )
-        else:
-            if not isinstance(termination, pm.MaximumGenerationTermination):
-                # TODO: add support for other termination criteria
-                #       possibly with a while loop
-                raise ValueError(
-                    "checkpoints only work with max generation termination."
-                )
-
-            n_loops = termination.n_max_gen // checkpoint_interval + 1
-            for i in range(n_loops):
-                current_termination = (
-                    termination
-                    if i + 1 == n_loops
-                    else pm.MaximumGenerationTermination((i + 1) * checkpoint_interval)
-                )
-
-                # NOTE: in pymoo0.6
-                #           algorithm.n_gen will increase by one at the end of optimisation
-                #           at least when using a MaximumGenerationTermination
-                if algorithm.n_gen and (
-                    algorithm.n_gen - 1 >= current_termination.n_max_gen
-                ):
-                    # this should only be invoked by resume
-                    continue
-
-                # NOTE: in pymoo0.6
-                #           algorithm.setup() is only triggered when algorithm.problem is None
-                #           but seed will be reset too
-                #           manually change algorithm.termination to avoid resetting seed
-                algorithm.termination = current_termination
-
-                result = pm.minimize(
-                    self,
-                    algorithm,
-                    current_termination,
-                    save_history=save_history,
-                    seed=seed,
-                )
-
-                # update algorithm
-                algorithm = result.algorithm
-
-                i_checkpoint = (i + 1) * checkpoint_interval - 1
-                if algorithm.n_gen - 1 == i_checkpoint + 1:
-                    with (epoch_dir / "checkpoint.pickle").open("wb") as fp:
-                        pickle.dump((epoch_dir, result), fp)
-
-                    _log(epoch_dir, f"created checkpoint at generation {i_checkpoint}")
-
-        self._record_survival("batch", epoch_dir, result)
-
-        return result
 
 
 #############################################################################
@@ -393,20 +240,48 @@ def _algorithm(
 
 
 #############################################################################
+#######                      SURVIVAL FUNCTIONS                       #######
+#############################################################################
+def _survival(
+    individuals: pm.Population, algorithm: pm.GeneticAlgorithm
+) -> pm.Population:
+    """evaluates survival of individuals"""
+    # remove duplicates
+    individuals = pm.MixedVariableDuplicateElimination().do(individuals)
+
+    # runs survival
+    # this resets the value of Individual().data["rank"] for each individual
+    algorithm.survival.do(algorithm.problem, individuals, algorithm=algorithm)
+
+    return individuals
+
+
+#############################################################################
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Evolver(ABC):
     """an abstract base class for evolvers"""
 
-    __slots__ = ("_problem",)
+    __slots__ = ("_input_manager", "_output_manager", "_evaluation_dir")
 
-    _problem: _EvolverProblem
+    _input_manager: _InputManager
+    _output_manager: _OutputManager
+    _evaluation_dir: Path
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        input_manager: _InputManager,
+        output_manager: _OutputManager,
+        evaluation_dir: Path,
+    ) -> None:
+        self._input_manager = input_manager
+        self._output_manager = output_manager
+        self._evaluation_dir = evaluation_dir
+
         self._prepare()
 
     def _check_args(self) -> None:
-        if not len(self._problem._output_manager._objectives):
+        if not len(self._output_manager._objectives):
             raise ValueError("optimisation needs at least one objective.")
 
     def _prepare(self) -> None:
@@ -421,6 +296,8 @@ class _Evolver(ABC):
 class _PymooEvolver(_Evolver):
     """evolves via pymoo"""
 
+    __slots__ = ("_problem",)
+
     _problem: _PymooProblem
 
     def __init__(
@@ -431,7 +308,144 @@ class _PymooEvolver(_Evolver):
     ) -> None:
         self._problem = _PymooProblem(input_manager, output_manager, evaluation_dir)
 
-        super().__init__()
+        super().__init__(input_manager, output_manager, evaluation_dir)
+
+    def _record_survival(
+        self, level: Literal["batch"], record_dir: Path, result: pm.Result
+    ) -> None:
+        # get evaluated individuals
+        if result.algorithm.save_history:
+            # from all generations
+            _individuals = tuple(
+                it.chain.from_iterable(item.pop for item in result.history)
+            )
+        else:
+            # from the last generation
+            _individuals = tuple(result.pop)
+
+        # re-evaluate survival of individuals
+        individuals = pm.Population.create(
+            *sorted(_individuals, key=lambda x: tuple(x.X.values()))
+        )
+        individuals = _survival(individuals, result.algorithm)
+
+        # create header row
+        # TODO: consider prepending retrieved UIDs
+        header_row = (
+            tuple(item._label for item in self._input_manager)
+            + tuple(self._output_manager._objectives)
+            + tuple(self._output_manager._constraints)
+            + ("is_pareto", "is_feasible")
+        )
+
+        # convert pymoo x to ctrl val vecs
+        ctrl_key_vecs = tuple(
+            tuple(
+                (
+                    cast(_AnyPymooX, individual.X)  # cast: pymoo, ugly!
+                    if TYPE_CHECKING
+                    else individual.X
+                )[item._label].item()
+                if item._is_ctrl
+                else item._hype_ctrl_key()
+                for item in self._input_manager
+            )
+            for individual in individuals
+        )
+        ctrl_val_vecs = tuple(
+            tuple(
+                item(key) if item._is_ctrl else item._hype_ctrl_val()
+                for item, key in zip(self._input_manager, ctrl_key_vec, strict=True)
+            )
+            for ctrl_key_vec in ctrl_key_vecs
+        )
+
+        # create record rows
+        # NOTE: pymoo sums cvs of all constraints
+        #       hence all(individual.FEAS) == individual.FEAS[0]
+        record_rows = [
+            ctrl_val_vec
+            + tuple(item.F)
+            + tuple(item.G)
+            + (item.get("rank") == 0, all(item.FEAS))
+            for item, ctrl_val_vec in zip(individuals, ctrl_val_vecs, strict=True)
+        ]
+
+        # write records
+        _write_records(
+            record_dir / cf._RECORDS_FILENAMES[level], header_row, *record_rows
+        )
+
+    @_LoggerManager(is_first=True)
+    def _evolve_epoch(
+        self,
+        epoch_dir: Path,
+        algorithm: pm.Algorithm,
+        termination: pm.Termination,
+        save_history: bool,
+        checkpoint_interval: int,
+        seed: int | None,
+    ) -> pm.Result:
+        if checkpoint_interval <= 0:
+            result = pm.minimize(
+                self._problem,
+                algorithm,
+                termination,
+                save_history=save_history,
+                seed=seed,
+            )
+        else:
+            if not isinstance(termination, pm.MaximumGenerationTermination):
+                # TODO: add support for other termination criteria
+                #       possibly with a while loop
+                raise NotImplementedError(
+                    "checkpoints only work with max generation termination."
+                )
+
+            n_loops = termination.n_max_gen // checkpoint_interval + 1
+            for i in range(n_loops):
+                current_termination = (
+                    termination
+                    if i + 1 == n_loops
+                    else pm.MaximumGenerationTermination((i + 1) * checkpoint_interval)
+                )
+
+                # NOTE: in pymoo0.6
+                #           algorithm.n_gen will increase by one at the end of optimisation
+                #           at least when using a MaximumGenerationTermination
+                if algorithm.n_gen and (
+                    algorithm.n_gen - 1 >= current_termination.n_max_gen
+                ):
+                    # this should only be invoked by resume
+                    continue
+
+                # NOTE: in pymoo0.6
+                #           algorithm.setup() is only triggered when algorithm.problem is None
+                #           but seed will be reset too
+                #           manually change algorithm.termination to avoid resetting seed
+                algorithm.termination = current_termination
+
+                result = pm.minimize(
+                    self._problem,
+                    algorithm,
+                    current_termination,
+                    save_history=save_history,
+                    seed=seed,
+                )
+
+                # update algorithm
+                algorithm = result.algorithm
+
+                i_checkpoint = (i + 1) * checkpoint_interval - 1
+                if algorithm.n_gen - 1 == i_checkpoint + 1:
+                    with (epoch_dir / "checkpoint.pickle").open("wb") as fp:
+                        pickle.dump((epoch_dir, result), fp)
+
+                    _log(epoch_dir, f"created checkpoint at generation {i_checkpoint}")
+
+        self._record_survival("batch", epoch_dir, result)
+
+        return result
 
     def _nsga2(
         self,
@@ -462,8 +476,8 @@ class _PymooEvolver(_Evolver):
             "nsga2", population_size, p_crossover, p_mutation, sampling
         )
 
-        return self._problem._evolve_epoch(
-            self._problem._evaluation_dir,
+        return self._evolve_epoch(
+            self._evaluation_dir,
             algorithm,
             termination,
             saves_history,
@@ -511,8 +525,8 @@ class _PymooEvolver(_Evolver):
             reference_directions,
         )
 
-        return self._problem._evolve_epoch(
-            self._problem._evaluation_dir,
+        return self._evolve_epoch(
+            self._evaluation_dir,
             algorithm,
             termination,
             saves_history,
