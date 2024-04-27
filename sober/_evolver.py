@@ -10,17 +10,13 @@ import sober._evolver_pymoo as pm
 import sober.config as cf
 from sober._logger import _log, _LoggerManager
 from sober._tools import _parsed_path, _write_records
+from sober._typing import AnyX
 
 if TYPE_CHECKING:
-    from typing import Literal, TypeAlias
-
-    import numpy as np
-    from numpy.typing import NBitBase
+    from typing import Literal
 
     from sober._io_managers import _InputManager, _OutputManager
-    from sober._typing import AnyStrPath
-
-    _AnyPymooX: TypeAlias = dict[str, np.integer[NBitBase] | np.floating[NBitBase]]
+    from sober._typing import AnyReferenceDirections, AnyStrPath
 
 
 #############################################################################
@@ -84,18 +80,15 @@ class _PymooEvolver(_Evolver):
         # get evaluated individuals
         if result.algorithm.save_history:
             # from all generations
-            _individuals = tuple(
+            individuals = tuple(
                 it.chain.from_iterable(item.pop for item in result.history)
             )
         else:
             # from the last generation
-            _individuals = tuple(result.pop)
+            individuals = tuple(result.pop)
 
         # re-evaluate survival of individuals
-        individuals = pm.Population.create(
-            *sorted(_individuals, key=lambda x: tuple(x.X.values()))
-        )
-        individuals = pm._survival(individuals, result.algorithm)
+        population = pm._survival(individuals, result.algorithm)
 
         # create header row
         # TODO: consider prepending retrieved UIDs
@@ -109,16 +102,12 @@ class _PymooEvolver(_Evolver):
         # convert pymoo x to ctrl val vecs
         ctrl_key_vecs = tuple(
             tuple(
-                (
-                    cast(_AnyPymooX, individual.X)  # cast: pymoo, ugly!
-                    if TYPE_CHECKING
-                    else individual.X
-                )[item._label].item()
-                if item._is_ctrl
-                else item._hype_ctrl_key()
-                for item in self._input_manager
+                cast(AnyX, item.X)[input._label].item()  # cast: pymoo
+                if input._is_ctrl
+                else input._hype_ctrl_key()
+                for input in self._input_manager
             )
-            for individual in individuals
+            for item in population
         )
         ctrl_val_vecs = tuple(
             tuple(
@@ -136,7 +125,7 @@ class _PymooEvolver(_Evolver):
             + tuple(item.F)
             + tuple(item.G)
             + (item.get("rank") == 0, all(item.FEAS))
-            for item, ctrl_val_vec in zip(individuals, ctrl_val_vecs, strict=True)
+            for item, ctrl_val_vec in zip(population, ctrl_val_vecs, strict=True)
         ]
 
         # write records
@@ -249,7 +238,7 @@ class _PymooEvolver(_Evolver):
         self,
         population_size: int,
         termination: pm.Termination,
-        reference_directions: pm.ReferenceDirectionFactory | None,
+        reference_directions: AnyReferenceDirections | None,
         p_crossover: float,
         p_mutation: float,
         init_population_size: int,
@@ -264,9 +253,9 @@ class _PymooEvolver(_Evolver):
         sampling = pm._sampling(self._problem, init_population_size)
 
         if not reference_directions:
-            reference_directions = pm.RieszEnergyReferenceDirectionFactory(
+            reference_directions = pm._default_reference_directions(
                 self._problem.n_obj, population_size, seed=seed
-            ).do()
+            )
 
         algorithm = pm._algorithm(
             "nsga3",

@@ -15,7 +15,12 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Literal, TypeAlias
 
-    from sober._typing import AnyModelModifier, AnyStrPath, NoiseSampleKwargs
+    from sober._typing import (
+        AnyModelModifier,
+        AnyReferenceDirections,
+        AnyStrPath,
+        NoiseSampleKwargs,
+    )
     from sober.input import WeatherModifier
 
     _AnyRandomMode: TypeAlias = Literal["elementwise", "cartesian", "auto"]
@@ -199,7 +204,7 @@ class Problem:
         population_size: int,
         termination: pm.Termination,
         /,
-        reference_directions: pm.ReferenceDirectionFactory | None = None,
+        reference_directions: AnyReferenceDirections | None = None,
         *,
         p_crossover: float = 1.0,
         p_mutation: float = 0.2,

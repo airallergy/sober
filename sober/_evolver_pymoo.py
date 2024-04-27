@@ -27,31 +27,28 @@ import sober.config as cf
 from sober._evaluator import _evaluate
 from sober._logger import _log
 from sober._tools import _natural_width
-from sober._typing import AnyCtrlKeyVec  # cast
+from sober._typing import AnyCtrlKeyVec, AnyReferenceDirections  # cast
 from sober.input import _RealModifier
 
 if TYPE_CHECKING:
     # ruff: noqa: PLC0414  # astral-sh/ruff#3711
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Literal, TypeAlias, TypedDict
+    from typing import Literal, NotRequired, TypedDict
 
-    from numpy.typing import NBitBase, NDArray
+    from numpy.typing import NDArray
     from pymoo.algorithms.base.genetic import GeneticAlgorithm
     from pymoo.core.algorithm import Algorithm
+    from pymoo.core.individual import Individual
     from pymoo.core.result import Result as Result
     from pymoo.core.termination import Termination as Termination
-    from pymoo.util.reference_direction import (
-        ReferenceDirectionFactory as ReferenceDirectionFactory,
-    )
 
     from sober._io_managers import _InputManager, _OutputManager
-
-    _AnyPymooX: TypeAlias = dict[str, np.integer[NBitBase] | np.floating[NBitBase]]
+    from sober._typing import AnyX
 
     class _PymooOut(TypedDict):
         F: NDArray[np.float_] | None
-        G: NDArray[np.float_] | None
+        G: NotRequired[NDArray[np.float_] | None]
 
     class _PymooOperators(TypedDict):
         sampling: Population
@@ -59,12 +56,7 @@ if TYPE_CHECKING:
         eliminate_duplicates: MixedVariableDuplicateElimination
 
 
-__all__ = (
-    "MaximumGenerationTermination",
-    "Population",
-    "RieszEnergyReferenceDirectionFactory",
-    "minimize",
-)
+__all__ = ("MaximumGenerationTermination", "minimize")
 
 
 #############################################################################
@@ -108,7 +100,7 @@ class _Problem(Problem):  # type: ignore[misc]  # pymoo
 
     def _evaluate(
         self,
-        x: Iterable[_AnyPymooX],
+        x: Iterable[AnyX],
         out: _PymooOut,
         *args: object,
         algorithm: Algorithm,
@@ -248,7 +240,7 @@ def _algorithm(
     p_crossover: float,
     p_mutation: float,
     sampling: Population,
-    reference_directions: ReferenceDirectionFactory,
+    reference_directions: AnyReferenceDirections,
 ) -> NSGA3: ...
 def _algorithm(
     algorithm_name: Literal["nsga2", "nsga3"],
@@ -256,7 +248,7 @@ def _algorithm(
     p_crossover: float,
     p_mutation: float,
     sampling: Population,
-    reference_directions: None | ReferenceDirectionFactory = None,
+    reference_directions: None | AnyReferenceDirections = None,
 ) -> NSGA2 | NSGA3:
     """a pymoo algorithm constructor"""
 
@@ -266,6 +258,8 @@ def _algorithm(
             **_operators(algorithm_name, p_crossover, p_mutation, sampling),
         )
     else:
+        assert reference_directions
+
         return NSGA3(
             reference_directions,
             population_size,
@@ -274,15 +268,28 @@ def _algorithm(
 
 
 #############################################################################
-#######                      SURVIVAL FUNCTIONS                       #######
+#######                       UTILITY FUNCTIONS                       #######
 #############################################################################
-def _survival(individuals: Population, algorithm: GeneticAlgorithm) -> Population:
+def _survival(
+    individuals: Iterable[Individual], algorithm: GeneticAlgorithm
+) -> Population:
     """evaluates survival of individuals"""
+    population = Population.create(*individuals)
+
     # remove duplicates
-    individuals = MixedVariableDuplicateElimination().do(individuals)
+    population = MixedVariableDuplicateElimination().do(population)
 
     # runs survival
     # this resets the value of Individual().data["rank"] for each individual
-    algorithm.survival.do(algorithm.problem, individuals, algorithm=algorithm)
+    algorithm.survival.do(algorithm.problem, population, algorithm=algorithm)
 
-    return individuals
+    return population
+
+
+def _default_reference_directions(
+    n_dims: int, population_size: int, seed: int | None
+) -> AnyReferenceDirections:
+    return cast(  # cast: pymoo
+        AnyReferenceDirections,
+        RieszEnergyReferenceDirectionFactory(n_dims, population_size, seed=seed).do(),
+    )
