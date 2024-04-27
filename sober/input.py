@@ -523,7 +523,7 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
         self._kwargs = kwargs
 
         func_name = f"<function {self._func.__module__ + '.' + self._func.__code__.co_qualname}>"
-        super().__init__(tagger, (func_name,), False, name)
+        super().__init__(tagger, (func_name,), None, False, name)
 
         self._is_ctrl = False
 
