@@ -1,4 +1,4 @@
-from sober._pymoo_namespace import MaximumGenerationTermination
+from sober._evolver_pymoo import MaximumGenerationTermination
 from sober.config import config_energyplus, config_parallel, config_script
 from sober.input import (
     CategoricalModifier,

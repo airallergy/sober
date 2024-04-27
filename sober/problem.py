@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload
 
-import sober._pymoo_namespace as pm
+import sober._evolver_pymoo as pm
 import sober.config as cf
 from sober._evolver import _PymooEvolver
 from sober._io_managers import _InputManager, _OutputManager
@@ -176,7 +176,7 @@ class Problem:
         *,
         p_crossover: float = 1.0,
         p_mutation: float = 0.2,
-        init_population_size: int = -1,
+        init_population_size: int = 0,
         saves_history: bool = True,
         checkpoint_interval: int = 0,
         seed: int | None = None,
@@ -203,7 +203,7 @@ class Problem:
         *,
         p_crossover: float = 1.0,
         p_mutation: float = 0.2,
-        init_population_size: int = -1,
+        init_population_size: int = 0,
         saves_history: bool = True,
         checkpoint_interval: int = 0,
         seed: int | None = None,

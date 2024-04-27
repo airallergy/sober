@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, cast, overload
 
 import numpy as np
 
-import sober._pymoo_namespace as pm
+import sober._evolver_pymoo as pm
 import sober.config as cf
 from sober._evaluator import _evaluate
 from sober._logger import _log, _LoggerManager
