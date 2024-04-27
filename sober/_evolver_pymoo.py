@@ -1,5 +1,9 @@
-from typing import TYPE_CHECKING
+from __future__ import annotations
 
+import shutil
+from typing import TYPE_CHECKING, cast, overload
+
+import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2, binary_tournament
 from pymoo.algorithms.moo.nsga3 import NSGA3, comp_by_cv_then_random
 from pymoo.core.mixed import (
@@ -19,34 +23,266 @@ from pymoo.optimize import minimize
 from pymoo.termination.max_gen import MaximumGenerationTermination
 from pymoo.util.ref_dirs.energy import RieszEnergyReferenceDirectionFactory
 
+import sober.config as cf
+from sober._evaluator import _evaluate
+from sober._logger import _log
+from sober._tools import _natural_width
+from sober._typing import AnyCtrlKeyVec  # cast
+from sober.input import _RealModifier
+
 if TYPE_CHECKING:
     # ruff: noqa: PLC0414  # astral-sh/ruff#3711
-    from pymoo.algorithms.base.genetic import GeneticAlgorithm as GeneticAlgorithm
-    from pymoo.core.algorithm import Algorithm as Algorithm
+    from collections.abc import Iterable
+    from pathlib import Path
+    from typing import Literal, TypeAlias, TypedDict
+
+    from numpy.typing import NBitBase, NDArray
+    from pymoo.algorithms.base.genetic import GeneticAlgorithm
+    from pymoo.core.algorithm import Algorithm
     from pymoo.core.result import Result as Result
     from pymoo.core.termination import Termination as Termination
     from pymoo.util.reference_direction import (
         ReferenceDirectionFactory as ReferenceDirectionFactory,
     )
 
+    from sober._io_managers import _InputManager, _OutputManager
+
+    _AnyPymooX: TypeAlias = dict[str, np.integer[NBitBase] | np.floating[NBitBase]]
+
+    class _PymooOut(TypedDict):
+        F: NDArray[np.float_] | None
+        G: NDArray[np.float_] | None
+
+    class _PymooOperators(TypedDict):
+        sampling: Population
+        mating: MixedVariableMating
+        eliminate_duplicates: MixedVariableDuplicateElimination
+
 
 __all__ = (
-    "NSGA2",
-    "NSGA3",
-    "Integral",
     "MaximumGenerationTermination",
-    "MixedVariableDuplicateElimination",
-    "MixedVariableMating",
-    "MixedVariableSampling",
-    "PolynomialMutation",
     "Population",
-    "Problem",
-    "Real",
     "RieszEnergyReferenceDirectionFactory",
-    "RoundingRepair",
-    "SimulatedBinaryCrossover",
-    "TournamentSelection",
-    "binary_tournament",
-    "comp_by_cv_then_random",
     "minimize",
 )
+
+
+#############################################################################
+#######                   PYMOO PROBLEM CHILD CLASS                   #######
+#############################################################################
+class _Problem(Problem):  # type: ignore[misc]  # pymoo
+    """interfaces the pymoo problem"""
+
+    _input_manager: _InputManager
+    _output_manager: _OutputManager
+    _evaluation_dir: Path
+    _i_batch_width: int
+
+    def __init__(
+        self,
+        input_manager: _InputManager,
+        output_manager: _OutputManager,
+        evaluation_dir: Path,
+    ) -> None:
+        self._input_manager = input_manager
+        self._output_manager = output_manager
+        self._evaluation_dir = evaluation_dir
+
+        # NOTE: pymoo0.6 asks for a dict from input uids to pymoo variable types
+        # only control variables are passed
+        ctrl_vars = {
+            item._label: (
+                (Real if isinstance(item, _RealModifier) else Integral)(
+                    bounds=item._bounds
+                )
+            )
+            for item in (item for item in input_manager if item._is_ctrl)
+        }
+
+        super().__init__(
+            n_obj=len(output_manager._objectives),
+            n_ieq_constr=len(output_manager._constraints),
+            vars=ctrl_vars,
+            requires_kwargs=True,
+        )
+
+    def _evaluate(
+        self,
+        x: Iterable[_AnyPymooX],
+        out: _PymooOut,
+        *args: object,
+        algorithm: Algorithm,
+        **kwargs: object,
+    ) -> None:
+        # NOTE: in pymoo0.6
+        #           n_gen follows 1, 2, 3, ...
+        #           x is a numpy array of dicts, each dict is a control key map
+        #               whose keys are input labels
+        #                     values are control key vectors
+        #           out has to be a dict of numpy arrays
+
+        i_batch = algorithm.n_gen - 1
+
+        # set self._i_batch_width in the initial generation
+        if i_batch == 0:
+            if isinstance(algorithm.termination, MaximumGenerationTermination):
+                expected_n_generations = algorithm.termination.n_max_gen
+            else:
+                expected_n_generations = 9999
+
+            self._i_batch_width = _natural_width(expected_n_generations)
+
+        batch_uid = f"B{i_batch:0{self._i_batch_width}}"
+
+        # convert pymoo x to ctrl key vecs
+        ctrl_key_vecs = tuple(
+            tuple(
+                ctrl_key_map[item._label].item()
+                if item._is_ctrl
+                else item._hype_ctrl_key()
+                for item in self._input_manager
+            )
+            for ctrl_key_map in x
+        )
+
+        ctrl_key_vecs = cast(tuple[AnyCtrlKeyVec, ...], ctrl_key_vecs)  # mypy
+
+        # evaluate and get objectives and constraints
+        batch_dir = self._evaluation_dir / batch_uid
+        _evaluate(
+            *ctrl_key_vecs,
+            input_manager=self._input_manager,
+            output_manager=self._output_manager,
+            batch_dir=batch_dir,
+        )
+        objectives = self._output_manager._recorded_objectives(batch_dir)
+        constraints = self._output_manager._recorded_constraints(batch_dir)
+
+        out["F"] = np.asarray(objectives, dtype=np.float_)
+        if self._output_manager._constraints:
+            out["G"] = np.asarray(constraints, dtype=np.float_)
+
+        _log(self._evaluation_dir, f"evaluated {batch_uid}")
+
+        if cf._removes_subdirs:
+            shutil.rmtree(self._evaluation_dir / batch_uid)
+
+
+#############################################################################
+#######                      OPERATOR FUNCTIONS                       #######
+#############################################################################
+def _sampling(problem: Problem, init_population_size: int) -> Population:
+    """samples the initial generation"""
+
+    return MixedVariableSampling()(problem, init_population_size)
+
+
+def _operators(
+    algorithm_name: Literal["nsga2", "nsga3"],
+    p_crossover: float,
+    p_mutation: float,
+    sampling: Population,
+) -> _PymooOperators:
+    """a pymoo operators constructor"""
+
+    # defaults from respective algorithm classes in pymoo
+    selections = {
+        "nsga2": TournamentSelection(func_comp=binary_tournament),
+        "nsga3": TournamentSelection(func_comp=comp_by_cv_then_random),
+    }
+    etas = {
+        "nsga2": {"crossover": 15, "mutation": 20},
+        "nsga3": {"crossover": 30, "mutation": 20},
+    }
+
+    crossover_kwargs = {"prob": p_crossover, "eta": etas[algorithm_name]["crossover"]}
+
+    # NOTE: in pymoo0.6 mutation
+    #           prob (0.5) -> prob_var, controlling mutation for each gene/variable
+    #           prob controls the whole mutation operation
+    #           see https://github.com/anyoptimization/pymoo/discussions/360
+    #           though the answer is not entirely correct
+    mutation_kwargs = {
+        "prob": 1.0,
+        "prob_var": p_mutation,
+        "eta": etas[algorithm_name]["mutation"],
+    }
+
+    return {
+        "sampling": sampling,
+        "mating": MixedVariableMating(
+            selection=selections[algorithm_name],
+            crossover={
+                Real: SimulatedBinaryCrossover(**crossover_kwargs),
+                Integral: SimulatedBinaryCrossover(
+                    **crossover_kwargs, vtype=float, repair=RoundingRepair()
+                ),
+            },
+            mutation={
+                Real: PolynomialMutation(**mutation_kwargs),
+                Integral: PolynomialMutation(
+                    **mutation_kwargs, vtype=float, repair=RoundingRepair()
+                ),
+            },
+            eliminate_duplicates=MixedVariableDuplicateElimination(),
+        ),
+        "eliminate_duplicates": MixedVariableDuplicateElimination(),
+    }
+
+
+#############################################################################
+#######                      ALGORITHM FUNCTIONS                      #######
+#############################################################################
+@overload
+def _algorithm(
+    algorithm_name: Literal["nsga2"],
+    population_size: int,
+    p_crossover: float,
+    p_mutation: float,
+    sampling: Population,
+) -> NSGA2: ...
+@overload
+def _algorithm(
+    algorithm_name: Literal["nsga3"],
+    population_size: int,
+    p_crossover: float,
+    p_mutation: float,
+    sampling: Population,
+    reference_directions: ReferenceDirectionFactory,
+) -> NSGA3: ...
+def _algorithm(
+    algorithm_name: Literal["nsga2", "nsga3"],
+    population_size: int,
+    p_crossover: float,
+    p_mutation: float,
+    sampling: Population,
+    reference_directions: None | ReferenceDirectionFactory = None,
+) -> NSGA2 | NSGA3:
+    """a pymoo algorithm constructor"""
+
+    if algorithm_name == "nsga2":
+        return NSGA2(
+            population_size,
+            **_operators(algorithm_name, p_crossover, p_mutation, sampling),
+        )
+    else:
+        return NSGA3(
+            reference_directions,
+            population_size,
+            **_operators(algorithm_name, p_crossover, p_mutation, sampling),
+        )
+
+
+#############################################################################
+#######                      SURVIVAL FUNCTIONS                       #######
+#############################################################################
+def _survival(individuals: Population, algorithm: GeneticAlgorithm) -> Population:
+    """evaluates survival of individuals"""
+    # remove duplicates
+    individuals = MixedVariableDuplicateElimination().do(individuals)
+
+    # runs survival
+    # this resets the value of Individual().data["rank"] for each individual
+    algorithm.survival.do(algorithm.problem, individuals, algorithm=algorithm)
+
+    return individuals
