@@ -7,3 +7,6 @@ __pycache__
 .ipynb_checkpoints
 .pytest_cache
 .coverage
+
+# do not lock dependecies for now
+poetry.lock
