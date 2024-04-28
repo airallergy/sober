@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
     from pymoo.algorithms.base.genetic import GeneticAlgorithm
-    from pymoo.core.algorithm import Algorithm
+    from pymoo.core.algorithm import Algorithm as Algorithm
     from pymoo.core.individual import Individual
     from pymoo.core.result import Result as Result
     from pymoo.core.termination import Termination as Termination
