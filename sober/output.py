@@ -91,6 +91,9 @@ class _Collector(ABC):
         self._is_copied = False
 
     @abstractmethod
+    def __call__(self, cwd: Path) -> None: ...
+
+    @abstractmethod
     def _check_args(self) -> None:
         if self._objectives:
             if (self._level != "job") and (not self._is_copied):
@@ -125,9 +128,6 @@ class _Collector(ABC):
             raise ValueError(
                 f"a final output needs to be a csv file: {self._filename}."
             )
-
-    @abstractmethod
-    def _collect(self, cwd: Path) -> None: ...
 
     def _to_objective(self, value: float) -> float:
         # convert each objective to minimise
@@ -195,6 +195,15 @@ class RVICollector(_Collector):
             filename, "task", objectives, constraints, direction, bounds, is_final
         )
 
+    def __call__(self, cwd: Path) -> None:
+        _run_readvars(cwd, self._rvi_file, self._frequency)
+
+        # remove trailing space
+        # with (cwd / self._filename).open("rt") as fp:
+        #     lines = fp.read().splitlines()
+        # with (cwd / self._filename).open("wt") as fp:
+        #     fp.write("\n".join(line.strip() for line in lines) + "\n")
+
     def _check_args(self) -> None:
         super()._check_args()
 
@@ -222,15 +231,6 @@ class RVICollector(_Collector):
         self._rvi_file = config_dir / (rvi_filestem + ".rvi")
         with self._rvi_file.open("wt") as fp:
             fp.write(rvi_str)
-
-    def _collect(self, cwd: Path) -> None:
-        _run_readvars(cwd, self._rvi_file, self._frequency)
-
-        # remove trailing space
-        # with (cwd / self._filename).open("rt") as fp:
-        #     lines = fp.read().splitlines()
-        # with (cwd / self._filename).open("wt") as fp:
-        #     fp.write("\n".join(line.strip() for line in lines) + "\n")
 
 
 class ScriptCollector(_Collector):
@@ -264,10 +264,7 @@ class ScriptCollector(_Collector):
             filename, level, objectives, constraints, direction, bounds, is_final
         )
 
-    def _check_args(self) -> None:
-        super()._check_args()
-
-    def _collect(self, cwd: Path) -> None:
+    def __call__(self, cwd: Path) -> None:
         language_exec = cf._config["exec." + self._language]  # type: ignore[literal-required]  # python/mypy#12554
 
         cmd_args = (
@@ -280,6 +277,9 @@ class ScriptCollector(_Collector):
         )
 
         _run(cmd_args, cwd)
+
+    def _check_args(self) -> None:
+        super()._check_args()
 
 
 class _CopyCollector(_Collector):
@@ -306,9 +306,9 @@ class _CopyCollector(_Collector):
         self._is_final = True
         self._is_copied = False
 
+    def __call__(self, cwd: Path) -> None:
+        shutil.copyfile(cwd / "T0" / self._filename, cwd / self._filename)
+
     def _check_args(self) -> None:
         # all args have been checked
         pass
-
-    def _collect(self, cwd: Path) -> None:
-        shutil.copyfile(cwd / "T0" / self._filename, cwd / self._filename)

@@ -595,7 +595,7 @@ class _OutputManager:
     def _collect_task(self, task_dir: Path) -> None:
         # collect task outputs
         for item in self._task_outputs:
-            item._collect(task_dir)
+            item(task_dir)
 
     @_LoggerManager()
     def _collect_job(self, job_dir: Path, task_uids: _AnyUIDs) -> None:
@@ -611,7 +611,7 @@ class _OutputManager:
         _log(job_dir, "recorded final outputs")
 
         for item in self._job_outputs:
-            item._collect(job_dir)
+            item(job_dir)
 
     @_LoggerManager()
     def _collect_batch(
