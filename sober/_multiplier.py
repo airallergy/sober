@@ -240,8 +240,10 @@ class _CartesianMultiplier(_Multiplier):
         if self._input_manager._has_real_ctrls:
             frames = inspect.stack()
             caller_name = ""
-            # _check_args <- _prepare <- __init__ <- __getattr__ <- run_...
-            for item in frames[4:]:
+            #    _CartesianMultiplier._check_args <- _CartesianMultiplier._prepare
+            # <- _Multiplier._prepare <- _Multiplier.__init__
+            # <- Problem.__getattr__ <- Problem.run_...
+            for item in frames[5:]:
                 if item.function.startswith("run_") and ("self" in item.frame.f_locals):
                     caller_name = item.function
                 else:
