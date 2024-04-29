@@ -43,15 +43,6 @@ if TYPE_CHECKING:
     # python
     AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
 
-    # config
-    AnyModelType: TypeAlias = Literal[".idf", ".imf"]
-    AnyLanguage: TypeAlias = Literal["python"]
-
-    class NoiseSampleKwargs(TypedDict):
-        size: int
-        method: Literal["random", "latin hypercube"]
-        seed: NotRequired[int]
-
     # input
     # TODO: use Intersection after python/typing#213
     AnyIntegralModelModifier: TypeAlias = (
@@ -59,3 +50,31 @@ if TYPE_CHECKING:
     )
     AnyRealModelModifier: TypeAlias = ContinuousModifier
     AnyModelModifier: TypeAlias = AnyRealModelModifier | AnyIntegralModelModifier
+
+    # problem
+    AnySampleMode: TypeAlias = Literal["elementwise", "cartesian", "auto"]
+
+    # config
+    AnyModelType: TypeAlias = Literal[".idf", ".imf"]
+    AnyLanguage: TypeAlias = Literal["python"]
+
+    class ElementwiseNoiseSampleKwargs(TypedDict):
+        mode: Literal["elementwise"]
+        size: int
+        method: Literal["random", "latin hypercube"]
+        seed: NotRequired[int]
+
+    class CartesianNoiseSampleKwargs(TypedDict):
+        mode: Literal["cartesian"]
+
+    class AutoNoiseSampleKwargs(TypedDict):
+        mode: Literal["auto"]
+        size: NotRequired[int]
+        method: NotRequired[Literal["random", "latin hypercube"]]
+        seed: NotRequired[int]
+
+    NoiseSampleKwargs: TypeAlias = (
+        ElementwiseNoiseSampleKwargs
+        | CartesianNoiseSampleKwargs
+        | AutoNoiseSampleKwargs
+    )

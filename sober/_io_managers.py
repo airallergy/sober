@@ -208,13 +208,23 @@ class _InputManager:
 
     def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> _AnyJob:
         # align ctrl and noise keys and convert non-functional keys
-        if self._has_real_noises:
-            if not cf._noise_sample_kwargs:
-                raise ValueError("'noise_sample_kwargs' is not specified in 'Problem'.")
-
-            size = cf._noise_sample_kwargs["size"]
-            method = cf._noise_sample_kwargs["method"]
+        if (cf._noise_sample_kwargs["mode"] == "elementwise") or (
+            (cf._noise_sample_kwargs["mode"] == "auto") and self._has_real_noises
+        ):
+            size = cf._noise_sample_kwargs.get("size", None)
+            method = cf._noise_sample_kwargs.get("method", None)
             seed = cf._noise_sample_kwargs.get("seed", None)
+
+            if (size is None) or (method is None):
+                raise ValueError(
+                    "the"
+                    + (
+                        " auto determined"
+                        if cf._noise_sample_kwargs["mode"] == "auto"
+                        else ""
+                    )
+                    + " noise sample mode is 'elementwise', but the size and the method is not specified."
+                )
 
             quantile = _InverseTransformQuantile(len(self))
 
@@ -240,6 +250,11 @@ class _InputManager:
             # cast: python/mypy#5247
             aligned = cast(tuple[tuple[AnyModifierVal, ...], ...], aligned)
         else:
+            if self._has_real_noises:
+                raise ValueError(
+                    "noise sample mode 'cartesian' is incompatible with real noise variables."
+                )
+
             aligned = tuple(
                 it.product(
                     *(

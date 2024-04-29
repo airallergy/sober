@@ -13,17 +13,16 @@ from sober.output import RVICollector, ScriptCollector, _Collector
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Literal, TypeAlias
+    from typing import Literal
 
     from sober._typing import (
         AnyModelModifier,
         AnyReferenceDirections,
+        AnySampleMode,
         AnyStrPath,
         NoiseSampleKwargs,
     )
     from sober.input import WeatherModifier
-
-    _AnyRandomMode: TypeAlias = Literal["elementwise", "cartesian", "auto"]
 
 
 #############################################################################
@@ -147,11 +146,13 @@ class Problem:
         )
 
         # global variables
-        cf._noise_sample_kwargs = noise_sample_kwargs
+        cf._noise_sample_kwargs = (
+            noise_sample_kwargs if noise_sample_kwargs else {"mode": "auto"}
+        )
         cf._removes_subdirs = removes_subdirs
 
     def run_random(
-        self, size: int, /, *, mode: _AnyRandomMode = "auto", seed: int | None = None
+        self, size: int, /, *, mode: AnySampleMode = "auto", seed: int | None = None
     ) -> None:
         """runs parametrics via a random sample"""
 

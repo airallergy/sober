@@ -51,7 +51,7 @@ _config: _Config
 
 # only used in the parent process
 _has_batches: bool
-_noise_sample_kwargs: NoiseSampleKwargs | None
+_noise_sample_kwargs: NoiseSampleKwargs
 _removes_subdirs: bool
 
 
