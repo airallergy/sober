@@ -135,15 +135,17 @@ class _ElementwiseMultiplier(_Multiplier):
     _quantile: _InverseTransformQuantile
 
     def __call__(self, *proxies: Iterable[float]) -> None:
+        n_repeats = self._quantile._n_dims if self._input_manager._has_ctrls else 1
+
         ctrl_key_vecs = tuple(
             zip(
                 *(
                     item._key_icdf(*proxy)
                     if item._is_ctrl
-                    else it.repeat(item._hype_ctrl_key())
+                    else it.repeat(item._hype_ctrl_key(), n_repeats)
                     for item, proxy in zip(self._input_manager, proxies, strict=True)
                 ),
-                strict=False,
+                strict=True,
             )
         )
 

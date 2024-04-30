@@ -89,6 +89,7 @@ class _InputManager:
         "_has_templates",
         "_tagged_model",
         "_model_type",
+        "_has_ctrls",
         "_has_noises",
         "_has_real_ctrls",
         "_has_real_noises",
@@ -99,6 +100,7 @@ class _InputManager:
     _has_templates: bool
     _tagged_model: str
     _model_type: AnyModelType
+    _has_ctrls: bool
     _has_noises: bool
     _has_real_ctrls: bool
     _has_real_noises: bool
@@ -128,6 +130,8 @@ class _InputManager:
         self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
 
         self._tagged_model = self._tagged(model_file)
+
+        self._has_ctrls = any(input._is_ctrl for input in self)
         self._has_noises = any(input._is_noise for input in self)
 
         self._has_real_ctrls = any(
@@ -208,6 +212,7 @@ class _InputManager:
 
     def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> _AnyJob:
         # align ctrl and noise keys and convert non-functional keys
+        # TODO: consider reusing the multiplier facility here after py3.13 pep728, but maybe not worth it
         if (cf._noise_sample_kwargs["mode"] == "elementwise") or (
             (cf._noise_sample_kwargs["mode"] == "auto") and self._has_real_noises
         ):
@@ -233,17 +238,22 @@ class _InputManager:
             else:
                 sample_quantile_vecs = quantile._latin_hypercube(size, seed)
 
+            # set n_repeats to 1 when there is no noise but user-defined size
+            # TODO: consider adding a warning here
+            # TODO: consider writing a function to parse the sample kwargs for both ctrl and noise centrally
+            n_repeats = quantile._n_dims if self._has_noises else 1
+
             aligned = tuple(
                 zip(
                     *(
                         map(input, input._key_icdf(*quantiles))
                         if input._is_noise
-                        else it.repeat(input(key) if input._is_ctrl else key)
+                        else it.repeat(input(key) if input._is_ctrl else key, n_repeats)
                         for input, key, quantiles in zip(
                             self, ctrl_key_vec, sample_quantile_vecs, strict=True
                         )
                     ),
-                    strict=False,
+                    strict=True,
                 )
             )
 
