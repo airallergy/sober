@@ -14,6 +14,11 @@ if TYPE_CHECKING:
 
     from sober._typing import AnyLanguage, AnyModelType, AnyStrPath, NoiseSampleKwargs
 
+    class _RecordsFilenames(TypedDict):
+        task: str
+        job: str
+        batch: str
+
     _Config = TypedDict(
         "_Config",
         {
@@ -27,11 +32,6 @@ if TYPE_CHECKING:
         },
         total=False,
     )
-
-    class _RecordsFilenames(TypedDict):
-        task: str
-        job: str
-        batch: str
 
 
 #############################################################################
@@ -53,6 +53,37 @@ _config: _Config
 _has_batches: bool
 _noise_sample_kwargs: NoiseSampleKwargs
 _removes_subdirs: bool
+
+
+def _global_vars() -> dict[str, object]:
+    """returns global variables
+    this is currenly only used by resume"""
+    return {
+        "config": _config,
+        "has_batches": _has_batches,
+        "noise_sample_kwargs": _noise_sample_kwargs,
+        "removes_subdirs": _removes_subdirs,
+    }
+
+
+def _update_global_vars(
+    config: _Config,
+    has_batches: bool,
+    noise_sample_kwargs: NoiseSampleKwargs,
+    removes_subdirs: bool,
+) -> None:
+    """updates global variables
+    this is currenly only used by resume"""
+
+    global _config
+    global _has_batches
+    global _noise_sample_kwargs
+    global _removes_subdirs
+
+    _config = config
+    _has_batches = has_batches
+    _noise_sample_kwargs = noise_sample_kwargs
+    _removes_subdirs = removes_subdirs
 
 
 #############################################################################

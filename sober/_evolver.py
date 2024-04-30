@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import itertools as it
+import math
 import pickle
 from abc import ABC
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import sober._evolver_pymoo as pm
@@ -12,6 +12,7 @@ from sober._logger import _log, _LoggerManager
 from sober._tools import _parsed_path, _write_records
 
 if TYPE_CHECKING:
+    from pathlib import Path
     from typing import Literal
 
     from sober._io_managers import _InputManager, _OutputManager
@@ -161,7 +162,7 @@ class _PymooEvolver(_Evolver):
                     "checkpoints only work with finite max generation termination."
                 )
 
-            n_loops = termination.n_max_gen // checkpoint_interval + 1
+            n_loops = math.ceil(termination.n_max_gen / checkpoint_interval)
             for i in range(n_loops):
                 current_termination = (
                     termination
@@ -169,10 +170,10 @@ class _PymooEvolver(_Evolver):
                     else pm.MaximumGenerationTermination((i + 1) * checkpoint_interval)
                 )
 
-                # NOTE: in pymoo0.6
-                #           algorithm.n_gen will increase by one at the end of optimisation
-                #           at least when using a MaximumGenerationTermination
-                if algorithm.n_gen and (
+                # NOTE: [1] in pymoo0.6
+                #               algorithm.n_gen += 1 for next gen at the end of the current gen
+                #               that is, in each gen, n_gen matches the current gen for most of the time
+                if algorithm.is_initialized and (
                     algorithm.n_gen - 1 >= current_termination.n_max_gen
                 ):
                     # this should only be invoked by resume
@@ -195,12 +196,16 @@ class _PymooEvolver(_Evolver):
                 # update algorithm
                 algorithm = result.algorithm
 
-                i_checkpoint = (i + 1) * checkpoint_interval - 1
-                if algorithm.n_gen - 1 == i_checkpoint + 1:
+                i_gen_checkpoint = (i + 1) * checkpoint_interval - 1
+                # as per [1], algorithm.n_gen has been increased for next gen at this point, hence -2
+                if algorithm.n_gen - 2 == i_gen_checkpoint:
                     with (epoch_dir / "checkpoint.pickle").open("wb") as fp:
-                        pickle.dump((epoch_dir, result), fp)
+                        pickle.dump((cf._global_vars(), self, result), fp)
 
-                    _log(epoch_dir, f"created checkpoint at generation {i_checkpoint}")
+                    _log(
+                        epoch_dir,
+                        f"created checkpoint at generation {i_gen_checkpoint}",
+                    )
 
         self._record_survival("batch", epoch_dir, result)
 
@@ -277,8 +282,9 @@ class _PymooEvolver(_Evolver):
             seed,
         )
 
-    @staticmethod
+    @classmethod
     def resume(
+        cls,
         checkpoint_file: AnyStrPath,
         termination: pm.Termination,
         checkpoint_interval: int = 0,
@@ -287,25 +293,27 @@ class _PymooEvolver(_Evolver):
         # NOTE: although seed will not be reset
         #       randomness is not reproducible when resuming for some unknown reason
         # TODO: explore implementing custom serialisation for Problem via TOML/YAML
-        # TODO: also consider moving this func outside Problem to be called directly
         # TODO: termination may not be necessary, as the old one may be reused
 
         checkpoint_file = _parsed_path(checkpoint_file, "checkpoint file")
 
         with checkpoint_file.open("rb") as fp:
-            epoch_dir, result = pickle.load(fp)
+            global_vars, self, result = pickle.load(fp)
 
-        # checks validity of the check point file
+        cf._update_global_vars(**global_vars)
+
+        # checks validity of the checkpoint file
         # currently only checks the object type, but there might be better checks
-        if not (isinstance(epoch_dir, Path) and isinstance(result, pm.Result)):
+        if not (isinstance(self, cls) and isinstance(result, pm.Result)):
             raise TypeError(f"invalid checkpoint file: {checkpoint_file}.")
 
-        return result.algorithm.problem._evolve_epoch(
-            epoch_dir,
-            result.problem,
+        result.algorithm.termination = termination
+
+        return self._evolve_epoch(
+            self._evaluation_dir,
             result.algorithm,
-            termination,
+            result.algorithm.termination,  # void
             result.algorithm.save_history,  # void
             checkpoint_interval,
             result.algorithm.seed,  # void
-        )  # void: only termination will be updated in algorithm
+        )  # void: not updated into the algorithm by pymoo once the algorithm has a problem

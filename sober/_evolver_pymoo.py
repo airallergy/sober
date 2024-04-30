@@ -76,13 +76,25 @@ if TYPE_CHECKING:
         def __call__(self, problem: Problem, n_samples: int) -> Population: ...
 
     class Algorithm(Protocol):
-        __slots__ = ("problem", "termination", "save_history", "seed", "n_gen")
+        __slots__ = (
+            "problem",
+            "termination",
+            "save_history",
+            "seed",
+            "is_initialized",
+            "n_gen",
+        )
 
         problem: Problem
         termination: Termination
         save_history: bool
         seed: int | None
+        is_initialized: bool
         n_gen: int
+        # NOTE: pymoo sets n_gen to None before initialisation
+        #       which is problematic given the very short time before initialisation
+        #       restrict it to int here
+        #       and handle pre-initialisation using is_initialized
 
     class Result(Result_):  # type: ignore[misc]
         # this cannot be defined via Protocol as Protocol cannot be runtime checked

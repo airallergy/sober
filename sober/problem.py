@@ -228,8 +228,8 @@ class Problem:
             seed,
         )
 
+    @staticmethod
     def resume(
-        self,
         checkpoint_file: AnyStrPath,
         termination: pm.Termination,
         /,
@@ -237,4 +237,4 @@ class Problem:
         checkpoint_interval: int = 0,
     ) -> pm.Result:
         """resumes optimisation using a checkpoint file"""
-        return self._pymoo.resume(checkpoint_file, termination, checkpoint_interval)
+        return _PymooEvolver.resume(checkpoint_file, termination, checkpoint_interval)
