@@ -1,9 +1,6 @@
 from os import PathLike
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
-import numpy as np
-from numpy.typing import NDArray
-
 ##############################  package typing  ##############################
 # need to remove casts etc. to resolve this block
 
@@ -23,15 +20,14 @@ AnyCtrlKeyVec: TypeAlias = tuple[int, *tuple[AnyModifierKey, ...]]
 # output
 AnyCoreLevel: TypeAlias = Literal["task", "job"]
 AnyLevel: TypeAlias = Literal[AnyCoreLevel, "batch", "epoch"]
-
-
-# pymoo
-AnyX: TypeAlias = dict[str, np.int_ | np.float_]
-AnyReferenceDirections: TypeAlias = NDArray[np.float_]
 #############################################################################
+
 
 if TYPE_CHECKING:
     from typing import NotRequired, TypedDict
+
+    import numpy as np
+    from numpy.typing import NDArray
 
     from sober.input import (
         CategoricalModifier,
@@ -78,3 +74,9 @@ if TYPE_CHECKING:
         | CartesianNoiseSampleKwargs
         | AutoNoiseSampleKwargs
     )
+
+    # pymoo
+    AnyX: TypeAlias = dict[str, np.int_ | np.float_]
+    AnyF: TypeAlias = NDArray[np.float_]
+    AnyG: TypeAlias = NDArray[np.float_]
+    AnyReferenceDirections: TypeAlias = NDArray[np.float_]

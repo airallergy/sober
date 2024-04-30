@@ -6,12 +6,7 @@ from typing import TYPE_CHECKING, cast, overload
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2, binary_tournament
 from pymoo.algorithms.moo.nsga3 import NSGA3, comp_by_cv_then_random
-from pymoo.core.mixed import (
-    MixedVariableDuplicateElimination,
-    MixedVariableMating,
-    MixedVariableSampling,
-)
-from pymoo.core.population import Population
+from pymoo.core.mixed import MixedVariableDuplicateElimination, MixedVariableMating
 from pymoo.core.problem import Problem
 from pymoo.core.variable import Integer as Integral  # follow the numbers stdlib
 from pymoo.core.variable import Real
@@ -19,44 +14,106 @@ from pymoo.operators.crossover.sbx import SimulatedBinaryCrossover
 from pymoo.operators.mutation.pm import PolynomialMutation
 from pymoo.operators.repair.rounding import RoundingRepair
 from pymoo.operators.selection.tournament import TournamentSelection
-from pymoo.optimize import minimize
 from pymoo.termination.max_gen import MaximumGenerationTermination
-from pymoo.util.ref_dirs.energy import RieszEnergyReferenceDirectionFactory
 
 import sober.config as cf
 from sober._evaluator import _evaluate
 from sober._logger import _log
 from sober._tools import _natural_width
-from sober._typing import AnyCtrlKeyVec, AnyReferenceDirections  # cast
+from sober._typing import AnyCtrlKeyVec
 from sober.input import _RealModifier
 
 if TYPE_CHECKING:
     # ruff: noqa: PLC0414  # astral-sh/ruff#3711
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Iterator
     from pathlib import Path
-    from typing import Literal, NotRequired, TypedDict
+    from typing import Literal, NotRequired, Protocol, Self, TypedDict
 
     from numpy.typing import NDArray
     from pymoo.algorithms.base.genetic import GeneticAlgorithm
-    from pymoo.core.algorithm import Algorithm as Algorithm
-    from pymoo.core.individual import Individual
-    from pymoo.core.result import Result as Result
     from pymoo.core.termination import Termination as Termination
 
     from sober._io_managers import _InputManager, _OutputManager
-    from sober._typing import AnyX
+    from sober._typing import AnyF, AnyG, AnyReferenceDirections, AnyX
 
     class _PymooOut(TypedDict):
-        F: NDArray[np.float_] | None
-        G: NotRequired[NDArray[np.float_] | None]
+        F: AnyF | None
+        G: NotRequired[AnyG | None]
 
     class _PymooOperators(TypedDict):
         sampling: Population
         mating: MixedVariableMating
         eliminate_duplicates: MixedVariableDuplicateElimination
 
+    # minimum pymoo stubs
+    from pymoo.core.mixed import MixedVariableSampling as MixedVariableSampling_
+    from pymoo.core.result import Result as Result_
+    from pymoo.util.ref_dirs.energy import (
+        RieszEnergyReferenceDirectionFactory as RieszEnergyReferenceDirectionFactory_,
+    )
 
-__all__ = ("MaximumGenerationTermination", "minimize")
+    class Individual(Protocol):
+        __slots__ = ("X", "F", "G", "FEAS")
+
+        X: AnyX
+        F: AnyF
+        G: AnyG
+        FEAS: NDArray[np.bool_]
+
+        def get(self, arg: Literal["rank"]) -> int: ...
+
+    class Population(Protocol):
+        __slots__ = ()
+
+        def __iter__(self) -> Iterator[Individual]: ...
+        @classmethod
+        def create(cls, *args: Individual) -> Self: ...
+
+    class MixedVariableSampling(MixedVariableSampling_):  # type: ignore[misc]
+        # this cannot be defined via Protocol as Protocol cannot be instantiated
+        __slots__ = ()
+
+        def __call__(self, problem: Problem, n_samples: int) -> Population: ...
+
+    class Algorithm(Protocol):
+        __slots__ = ("problem", "termination", "save_history", "seed", "n_gen")
+
+        problem: Problem
+        termination: Termination
+        save_history: bool
+        seed: int | None
+        n_gen: int
+
+    class Result(Result_):  # type: ignore[misc]
+        # this cannot be defined via Protocol as Protocol cannot be runtime checked
+        __slots__ = ("algorithm",)
+
+        algorithm: Algorithm
+
+    class RieszEnergyReferenceDirectionFactory(RieszEnergyReferenceDirectionFactory_):  # type: ignore[misc]
+        # this cannot be defined via Protocol as Protocol cannot be instantiated
+        __slots__ = ()
+
+        def __init__(self, n_dim: int, n_points: int, *, seed: int | None) -> None: ...
+        def do(self) -> AnyReferenceDirections: ...
+
+    def minimize(
+        problem: Problem,
+        algorithm: Algorithm,
+        termination: Termination,
+        *,
+        save_history: bool,
+        seed: int | None,
+    ) -> Result: ...
+
+else:
+    from pymoo.core.mixed import MixedVariableSampling
+    from pymoo.core.population import Population
+    from pymoo.core.result import Result  # used in resume
+    from pymoo.optimize import minimize
+    from pymoo.util.ref_dirs.energy import RieszEnergyReferenceDirectionFactory
+
+__all__ = ("MaximumGenerationTermination", "Result", "minimize")
 
 
 #############################################################################
@@ -289,7 +346,4 @@ def _survival(
 def _default_reference_directions(
     n_dims: int, population_size: int, seed: int | None
 ) -> AnyReferenceDirections:
-    return cast(  # cast: pymoo
-        AnyReferenceDirections,
-        RieszEnergyReferenceDirectionFactory(n_dims, population_size, seed=seed).do(),
-    )
+    return RieszEnergyReferenceDirectionFactory(n_dims, population_size, seed=seed).do()

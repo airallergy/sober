@@ -4,13 +4,12 @@ import itertools as it
 import pickle
 from abc import ABC
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import sober._evolver_pymoo as pm
 import sober.config as cf
 from sober._logger import _log, _LoggerManager
 from sober._tools import _parsed_path, _write_records
-from sober._typing import AnyX
 
 if TYPE_CHECKING:
     from typing import Literal
@@ -102,7 +101,7 @@ class _PymooEvolver(_Evolver):
         # convert pymoo x to ctrl val vecs
         ctrl_key_vecs = tuple(
             tuple(
-                cast(AnyX, item.X)[input._label].item()  # cast: pymoo
+                item.X[input._label].item()
                 if input._is_ctrl
                 else input._hype_ctrl_key()
                 for input in self._input_manager
@@ -152,11 +151,14 @@ class _PymooEvolver(_Evolver):
                 seed=seed,
             )
         else:
-            if not isinstance(termination, pm.MaximumGenerationTermination):
+            if not (
+                isinstance(termination, pm.MaximumGenerationTermination)
+                and isinstance(termination.n_max_gen, int)
+            ):
                 # TODO: add support for other termination criteria
                 #       possibly with a while loop
                 raise NotImplementedError(
-                    "checkpoints only work with max generation termination."
+                    "checkpoints only work with finite max generation termination."
                 )
 
             n_loops = termination.n_max_gen // checkpoint_interval + 1
