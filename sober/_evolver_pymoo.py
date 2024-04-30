@@ -46,8 +46,8 @@ if TYPE_CHECKING:
         eliminate_duplicates: MixedVariableDuplicateElimination
 
     # minimum pymoo stubs
+    from pymoo.core.algorithm import Algorithm as Algorithm_
     from pymoo.core.mixed import MixedVariableSampling as MixedVariableSampling_
-    from pymoo.core.result import Result as Result_
     from pymoo.util.ref_dirs.energy import (
         RieszEnergyReferenceDirectionFactory as RieszEnergyReferenceDirectionFactory_,
     )
@@ -75,7 +75,15 @@ if TYPE_CHECKING:
 
         def __call__(self, problem: Problem, n_samples: int) -> Population: ...
 
-    class Algorithm(Protocol):
+    class Result(Protocol):
+        __slots__ = ("pop", "history", "algorithm")
+
+        pop: Population
+        history: list[Algorithm]
+        algorithm: Algorithm
+
+    class Algorithm(Algorithm_):  # type: ignore[misc]
+        # this cannot be defined via Protocol as Protocol cannot be runtime checked
         __slots__ = (
             "problem",
             "termination",
@@ -83,6 +91,7 @@ if TYPE_CHECKING:
             "seed",
             "is_initialized",
             "n_gen",
+            "pop",
         )
 
         problem: Problem
@@ -95,12 +104,19 @@ if TYPE_CHECKING:
         #       which is problematic given the very short time before initialisation
         #       restrict it to int here
         #       and handle pre-initialisation using is_initialized
+        pop: Population
 
-    class Result(Result_):  # type: ignore[misc]
-        # this cannot be defined via Protocol as Protocol cannot be runtime checked
-        __slots__ = ("algorithm",)
-
-        algorithm: Algorithm
+        def setup(
+            self,
+            problem: Problem,
+            termination: Termination,
+            save_history: bool,
+            seed: int | None,
+            **kwargs: object,
+        ) -> Self: ...
+        def has_next(self) -> bool: ...
+        def next(self) -> None: ...
+        def result(self) -> Result: ...
 
     class RieszEnergyReferenceDirectionFactory(RieszEnergyReferenceDirectionFactory_):  # type: ignore[misc]
         # this cannot be defined via Protocol as Protocol cannot be instantiated
@@ -119,13 +135,13 @@ if TYPE_CHECKING:
     ) -> Result: ...
 
 else:
+    from pymoo.core.algorithm import Algorithm  # used in resume
     from pymoo.core.mixed import MixedVariableSampling
     from pymoo.core.population import Population
-    from pymoo.core.result import Result  # used in resume
     from pymoo.optimize import minimize
     from pymoo.util.ref_dirs.energy import RieszEnergyReferenceDirectionFactory
 
-__all__ = ("MaximumGenerationTermination", "Result", "minimize")
+__all__ = ("Algorithm", "MaximumGenerationTermination", "minimize")
 
 
 #############################################################################

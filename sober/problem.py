@@ -231,9 +231,9 @@ class Problem:
     @staticmethod
     def resume(
         checkpoint_file: AnyStrPath,
-        termination: pm.Termination,
         /,
         *,
+        termination: pm.Termination | None = None,
         checkpoint_interval: int = 0,
     ) -> pm.Result:
         """resumes optimisation using a checkpoint file"""
