@@ -502,9 +502,11 @@ class _OutputManager:
         )
 
         # touch rvi files
-        self._touch_rvi(config_dir)
+        for item in self._task_outputs:
+            if isinstance(item, RVICollector):
+                item._touch(config_dir)
 
-        self._check_args()
+        self._check_args()  # has to be here after copying outputs
 
     def _check_args(self) -> None:
         # check each output
@@ -526,11 +528,6 @@ class _OutputManager:
             labels = getattr(self, name)
             if len(labels) != len(set(labels)):
                 raise ValueError(f"duplicates found in {name[1:]}: {labels}.")
-
-    def _touch_rvi(self, config_dir: Path) -> None:
-        for item in self._task_outputs:
-            if isinstance(item, RVICollector):
-                item._touch(config_dir)
 
     def _record_final(
         self, level: AnyCoreLevel, record_dir: Path, uids: _AnyUIDs
