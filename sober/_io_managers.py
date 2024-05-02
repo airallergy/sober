@@ -420,7 +420,7 @@ class _InputManager:
 class _OutputManager:
     """manages output collection"""
 
-    _DEFAULT_CLEAN_PATTERNS: Final = ("*.audit", "*.end", "sqlite.err")
+    _DEFAULT_CLEAN_PATTERNS: Final = frozenset({"*.audit", "*.end", "sqlite.err"})
 
     __slots__ = (
         "_task_outputs",

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import enum
 import itertools as it
+import json
+import os
 import shutil
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
@@ -13,7 +15,7 @@ from sober._tools import _parsed_path, _parsed_str_iterable, _run, _uuid
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Literal, TypeAlias
+    from typing import Any, Final, Literal, TypeAlias
 
     from sober._typing import AnyCoreLevel, AnyLanguage, AnyStrPath
 
@@ -236,11 +238,15 @@ class RVICollector(_Collector):
 class ScriptCollector(_Collector):
     """collects script outputs"""
 
-    __slots__ = ("_script_file", "_script_language", "_extra_args")
+    _RESERVED_KWARGS_KEYS: Final = frozenset(
+        {"cwd", "filename", "objectives", "constraints"}
+    )
+
+    __slots__ = ("_script_file", "_script_language", "_script_kwargs")
 
     _script_file: Path
     _script_language: AnyLanguage
-    _extra_args: tuple[str, ...]
+    _script_kwargs: dict[str, object]
 
     def __init__(
         self,
@@ -248,7 +254,8 @@ class ScriptCollector(_Collector):
         script_language: AnyLanguage,
         filename: str,
         /,
-        *extra_args: str,
+        script_kwargs: dict[str, object] | None = None,
+        *,
         level: AnyCoreLevel = "task",
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
@@ -258,7 +265,7 @@ class ScriptCollector(_Collector):
     ) -> None:
         self._script_file = _parsed_path(script_file, "script file")
         self._script_language = script_language
-        self._extra_args = extra_args
+        self._script_kwargs = {} if script_kwargs is None else script_kwargs
 
         super().__init__(
             filename, level, objectives, constraints, direction, bounds, is_final
@@ -267,19 +274,34 @@ class ScriptCollector(_Collector):
     def __call__(self, cwd: Path) -> None:
         language_exec = cf._config["exec." + self._script_language]  # type: ignore[literal-required]  # python/mypy#12554
 
-        cmd_args = (
-            language_exec,
-            self._script_file,
-            cwd,
-            self._filename,
-            ",".join(self._objectives) + ";" + ",".join(self._constraints),
-            ",".join(self._extra_args),
-        )
+        cmd_args = (language_exec, self._script_file, self._dumps_kwargs(cwd))
 
         _run(cmd_args, cwd)
 
     def _check_args(self) -> None:
         super()._check_args()
+
+        for item in self._RESERVED_KWARGS_KEYS:
+            if item in self._script_kwargs:
+                raise ValueError(
+                    f"'{item}' is reserved and cannot be used in script kwargs."
+                )
+
+    def _dumps_kwargs(self, cwd: Path) -> str:
+        kwargs = {
+            "cwd": os.fsdecode(cwd),
+            "filename": self._filename,
+            "objectives": self._objectives,
+            "constraints": self._constraints,
+        } | self._script_kwargs
+
+        return json.dumps(kwargs)
+
+    @staticmethod
+    def loads_kwargs() -> Any:  # Any: typeshed  # pep728
+        import sys
+
+        return json.loads(sys.argv[1])
 
 
 class _CopyCollector(_Collector):
