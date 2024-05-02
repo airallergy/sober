@@ -20,7 +20,7 @@ from sober.input import _IntegralModifier
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Any, TypeGuard  # this interestingly needs no runtime import
+    from typing import Any, TypeGuard
 
     from sober._io_managers import _InputManager, _OutputManager
 
@@ -180,27 +180,25 @@ class _ElementwiseMultiplier(_Multiplier):
 class _LazyCartesianProduct(Generic[_T]):
     """allows indexing a Cartesian product without evaluating all
     which enables super fast sampling
-    adapted from: https://github.com/tylerburdsall/lazy-cartesian-product-python
-    see also: https://medium.com/hackernoon/generating-the-nth-cartesian-product-e48db41bed3f"""
+    inspired by http://phrogz.net/lazy-cartesian-product"""
 
-    __slots__ = ("_tuples", "_n_tuples", "_n_products", "_divs", "_mods")
+    __slots__ = ("_tuples", "_divs", "_mods", "_len")
 
     _tuples: tuple[tuple[_T, ...], ...]
-    _n_tuples: int
-    _n_products: int
     _divs: tuple[int, ...]
     _mods: tuple[int, ...]
+    _len: int
 
     def __init__(self, *iterables: Iterable[_T]) -> None:
         self._tuples = tuple(map(tuple, iterables))
-        self._n_tuples = len(self._tuples)
-
         tuple_lens = tuple(map(len, self._tuples))
-        self._n_products = math.prod(tuple_lens)
+
         self._divs = tuple(it.accumulate(tuple_lens[::-1], operator.mul, initial=1))[
             -2::-1
         ]
         self._mods = tuple_lens
+
+        self._len = math.prod(tuple_lens)
 
     @overload
     def __getitem__(self, key: int) -> tuple[_T, ...]: ...
@@ -210,15 +208,15 @@ class _LazyCartesianProduct(Generic[_T]):
         self, key: int | Sequence[int]
     ) -> tuple[_T, ...] | tuple[tuple[_T, ...], ...]:
         if isinstance(key, int):
-            if key < -self._n_products or key > self._n_products - 1:
+            if key < -self._len or key > self._len - 1:
                 raise IndexError("index out of range.")
 
             if key < 0:
-                key += self._n_products
+                key += self._len
 
             return tuple(
                 self._tuples[i][key // self._divs[i] % self._mods[i]]
-                for i in range(self._n_tuples)
+                for i in range(len(self._tuples))
             )
         elif isinstance(key, Sequence) and all(isinstance(item, int) for item in key):
             return tuple(self[item] for item in key)
@@ -234,6 +232,12 @@ class _CartesianMultiplier(_Multiplier):
     _product: _LazyCartesianProduct[int]
 
     def __call__(self, *proxies: int) -> None:
+        if len(proxies) > 1e7:
+            # this is almost certainly unintended
+            raise NotImplementedError(
+                f"a sample size larger than 1e7 is forbidden due to high computing cost: {len(proxies)}."
+            )
+
         ctrl_key_vecs = self._product[proxies]
 
         self._evaluate(*ctrl_key_vecs)
@@ -269,16 +273,16 @@ class _CartesianMultiplier(_Multiplier):
         self._product = _LazyCartesianProduct(*map(range, ctrl_lens))
 
     def _random(self, size: int, seed: int | None) -> None:
-        n_products = self._product._n_products
+        len_product = self._product._len
 
-        if size > n_products:
+        if size > len_product:
             raise ValueError(
-                f"the sample size '{size}' is larger than the search space '{n_products}'."
+                f"the sample size '{size}' is larger than the outcome count of the sample space '{len_product}'."
             )
 
         rng = np.random.default_rng(seed)
 
-        sample_indices = rng.choice(n_products, size, replace=False).tolist()
+        sample_indices = rng.choice(len_product, size, replace=False).tolist()
 
         # cast: numpy/numpy#16544
         sample_indices = cast(list[int], sample_indices)
@@ -286,13 +290,8 @@ class _CartesianMultiplier(_Multiplier):
         self(*sample_indices)
 
     def _exhaustive(self) -> None:
-        n_products = self._product._n_products
+        len_product = self._product._len
 
-        if n_products > 1e7:
-            raise NotImplementedError(
-                f"a search space of more than 1e7 candidates is forbidden due to high computing cost: {n_products}."
-            )
-
-        sample_indices = range(n_products)
+        sample_indices = range(len_product)
 
         self(*sample_indices)
