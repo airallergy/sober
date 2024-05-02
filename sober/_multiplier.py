@@ -6,8 +6,7 @@ import math
 import operator
 import shutil
 from abc import ABC, abstractmethod
-from collections.abc import Sequence  # isinstance
-from typing import TYPE_CHECKING, Generic, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Generic, TypeVar, cast
 
 import numpy as np
 import scipy.stats.qmc
@@ -140,10 +139,12 @@ class _ElementwiseMultiplier(_Multiplier):
         ctrl_key_vecs = tuple(
             zip(
                 *(
-                    item._key_icdf(*proxy)
+                    item._key_icdf(*quantiles)
                     if item._is_ctrl
                     else it.repeat(item._hype_ctrl_key(), n_repeats)
-                    for item, proxy in zip(self._input_manager, proxies, strict=True)
+                    for item, quantiles in zip(
+                        self._input_manager, proxies, strict=True
+                    )
                 ),
                 strict=True,
             )
@@ -200,28 +201,17 @@ class _LazyCartesianProduct(Generic[_T]):
 
         self._len = math.prod(tuple_lens)
 
-    @overload
-    def __getitem__(self, key: int) -> tuple[_T, ...]: ...
-    @overload
-    def __getitem__(self, key: Sequence[int]) -> tuple[tuple[_T, ...], ...]: ...
-    def __getitem__(
-        self, key: int | Sequence[int]
-    ) -> tuple[_T, ...] | tuple[tuple[_T, ...], ...]:
-        if isinstance(key, int):
-            if key < -self._len or key > self._len - 1:
-                raise IndexError("index out of range.")
+    def __getitem__(self, key: int) -> tuple[_T, ...]:
+        if key < -self._len or key > self._len - 1:
+            raise IndexError("index out of range.")
 
-            if key < 0:
-                key += self._len
+        if key < 0:
+            key += self._len
 
-            return tuple(
-                self._tuples[i][key // self._divs[i] % self._mods[i]]
-                for i in range(len(self._tuples))
-            )
-        elif isinstance(key, Sequence) and all(isinstance(item, int) for item in key):
-            return tuple(self[item] for item in key)
-        else:
-            raise TypeError("index must be integers or a sequence of integers.")
+        return tuple(
+            self._tuples[i][key // self._divs[i] % self._mods[i]]
+            for i in range(len(self._tuples))
+        )
 
 
 class _CartesianMultiplier(_Multiplier):
@@ -238,7 +228,7 @@ class _CartesianMultiplier(_Multiplier):
                 f"a sample size larger than 1e7 is forbidden due to high computing cost: {len(proxies)}."
             )
 
-        ctrl_key_vecs = self._product[proxies]
+        ctrl_key_vecs = tuple(self._product[i] for i in proxies)
 
         self._evaluate(*ctrl_key_vecs)
 
