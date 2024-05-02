@@ -397,14 +397,14 @@ class _InputManager:
 
     @_LoggerManager()
     def _simulate_task(self, task_dir: Path) -> None:
-        # simulate the task mdoel
+        # simulate the task model
         _run_energyplus(task_dir)
 
     @_LoggerManager()
     def _simulate_batch(
         self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
     ) -> None:
-        # simulate batch in parallel
+        # schedule and simulate tasks
         uid_pairs = tuple(
             (job_uid, task_uid) for job_uid, job in batch for task_uid, _ in job
         )
@@ -607,7 +607,7 @@ class _OutputManager:
                             pass
                         else:
                             warnings.warn(
-                                f"multiple output lines found in '{output._filename}', only the first collected.",
+                                f"multiple output lines found in '{output._filename}', only the first recorded.",
                                 stacklevel=2,
                             )
 
@@ -617,34 +617,35 @@ class _OutputManager:
         )
 
     @_LoggerManager()
-    def _collect_task(self, task_dir: Path) -> None:
+    def _scan_task(self, task_dir: Path) -> None:
         # collect task outputs
         for item in self._task_outputs:
             item(task_dir)
 
     @_LoggerManager()
-    def _collect_job(self, job_dir: Path, task_uids: _AnyUIDs) -> None:
-        # collect tasks
+    def _scan_job(self, job_dir: Path, task_uids: _AnyUIDs) -> None:
+        # scan tasks
         for task_uid in task_uids:
-            self._collect_task(job_dir / task_uid)
+            self._scan_task(job_dir / task_uid)
 
-            _log(job_dir, f"collected {task_uid}")
+            _log(job_dir, f"scanned {task_uid}")
 
         # record task output values
         self._record_final("task", job_dir, task_uids)
 
         _log(job_dir, "recorded final outputs")
 
+        # collect job outputs
         for item in self._job_outputs:
             item(job_dir)
 
     @_LoggerManager()
-    def _collect_batch(
+    def _scan_batch(
         self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
     ) -> None:
-        # schedule and collect jobs
+        # schedule and scan jobs
         scheduled = parallel._starmap(
-            self._collect_job,
+            self._scan_job,
             (
                 (batch_dir / job_uid, tuple(task_uid for task_uid, _ in job))
                 for job_uid, job in batch
@@ -652,7 +653,7 @@ class _OutputManager:
         )
 
         for (job_uid, _), _ in zip(batch, scheduled, strict=True):
-            _log(batch_dir, f"collected {job_uid}")
+            _log(batch_dir, f"scanned {job_uid}")
 
         # record job output values
         self._record_final("job", batch_dir, tuple(job_uid for job_uid, _ in batch))
