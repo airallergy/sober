@@ -102,7 +102,7 @@ def _check_config(
     model_type: AnyModelType,
     has_templates: bool,
     uses_rvi: bool,
-    used_languages: set[AnyLanguage],
+    languages: set[AnyLanguage],
 ) -> None:
     """checks the configuration sufficiency"""
 
@@ -113,7 +113,7 @@ def _check_config(
 
     if has_templates and ("exec.expandobjects" not in _config):
         raise ValueError(
-            f"hvac templates are used, but the expandobjects executable is not configured: {_config}."
+            f"HVAC templates are used, but the expandobjects executable is not configured: {_config}."
         )
 
     if uses_rvi and ("exec.readvars" not in _config):
@@ -121,10 +121,10 @@ def _check_config(
             f"an RVICollector is used, but the readvars executable is not configured: {_config}."
         )
 
-    for language in used_languages:
-        if "exec." + language not in _config:
+    for item in languages:
+        if "exec." + item not in _config:
             raise ValueError(
-                f"an ScriptCollector of {language} is used, but the {language} executable is not configured: {_config}."
+                f"an ScriptCollector of {item} is used, but the {item} executable is not configured: {_config}."
             )
 
 

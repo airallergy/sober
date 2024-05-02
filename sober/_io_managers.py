@@ -457,7 +457,9 @@ class _OutputManager:
 
         # parse clean patterns without duplicates
         self._clean_patterns = frozenset(
-            map(os.path.normpath, _parsed_str_iterable(clean_patterns))
+            map(
+                os.path.normpath, _parsed_str_iterable(clean_patterns, "clean patterns")
+            )
         )
 
     def __iter__(self) -> Iterator[_Collector]:
@@ -485,6 +487,7 @@ class _OutputManager:
                             item._constraints,
                             item._direction,
                             item._bounds,
+                            item._is_final,
                         )
                     )
                     item._is_copied = True

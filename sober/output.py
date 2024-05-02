@@ -83,8 +83,8 @@ class _Collector(ABC):
     ) -> None:
         self._filename = filename
         self._level = level
-        self._objectives = _parsed_str_iterable(objectives)
-        self._constraints = _parsed_str_iterable(constraints)
+        self._objectives = _parsed_str_iterable(objectives, "objectives")
+        self._constraints = _parsed_str_iterable(constraints, "constraints")
         self._direction = _Direction[direction.upper()]
         self._bounds = bounds
         self._is_final = is_final
@@ -160,15 +160,15 @@ class RVICollector(_Collector):
     __slots__ = (
         "_ep_output_names",
         "_ep_output_type",
-        "_keys",
-        "_frequency",
+        "_ep_output_keys",
+        "_ep_output_frequency",
         "_rvi_file",
     )
 
     _ep_output_names: tuple[str, ...]
     _ep_output_type: _EPOutputType
-    _keys: tuple[str, ...]
-    _frequency: str
+    _ep_output_keys: tuple[str, ...]
+    _ep_output_frequency: str
     _rvi_file: Path
 
     def __init__(
@@ -177,8 +177,8 @@ class RVICollector(_Collector):
         ep_output_type: _AnyEPOutputType,
         filename: str,
         /,
-        keys: str | Iterable[str] = (),
-        frequency: str = "",
+        ep_output_keys: str | Iterable[str] = (),
+        ep_output_frequency: str = "",
         *,
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
@@ -186,17 +186,17 @@ class RVICollector(_Collector):
         bounds: _AnyBounds = (None, 0),
         is_final: bool = True,
     ) -> None:
-        self._ep_output_names = _parsed_str_iterable(ep_output_names)
+        self._ep_output_names = _parsed_str_iterable(ep_output_names, "ep output names")
         self._ep_output_type = _EPOutputType[ep_output_type.upper()]
-        self._keys = _parsed_str_iterable(keys)
-        self._frequency = frequency
+        self._ep_output_keys = _parsed_str_iterable(ep_output_keys, "ep output keys")
+        self._ep_output_frequency = ep_output_frequency
 
         super().__init__(
             filename, "task", objectives, constraints, direction, bounds, is_final
         )
 
     def __call__(self, cwd: Path) -> None:
-        _run_readvars(cwd, self._rvi_file, self._frequency)
+        _run_readvars(cwd, self._rvi_file, self._ep_output_frequency)
 
         # remove trailing space
         # with (cwd / self._filename).open("rt") as fp:
@@ -212,15 +212,15 @@ class RVICollector(_Collector):
                 f"an RVICollector output needs to be a csv file: {self._filename}."
             )
 
-        if self._ep_output_type is _EPOutputType.METER and self._keys:
+        if self._ep_output_type is _EPOutputType.METER and self._ep_output_keys:
             raise ValueError("meter variables do not accept keys.")
 
     def _touch(self, config_dir: Path) -> None:
         rvi_str = f"{self._ep_output_type.value}\n{self._filename}\n"
-        if self._keys:
+        if self._ep_output_keys:
             rvi_str += "\n".join(
                 f"{key},{name}"
-                for key, name in it.product(self._keys, self._ep_output_names)
+                for key, name in it.product(self._ep_output_keys, self._ep_output_names)
             )
         else:
             rvi_str += "\n".join(self._ep_output_names)
@@ -236,16 +236,16 @@ class RVICollector(_Collector):
 class ScriptCollector(_Collector):
     """collects script outputs"""
 
-    __slots__ = ("_script_file", "_language", "_extra_args")
+    __slots__ = ("_script_file", "_script_language", "_extra_args")
 
     _script_file: Path
-    _language: AnyLanguage
+    _script_language: AnyLanguage
     _extra_args: tuple[str, ...]
 
     def __init__(
         self,
         script_file: AnyStrPath,
-        language: AnyLanguage,
+        script_language: AnyLanguage,
         filename: str,
         /,
         *extra_args: str,
@@ -257,7 +257,7 @@ class ScriptCollector(_Collector):
         is_final: bool = True,
     ) -> None:
         self._script_file = _parsed_path(script_file, "script file")
-        self._language = language
+        self._script_language = script_language
         self._extra_args = extra_args
 
         super().__init__(
@@ -265,7 +265,7 @@ class ScriptCollector(_Collector):
         )
 
     def __call__(self, cwd: Path) -> None:
-        language_exec = cf._config["exec." + self._language]  # type: ignore[literal-required]  # python/mypy#12554
+        language_exec = cf._config["exec." + self._script_language]  # type: ignore[literal-required]  # python/mypy#12554
 
         cmd_args = (
             language_exec,
@@ -295,6 +295,7 @@ class _CopyCollector(_Collector):
         constraints: tuple[str, ...],
         direction: _Direction,
         bounds: _AnyBounds,
+        is_final: bool,
     ) -> None:
         # overwrite _Collector's __init__, as all args have been parsed
         self._filename = filename
@@ -303,7 +304,7 @@ class _CopyCollector(_Collector):
         self._constraints = constraints
         self._direction = direction
         self._bounds = bounds
-        self._is_final = True
+        self._is_final = is_final
         self._is_copied = False
 
     def __call__(self, cwd: Path) -> None:

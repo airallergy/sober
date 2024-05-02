@@ -87,7 +87,7 @@ class Problem:
     def __getattr__(self, name: Literal["_cartesian"], /) -> _CartesianMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
     @overload
     def __getattr__(self, name: Literal["_pymoo"], /) -> _PymooEvolver: ...  # type: ignore[misc]  # python/mypy#8203
-    def __getattr__(self, name: str, /) -> object:  # type: ignore[misc]  # python/mypy#8203
+    def __getattr__(self, name: str, /) -> object:
         """lazily set these attributes when they are called for the first time"""
         match name:
             case "_elementwise":
@@ -139,7 +139,7 @@ class Problem:
             self._input_manager._has_templates,
             any(isinstance(item, RVICollector) for item in self._output_manager),
             {
-                item._language
+                item._script_language
                 for item in self._output_manager
                 if isinstance(item, ScriptCollector)
             },

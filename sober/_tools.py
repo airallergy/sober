@@ -99,23 +99,29 @@ def _recorded_batch(batch_dir: Path) -> tuple[tuple[str, ...], ...]:
 #############################################################################
 #######                   ARGUMENT PARSE FUNCTIONS                    #######
 #############################################################################
-def _parsed_str_iterable(s: str | Iterable[str]) -> tuple[str, ...]:
+def _parsed_str_iterable(s: str | Iterable[str], who: str = "") -> tuple[str, ...]:
     """converts str or an iterable of str to a tuple of str"""
-    if isinstance(s, str):
-        return (s,)
-    else:
-        return tuple(s)
+    t = (s,) if isinstance(s, str) else tuple(s)
+
+    if who:
+        if "" in t:
+            raise ValueError(f"empty string in {who}: '{t}'.")
+
+        if len(t) > len(set(t)):
+            raise ValueError(f"duplicates in {who}: '{t}'.")
+
+    return t
 
 
-def _parsed_path(path: AnyStrPath, kind: str = "") -> Path:
+def _parsed_path(path: AnyStrPath, who: str = "") -> Path:
     """converts path to a Path object
-    and checks existence if kind is specified (i.e. non-empty str)
+    and checks existence if who is specified (i.e. non-empty str)
     """
 
     path = Path(path).resolve()
 
-    if kind and not path.exists():
-        raise FileNotFoundError(f"{kind} not found: '{path}'.")
+    if who and not path.exists():
+        raise FileNotFoundError(f"{who} not found: '{path}'.")
 
     return path
 
