@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from sober._io_managers import _InputManager, _OutputManager
-    from sober._typing import AnyCtrlKeyVec
+    from sober._typing import AnyBatch, AnyCtrlKeyVec
 
 
 def _evaluate(
@@ -17,7 +17,7 @@ def _evaluate(
     input_manager: _InputManager,
     output_manager: _OutputManager,
     batch_dir: Path,
-) -> None:
+) -> AnyBatch:
     batch = input_manager._job_items(*ctrl_key_vecs)
 
     with _Parallel(
@@ -31,3 +31,5 @@ def _evaluate(
 
         if not cf._removes_subdirs:  # no need to clean if subdirs are to be removed
             output_manager._clean_batch(batch_dir, batch, parallel)
+
+    return batch

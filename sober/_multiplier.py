@@ -79,7 +79,7 @@ class _Multiplier(ABC):
 
     def _evaluate(self, *ctrl_key_vecs: tuple[float, ...]) -> None:
         if each_tuple_is_non_empty_and_starts_with_int(ctrl_key_vecs):
-            _evaluate(
+            batch = _evaluate(
                 *ctrl_key_vecs,
                 input_manager=self._input_manager,
                 output_manager=self._output_manager,
@@ -90,9 +90,8 @@ class _Multiplier(ABC):
             raise IndexError("no modifiers are defined.")
 
         if cf._removes_subdirs:
-            for item in self._evaluation_dir.glob("*"):
-                if item.is_dir():
-                    shutil.rmtree(item)
+            for job_uid, _ in batch:
+                shutil.rmtree(self._evaluation_dir / job_uid)
 
 
 #############################################################################

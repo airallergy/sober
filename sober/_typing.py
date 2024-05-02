@@ -24,6 +24,7 @@ AnyLevel: TypeAlias = Literal[AnyCoreLevel, "batch", "epoch"]
 
 
 if TYPE_CHECKING:
+    from pathlib import Path
     from typing import NotRequired, TypedDict
 
     import numpy as np
@@ -46,6 +47,14 @@ if TYPE_CHECKING:
     )
     AnyRealModelModifier: TypeAlias = ContinuousModifier
     AnyModelModifier: TypeAlias = AnyRealModelModifier | AnyIntegralModelModifier
+
+    # io managers
+    AnyModelTask: TypeAlias = tuple[AnyModelModifierVal, ...]
+    AnyTask: TypeAlias = tuple[Path, *AnyModelTask]
+    AnyTaskItem: TypeAlias = tuple[str, AnyTask]
+    AnyJob: TypeAlias = tuple[AnyTaskItem, ...]
+    AnyJobItem: TypeAlias = tuple[str, AnyJob]
+    AnyBatch: TypeAlias = tuple[AnyJobItem, ...]
 
     # problem
     AnySampleMode: TypeAlias = Literal["elementwise", "cartesian", "auto"]

@@ -43,20 +43,17 @@ if TYPE_CHECKING:
 
     from sober._tools import AnyParallel
     from sober._typing import (
+        AnyBatch,
         AnyCoreLevel,
         AnyCtrlKeyVec,
+        AnyJob,
         AnyModelModifier,
         AnyModelModifierVal,
+        AnyModelTask,
         AnyModelType,
+        AnyTask,
     )
     from sober.input import _Modifier
-
-    _AnyModelTask: TypeAlias = tuple[AnyModelModifierVal, ...]
-    _AnyTask: TypeAlias = tuple[Path, *_AnyModelTask]
-    _AnyTaskItem: TypeAlias = tuple[str, _AnyTask]
-    _AnyJob: TypeAlias = tuple[_AnyTaskItem, ...]
-    _AnyJobItem: TypeAlias = tuple[str, _AnyJob]
-    _AnyBatch: TypeAlias = tuple[_AnyJobItem, ...]
 
     _AnyConverter: TypeAlias = Callable[[float], float]
     _AnyUIDs: TypeAlias = tuple[str, ...]
@@ -210,7 +207,7 @@ class _InputManager:
 
         return macros + cast(str, idf.idfstr())  # eppy
 
-    def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> _AnyJob:
+    def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> AnyJob:
         # align ctrl and noise keys and convert non-functional keys
         # TODO: consider reusing the multiplier facility here after py3.13 pep728, but maybe not worth it
         if (cf._noise_sample_kwargs["mode"] == "elementwise") or (
@@ -300,7 +297,7 @@ class _InputManager:
             # impossible, there is at least the weather modifer
             raise IndexError("no modifiers are defined.")
 
-    def _job_items(self, *ctrl_key_vecs: AnyCtrlKeyVec) -> _AnyBatch:
+    def _job_items(self, *ctrl_key_vecs: AnyCtrlKeyVec) -> AnyBatch:
         # generate job uids
         n_jobs = len(ctrl_key_vecs)
         i_job_width = _natural_width(n_jobs)
@@ -310,7 +307,7 @@ class _InputManager:
             for i, ctrl_key_vec in enumerate(ctrl_key_vecs)
         )
 
-    def _detagged(self, tagged_model: str, model_task: _AnyModelTask) -> str:
+    def _detagged(self, tagged_model: str, model_task: AnyModelTask) -> str:
         for input, value in zip(self._model_inputs, model_task, strict=True):
             tagged_model = input._detagged(tagged_model, value)
         return tagged_model
@@ -329,7 +326,7 @@ class _InputManager:
         )
 
     @_LoggerManager(is_first=True)
-    def _make_task(self, task_dir: Path, task: _AnyTask) -> None:
+    def _make_task(self, task_dir: Path, task: AnyTask) -> None:
         # copy the task weather file
         task_epw_file = task_dir / "in.epw"
         src_epw_file = task[0]
@@ -355,7 +352,7 @@ class _InputManager:
         _log(task_dir, "created in.idf")
 
     @_LoggerManager(is_first=True)
-    def _make_job(self, job_dir: Path, job: _AnyJob) -> None:
+    def _make_job(self, job_dir: Path, job: AnyJob) -> None:
         # make tasks
         for task_uid, task in job:
             self._make_task(job_dir / task_uid, task)
@@ -370,7 +367,7 @@ class _InputManager:
 
     @_LoggerManager(is_first=True)
     def _make_batch(
-        self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
+        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
     ) -> None:
         # schedule and make jobs
         scheduled = parallel._starmap(
@@ -402,7 +399,7 @@ class _InputManager:
 
     @_LoggerManager()
     def _simulate_batch(
-        self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
+        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
     ) -> None:
         # schedule and simulate tasks
         uid_pairs = tuple(
@@ -641,7 +638,7 @@ class _OutputManager:
 
     @_LoggerManager()
     def _scan_batch(
-        self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
+        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
     ) -> None:
         # schedule and scan jobs
         scheduled = parallel._starmap(
@@ -674,7 +671,7 @@ class _OutputManager:
 
     @_LoggerManager()
     def _clean_batch(
-        self, batch_dir: Path, batch: _AnyBatch, parallel: AnyParallel
+        self, batch_dir: Path, batch: AnyBatch, parallel: AnyParallel
     ) -> None:
         # schedule and clean tasks
         uid_pairs = tuple(

@@ -242,7 +242,7 @@ class _Problem(Problem):  # type: ignore[misc]  # pymoo
         _log(self._evaluation_dir, f"evaluated {batch_uid}")
 
         if cf._removes_subdirs:
-            shutil.rmtree(self._evaluation_dir / batch_uid)
+            shutil.rmtree(batch_dir)
 
 
 #############################################################################
