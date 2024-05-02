@@ -67,7 +67,7 @@ class _Noise(Any):  # type: ignore[misc]
 
     _s: str
 
-    def __new__(cls, s: str) -> Self:
+    def __new__(cls, s: str, /) -> Self:
         self = super().__new__(cls)
         self._s = s
         return self  # type: ignore[no-any-return]
@@ -271,7 +271,7 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
     def __len__(self) -> int:
         return len(self._options)
 
-    def __getitem__(self, key: int) -> _MV_co:
+    def __getitem__(self, key: int, /) -> _MV_co:
         return self._options[key]
 
     def __call__(self, key: int) -> _MV_co:

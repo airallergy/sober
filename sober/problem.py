@@ -80,14 +80,14 @@ class Problem:
         self._prepare(n_processes, python_exec, noise_sample_kwargs, removes_subdirs)
 
     @overload
-    def __getattr__(self, name: Literal["_elementwise"]) -> _ElementwiseMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
-    @overload
-    def __getattr__(self, name: Literal["_cartesian"]) -> _CartesianMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
-    @overload
-    def __getattr__(self, name: Literal["_pymoo"]) -> _PymooEvolver: ...  # type: ignore[misc]  # python/mypy#8203
     def __getattr__(  # type: ignore[misc]  # python/mypy#8203
-        self, name: Literal["_elementwise", "_cartesian", "_pymoo"]
-    ) -> _ElementwiseMultiplier | _CartesianMultiplier | _PymooEvolver:
+        self, name: Literal["_elementwise"], /
+    ) -> _ElementwiseMultiplier: ...
+    @overload
+    def __getattr__(self, name: Literal["_cartesian"], /) -> _CartesianMultiplier: ...  # type: ignore[misc]  # python/mypy#8203
+    @overload
+    def __getattr__(self, name: Literal["_pymoo"], /) -> _PymooEvolver: ...  # type: ignore[misc]  # python/mypy#8203
+    def __getattr__(self, name: str, /) -> object:  # type: ignore[misc]  # python/mypy#8203
         """lazily set these attributes when they are called for the first time"""
         match name:
             case "_elementwise":

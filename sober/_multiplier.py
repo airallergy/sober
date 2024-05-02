@@ -201,7 +201,7 @@ class _LazyCartesianProduct(Generic[_T]):
 
         self._len = math.prod(tuple_lens)
 
-    def __getitem__(self, key: int) -> tuple[_T, ...]:
+    def __getitem__(self, key: int, /) -> tuple[_T, ...]:
         if key < -self._len or key > self._len - 1:
             raise IndexError("index out of range.")
 
