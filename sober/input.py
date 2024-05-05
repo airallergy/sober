@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
         def __str__(self) -> str: ...
 
-    _RVV = TypeVar("_RVV", np.float_, np.int_)  # AnyRandomVarVal
+    _RVV = TypeVar("_RVV", np.float_, np.int_)  # AnyRandomVarValue
 
     class _SupportsPPF(Protocol):
         # NOTE: not yet seeing a benefit differing float and int
