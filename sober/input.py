@@ -96,17 +96,9 @@ class _Tagger(ABC, Generic[_TM]):
     @abstractmethod
     def _tagged(self, model: _TM) -> _TM: ...
 
-    def _detagged(self, tagged_model: str, *values: _SupportsStr) -> str:
-        match len(values):
-            case 0:
-                raise ValueError("no values for detagging.")
-            case 1:
-                value = values[0]
-                for tag in self._tags:
-                    tagged_model = tagged_model.replace(tag, str(value))
-            case _:
-                for tag, value in zip(self._tags, values, strict=True):
-                    tagged_model = tagged_model.replace(tag, str(value))
+    def _detagged(self, tagged_model: str, value: _SupportsStr) -> str:
+        for tag in self._tags:
+            tagged_model = tagged_model.replace(tag, str(value))
 
         return tagged_model
 
