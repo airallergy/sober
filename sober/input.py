@@ -37,7 +37,7 @@ if TYPE_CHECKING:
         def ppf(self, q: Iterable[float]) -> NDArray[np.float_]: ...
 
     _AnyFunc: TypeAlias = Callable[
-        Concatenate[tuple[AnyModifierVal, ...], ...], AnyModelModifierVal
+        Concatenate[Iterable[AnyModifierVal], ...], AnyModelModifierVal
     ]  # TODO: consider resticting at least one previous output
 
 ##############################  module typing  ##############################
@@ -501,26 +501,25 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
 class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifierVal]):
     """modifies functional inputs"""
 
-    __slots__ = ("_tagger", "_func", "_input_indices", "_args", "_kwargs")
+    __slots__ = ("_tagger", "_func", "_input_indices", "_func_kwargs")
 
     _func: _AnyFunc
     _input_indices: tuple[int, ...]
-    _args: tuple[object, ...]  # TODO: restrict this for serialisation
-    _kwargs: dict[str, object]  # TODO: restrict this for serialisation
+    _func_kwargs: dict[str, object]  # TODO: restrict this for serialisation
 
     def __init__(
         self,
         tagger: _AnyTagger,
         func: _AnyFunc,
         input_indices: Iterable[int],
-        *args: object,
+        /,
+        func_kwargs: dict[str, object] | None = None,
+        *,
         name: str = "",
-        **kwargs: object,
     ) -> None:
         self._func = func
         self._input_indices = tuple(input_indices)
-        self._args = args
-        self._kwargs = kwargs
+        self._func_kwargs = {} if func_kwargs is None else func_kwargs
 
         func_name = f"<function {self._func.__module__ + '.' + self._func.__code__.co_qualname}>"
         super().__init__(tagger, (func_name,), None, False, name)
@@ -528,9 +527,10 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
         self._is_ctrl = False
 
     def __call__(self, key: object, *input_vals: AnyModifierVal) -> AnyModelModifierVal:
+        del key
         # NOTE: 'key' is (should be) never used
         #       it is technically int, but typed as object to avoid a few casts in loops
-        return self._func(input_vals, *self._args, **self._kwargs)
+        return self._func(input_vals, **self._func_kwargs)
 
     def _check_args(self) -> None:
         super()._check_args()
