@@ -36,9 +36,13 @@ if TYPE_CHECKING:
         def support(self) -> tuple[_RVV, _RVV]: ...
         def ppf(self, q: Iterable[float]) -> NDArray[np.float_]: ...
 
+    # NOTE: ... implies accepting args and kwargs, but only kwargs are accepted
+    #       could be corrected using Protocol, but why bother
+    # TODO: consider resticting at least one previous output
     _AnyFunc: TypeAlias = Callable[
         Concatenate[Iterable[AnyModifierValue], ...], AnyModelModifierValue
-    ]  # TODO: consider resticting at least one previous output
+    ]
+
 
 ##############################  module typing  ##############################
 # https://github.com/python/typing/issues/60#issuecomment-869757075
