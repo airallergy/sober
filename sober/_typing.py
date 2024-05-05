@@ -10,8 +10,8 @@ AnyStrPath: TypeAlias = str | PathLike[str]
 
 # input
 AnyModifierKey: TypeAlias = float | int
-AnyModelModifierVal: TypeAlias = float | str
-AnyModifierVal: TypeAlias = AnyStrPath | AnyModelModifierVal
+AnyModelModifierValue: TypeAlias = float | str
+AnyModifierValue: TypeAlias = AnyStrPath | AnyModelModifierValue
 
 ## this contains hype ctrl keys only used for populating jobs
 AnyCtrlKeyVec: TypeAlias = tuple[int, *tuple[AnyModifierKey, ...]]
@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     AnyModelModifier: TypeAlias = AnyRealModelModifier | AnyIntegralModelModifier
 
     # io managers
-    AnyModelTask: TypeAlias = tuple[AnyModelModifierVal, ...]
+    AnyModelTask: TypeAlias = tuple[AnyModelModifierValue, ...]
     AnyTask: TypeAlias = tuple[Path, *AnyModelTask]
     AnyTaskItem: TypeAlias = tuple[str, AnyTask]
     AnyJob: TypeAlias = tuple[AnyTaskItem, ...]

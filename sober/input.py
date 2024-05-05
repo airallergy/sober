@@ -10,7 +10,7 @@ import scipy.stats
 from eppy.bunchhelpers import makefieldname
 
 from sober._tools import _parsed_path, _uuid
-from sober._typing import AnyModelModifierVal, AnyModifierVal
+from sober._typing import AnyModelModifierValue, AnyModifierValue
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
         def ppf(self, q: Iterable[float]) -> NDArray[np.float_]: ...
 
     _AnyFunc: TypeAlias = Callable[
-        Concatenate[Iterable[AnyModifierVal], ...], AnyModelModifierVal
+        Concatenate[Iterable[AnyModifierValue], ...], AnyModelModifierValue
     ]  # TODO: consider resticting at least one previous output
 
 ##############################  module typing  ##############################
@@ -55,13 +55,13 @@ class _IDF(Protocol):
 
 _TM = TypeVar("_TM", _IDF, str)  # AnyTaggerModel
 _MK_contra = TypeVar("_MK_contra", float, int, contravariant=True)  # AnyModifierKey
-_MV_co = TypeVar("_MV_co", bound=AnyModifierVal, covariant=True)  # AnyModifierValue
+_MV_co = TypeVar("_MV_co", bound=AnyModifierValue, covariant=True)  # AnyModifierValue
 #############################################################################
 
 
 @final
 class _Noise(Any):  # type: ignore[misc]
-    """a helper class for _hype_ctrl_val"""
+    """a helper class for _hype_ctrl_value"""
 
     __slots__ = ("_s",)
 
@@ -195,7 +195,7 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
         return 0  # assuming the hype ctrl is an integral variable with one item
 
     @abstractmethod
-    def _hype_ctrl_val(self) -> _MV_co: ...
+    def _hype_ctrl_value(self) -> _MV_co: ...
 
     def _hype_ctrl_len(self) -> int:
         assert not self._is_ctrl
@@ -227,7 +227,7 @@ class _RealModifier(_Modifier[float, float]):
     def _key_icdf(self, *quantiles: float) -> tuple[float, ...]:
         return super()._key_icdf(*quantiles)
 
-    def _hype_ctrl_val(self) -> float:
+    def _hype_ctrl_value(self) -> float:
         assert not self._is_ctrl
         return _Noise("(...)")
 
@@ -272,7 +272,7 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
     def _key_icdf(self, *quantiles: float) -> tuple[int, ...]:
         return tuple(map(int, super()._key_icdf(*quantiles)))
 
-    def _hype_ctrl_val(self) -> _MV_co:
+    def _hype_ctrl_value(self) -> _MV_co:
         # FunctionalModifier overwrites later
         assert not self._is_ctrl
         return _Noise("{...}")
@@ -490,7 +490,7 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
         super()._check_args()
 
 
-class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifierVal]):
+class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifierValue]):
     """modifies functional inputs"""
 
     __slots__ = ("_tagger", "_func", "_input_indices", "_func_kwargs")
@@ -518,11 +518,13 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
 
         self._is_ctrl = False
 
-    def __call__(self, key: object, *input_vals: AnyModifierVal) -> AnyModelModifierVal:
+    def __call__(
+        self, key: object, *input_values: AnyModifierValue
+    ) -> AnyModelModifierValue:
         del key
         # NOTE: 'key' is (should be) never used
         #       it is technically int, but typed as object to avoid a few casts in loops
-        return self._func(input_vals, **self._func_kwargs)
+        return self._func(input_values, **self._func_kwargs)
 
     def _check_args(self) -> None:
         super()._check_args()
@@ -532,6 +534,6 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
                 f"only previous inputs can be referred to: {self._index}, {self._input_indices}."
             )
 
-    def _hype_ctrl_val(self) -> AnyModelModifierVal:
+    def _hype_ctrl_value(self) -> AnyModelModifierValue:
         # assert not self._is_ctrl  # no need, as hardcoded in __init__
         return self._options[0]

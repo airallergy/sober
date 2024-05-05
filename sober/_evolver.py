@@ -98,7 +98,7 @@ class _PymooEvolver(_Evolver):
             + ("is_pareto", "is_feasible")
         )
 
-        # convert pymoo x to ctrl val vecs
+        # convert pymoo x to ctrl value vecs
         ctrl_key_vecs = tuple(
             tuple(
                 item.X[input._label].item()
@@ -108,9 +108,9 @@ class _PymooEvolver(_Evolver):
             )
             for item in population
         )
-        ctrl_val_vecs = tuple(
+        ctrl_value_vecs = tuple(
             tuple(
-                item(key) if item._is_ctrl else item._hype_ctrl_val()
+                item(key) if item._is_ctrl else item._hype_ctrl_value()
                 for item, key in zip(self._input_manager, ctrl_key_vec, strict=True)
             )
             for ctrl_key_vec in ctrl_key_vecs
@@ -120,11 +120,11 @@ class _PymooEvolver(_Evolver):
         # NOTE: pymoo sums cvs of all constraints
         #       hence all(individual.FEAS) == individual.FEAS[0]
         record_rows = [
-            ctrl_val_vec
+            ctrl_value_vec
             + tuple(item.F)
             + tuple(item.G)
             + (item.get("rank") == 0, all(item.FEAS))
-            for item, ctrl_val_vec in zip(population, ctrl_val_vecs, strict=True)
+            for item, ctrl_value_vec in zip(population, ctrl_value_vecs, strict=True)
         ]
 
         # write records

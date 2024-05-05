@@ -26,7 +26,7 @@ from sober._tools import (
     _recorded_batch,
     _write_records,
 )
-from sober._typing import AnyModifierVal  # cast
+from sober._typing import AnyModifierValue  # cast
 from sober.input import (
     FunctionalModifier,
     WeatherModifier,
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
         AnyCtrlKeyVec,
         AnyJob,
         AnyModelModifier,
-        AnyModelModifierVal,
+        AnyModelModifierValue,
         AnyModelTask,
         AnyModelType,
         AnyTask,
@@ -61,8 +61,8 @@ if TYPE_CHECKING:
 
 
 def each_job_is_non_empty_and_starts_with_path(
-    args: tuple[tuple[str, tuple[AnyModelModifierVal | AnyModifierVal, ...]], ...],
-) -> TypeGuard[tuple[tuple[str, tuple[Path, *tuple[AnyModelModifierVal, ...]]], ...]]:
+    args: tuple[tuple[str, tuple[AnyModelModifierValue | AnyModifierValue, ...]], ...],
+) -> TypeGuard[tuple[tuple[str, tuple[Path, *tuple[AnyModelModifierValue, ...]]], ...]]:
     # a first-item-being-Path issue
     # consider changing all relevant batch/job/task items to dict after py3.13 pep728
     # they are now in a dict.items() structure
@@ -112,7 +112,7 @@ class _InputManager:
         self._model_inputs = tuple(model_inputs)
         self._has_templates = has_templates
 
-    def __iter__(self) -> Iterator[_Modifier[Any, AnyModifierVal]]:
+    def __iter__(self) -> Iterator[_Modifier[Any, AnyModifierValue]]:
         yield self._weather_input
         yield from self._model_inputs
 
@@ -255,7 +255,7 @@ class _InputManager:
             )
 
             # cast: python/mypy#5247
-            aligned = cast(tuple[tuple[AnyModifierVal, ...], ...], aligned)
+            aligned = cast(tuple[tuple[AnyModifierValue, ...], ...], aligned)
         else:
             if self._has_real_noises:
                 raise ValueError(
@@ -265,7 +265,7 @@ class _InputManager:
             aligned = tuple(
                 it.product(
                     *(
-                        tuple(cast(_IntegralModifier[AnyModifierVal], input))  # mypy
+                        tuple(cast(_IntegralModifier[AnyModifierValue], input))  # mypy
                         if input._is_noise
                         else (input(key) if input._is_ctrl else key,)
                         for input, key in zip(self, ctrl_key_vec, strict=True)
@@ -277,7 +277,7 @@ class _InputManager:
         n_tasks = len(aligned)
         i_task_width = _natural_width(n_tasks)
 
-        # get functional vals
+        # get functional values
         job = tuple(
             (
                 f"T{i:0{i_task_width}}",
@@ -382,7 +382,7 @@ class _InputManager:
             (
                 job_uid,
                 *(
-                    job[0][1][i] if input._is_ctrl else input._hype_ctrl_val()
+                    job[0][1][i] if input._is_ctrl else input._hype_ctrl_value()
                     for i, input in enumerate(self)
                 ),
             )

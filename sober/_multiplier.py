@@ -13,7 +13,7 @@ import scipy.stats.qmc
 
 import sober.config as cf
 from sober._evaluator import _evaluate
-from sober._typing import AnyModifierVal
+from sober._typing import AnyModifierValue
 from sober.input import _IntegralModifier
 
 if TYPE_CHECKING:
@@ -254,7 +254,7 @@ class _CartesianMultiplier(_Multiplier):
 
         # set the lazy cartesian product
         ctrl_lens = tuple(
-            len(cast(_IntegralModifier[AnyModifierVal], item))  # mypy
+            len(cast(_IntegralModifier[AnyModifierValue], item))  # mypy
             if item._is_ctrl
             else item._hype_ctrl_len()
             for item in self._input_manager
