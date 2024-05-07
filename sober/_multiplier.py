@@ -132,8 +132,8 @@ class _ElementwiseMultiplier(_Multiplier):
 
     _quantile: _InverseTransformQuantile
 
-    def __call__(self, *proxies: Iterable[float]) -> None:
-        n_repeats = self._quantile._n_dims if self._input_manager._has_ctrls else 1
+    def __call__(self, *proxies: list[float]) -> None:
+        n_repeats = len(proxies[0]) if self._input_manager._has_ctrls else 1
 
         ctrl_key_vecs = tuple(
             zip(

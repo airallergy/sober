@@ -238,7 +238,7 @@ class _InputManager:
             # set n_repeats to 1 when there is no noise but user-defined size
             # TODO: consider adding a warning here
             # TODO: consider writing a function to parse the sample kwargs for both ctrl and noise centrally
-            n_repeats = quantile._n_dims if self._has_noises else 1
+            n_repeats = size if self._has_noises else 1
 
             aligned = tuple(
                 zip(
