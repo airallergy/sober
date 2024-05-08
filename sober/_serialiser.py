@@ -39,14 +39,15 @@ def _sober_mro(cls: type) -> list[_SupportsSober]:
     # pop the last one, which is definitely 'object'
     assert classes.pop() is object
 
-    # pop the last two ('Generic', 'ABC') or one('ABC')
-    match classes.pop():
+    # pop the last two ('Generic', 'ABC') or one ('ABC') or zero
+    match classes[-1]:
         case typing.Generic:
+            classes.pop()
             assert classes.pop() is abc.ABC
         case abc.ABC:
-            pass
+            classes.pop()
         case _:
-            raise TypeError
+            pass
 
     # guard the remaining to _SupportsSober
     if _all_sober_classes(classes):
