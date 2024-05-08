@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     _P = ParamSpec("_P")
     _R_co = TypeVar("_R_co", covariant=True)
 
-HOST_STEM: Final = platform.node().split(".")[0]
+_HOST_STEM: Final = platform.node().split(".")[0]
 
 
 def _logger_identifier(cwd: Path) -> str:
@@ -79,7 +79,7 @@ class _Formatter(logging.Formatter):
               INFO means high-level progress"""
 
     _FMT_DEFAULT: Final = (
-        f"%(asctime)s {HOST_STEM} %(caller_name)s[%(process)d]: %(message)s"
+        f"%(asctime)s {_HOST_STEM} %(caller_name)s[%(process)d]: %(message)s"
     )
     _FMT_DEBUG: Final = "%(message)s"
 

@@ -78,7 +78,7 @@ def each_job_is_non_empty_and_starts_with_path(
 class _InputManager:
     """manages input modification"""
 
-    MODEL_TYPES: Final = frozenset({".idf", ".imf"})
+    _MODEL_TYPES: Final = frozenset({".idf", ".imf"})
 
     __slots__ = (
         "_weather_input",
@@ -122,7 +122,7 @@ class _InputManager:
     def _prepare(self, model_file: Path) -> None:
         # check model type
         suffix = model_file.suffix
-        if suffix not in self.MODEL_TYPES:
+        if suffix not in self._MODEL_TYPES:
             raise NotImplementedError(f"a '{suffix}' model is not supported.")
         self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
 
