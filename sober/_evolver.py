@@ -169,7 +169,6 @@ class _PymooEvolver(_Evolver):
                 # checks for resume
                 if algorithm.is_initialized:
                     if isinstance(termination, pm.MaximumGenerationTermination):
-                        # if
                         if algorithm.n_gen - 1 >= termination.n_max_gen:
                             # this should only be invoked by resume
                             raise ValueError(
@@ -298,12 +297,14 @@ class _PymooEvolver(_Evolver):
         with checkpoint_file.open("rb") as fp:
             global_vars, self, algorithm = pickle.load(fp)
 
-        cf._update_global_vars(**global_vars)
-
         # checks validity of the checkpoint file
         # currently only checks the object type, but there might be better checks
         if not (isinstance(self, cls) and isinstance(algorithm, pm.Algorithm)):
             raise TypeError(f"invalid checkpoint file: {checkpoint_file}.")
+
+        # set global vars
+        cf._update_global_vars(**global_vars)
+        self._prepare()  # mainly to set cf._has_batches
 
         # update termination first if specified
         if termination:

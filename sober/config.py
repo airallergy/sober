@@ -50,40 +50,44 @@ _RECORDS_FILENAMES: Final[_RecordsFilenames] = {  # python/typing#1388
 _config: _Config
 
 # only used in the parent process
-_has_batches: bool
 _noise_sample_kwargs: NoiseSampleKwargs
 _removes_subdirs: bool
+## lazy
+_has_batches: bool
 
 
-def _global_vars() -> dict[str, object]:
+def _global_vars(includes_lazy: bool = False) -> dict[str, object]:
     """returns global variables
     this is currenly only used by resume"""
     return {
         "config": _config,
-        "has_batches": _has_batches,
         "noise_sample_kwargs": _noise_sample_kwargs,
         "removes_subdirs": _removes_subdirs,
+        **({"has_batches": _has_batches} if includes_lazy else {}),
     }
 
 
 def _update_global_vars(
     config: _Config,
-    has_batches: bool,
     noise_sample_kwargs: NoiseSampleKwargs,
     removes_subdirs: bool,
+    has_batches: bool | None = None,
 ) -> None:
     """updates global variables
     this is currenly only used by resume"""
 
     global _config
-    global _has_batches
     global _noise_sample_kwargs
     global _removes_subdirs
 
     _config = config
-    _has_batches = has_batches
     _noise_sample_kwargs = noise_sample_kwargs
     _removes_subdirs = removes_subdirs
+
+    if has_batches:
+        global _has_batches
+
+        _has_batches = has_batches
 
 
 #############################################################################
