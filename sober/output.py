@@ -16,7 +16,7 @@ from sober._tools import _parsed_path, _parsed_str_iterable, _run, _uuid
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Any, Final, Literal, TypeAlias
+    from typing import Any, ClassVar, Final, Literal, TypeAlias
 
     from sober._typing import AnyCoreLevel, AnyLanguage, AnyStrPath
 
@@ -51,16 +51,17 @@ class _EPOutputType(enum.StrEnum):
 class _Collector(ABC):
     """an abstract base class for output collector"""
 
-    __slots__ = (
-        "_filename",
+    _ARG_NAMES: ClassVar = ("_filename",)
+    _KWARG_NAMES: ClassVar = (
         "_level",
         "_objectives",
         "_constraints",
         "_direction",
         "_bounds",
         "_is_final",
-        "_is_copied",
     )
+
+    __slots__ = (*_ARG_NAMES, *_KWARG_NAMES, "_is_copied")
 
     _filename: str
     _level: AnyCoreLevel
@@ -161,13 +162,11 @@ class RVICollector(_Collector):
 
     # TODO: consider switching to/adding EP native csv once NREL/EnergyPlus#9395
 
-    __slots__ = (
-        "_ep_output_names",
-        "_ep_output_type",
-        "_ep_output_keys",
-        "_ep_output_frequency",
-        "_rvi_file",
-    )
+    _ARG_NAMES: ClassVar = ("_ep_output_names", "_ep_output_type")
+    _KWARG_NAMES: ClassVar = ("_ep_output_keys", "_ep_output_frequency")
+    _EXCLUDE_NAMES: ClassVar = ("_level",)
+
+    __slots__ = (*_ARG_NAMES, *_KWARG_NAMES, "_rvi_file")
 
     _ep_output_names: tuple[str, ...]
     _ep_output_type: _EPOutputType
@@ -244,7 +243,10 @@ class ScriptCollector(_Collector):
         {"cwd", "filename", "objectives", "constraints"}
     )
 
-    __slots__ = ("_script_file", "_script_language", "_script_kwargs")
+    _ARG_NAMES: ClassVar = ("_script_file", "_script_language")
+    _KWARG_NAMES: ClassVar = ("_script_kwargs",)
+
+    __slots__ = (*_ARG_NAMES, *_KWARG_NAMES)
 
     _script_file: Path
     _script_language: AnyLanguage

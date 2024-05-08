@@ -14,7 +14,7 @@ from sober._typing import AnyModelModifierValue, AnyModifierValue
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
-    from typing import Concatenate, Self, TypeAlias
+    from typing import ClassVar, Concatenate, Self, TypeAlias
 
     from eppy.bunch_subclass import EpBunch
 
@@ -115,15 +115,10 @@ class _TextTagger(_Tagger[str]):
 class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     """an abstract base class for input modifiers"""
 
-    __slots__ = (
-        "_bounds",
-        "_distribution",
-        "_is_ctrl",
-        "_is_noise",
-        "_name",
-        "_index",
-        "_label",
-    )
+    _STAR_ARG_NAMES: ClassVar = ("_bounds",)
+    _KWARG_NAMES: ClassVar = ("_distribution", "_is_noise", "_name")
+
+    __slots__ = (*_STAR_ARG_NAMES, *_KWARG_NAMES, "_is_ctrl", "_index", "_label")
 
     _bounds: tuple[float, float]
     _distribution: SupportsPPF
@@ -222,7 +217,9 @@ class _RealModifier(_Modifier[float, float]):
 class _IntegralModifier(_Modifier[int, _MV_co]):
     """an abstract base class for input modifiers of integral variables"""
 
-    __slots__ = ("_options",)
+    _STAR_ARG_NAMES: ClassVar = ("_options",)
+
+    __slots__ = (*_STAR_ARG_NAMES,)
 
     _options: tuple[_MV_co, ...]
 
@@ -269,6 +266,8 @@ class _ModelModifierMixin(ABC):
     """an abstract base class for common functions in model modification
     (as opposed to the weather modifier)"""
 
+    _ARG_NAMES: ClassVar = ("_tagger",)
+
     __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
 
     _tagger: AnyTagger
@@ -294,7 +293,9 @@ class IndexTagger(_IDFTagger):
     no support for nested regular commands inside macro files
     """
 
-    __slots__ = ("_index_trios",)
+    _KWARG_NAMES: ClassVar = ("_index_trios",)
+
+    __slots__ = (*_KWARG_NAMES,)
 
     _index_trios: tuple[tuple[str, str, str], ...]
 
@@ -338,7 +339,9 @@ class StringTagger(_TextTagger):
     no support for nested macro commands inside macro files
     """
 
-    __slots__ = ("_string_trios",)
+    _KWARG_NAMES: ClassVar = ("_string_trios",)
+
+    __slots__ = (*_KWARG_NAMES,)
 
     _string_trios: tuple[tuple[str, str, str], ...]
 
@@ -416,7 +419,7 @@ class WeatherModifier(_IntegralModifier[Path]):
 class ContinuousModifier(_ModelModifierMixin, _RealModifier):
     """modifies continuous inputs"""
 
-    __slots__ = ("_tagger",)
+    __slots__ = (*_ModelModifierMixin._ARG_NAMES,)
 
     def __init__(
         self,
@@ -442,7 +445,7 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
 class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
     """modifies discrete inputs"""
 
-    __slots__ = ("_tagger",)
+    __slots__ = (*_ModelModifierMixin._ARG_NAMES,)
 
     def __init__(
         self,
@@ -461,7 +464,7 @@ class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
 class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
     """modifies categorical inputs"""
 
-    __slots__ = ("_tagger",)
+    __slots__ = (*_ModelModifierMixin._ARG_NAMES,)
 
     def __init__(
         self,
@@ -480,7 +483,11 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
 class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifierValue]):
     """modifies functional inputs"""
 
-    __slots__ = ("_tagger", "_func", "_input_indices", "_func_kwargs")
+    _ARG_NAMES: ClassVar = (*_ModelModifierMixin._ARG_NAMES, "_func", "_input_indices")
+    _KWARG_NAMES: ClassVar = ("_func_kwargs",)
+    _EXCLUDE_NAMES: ClassVar = ("_options", "_distribution", "_is_noise")
+
+    __slots__ = (*_ARG_NAMES, *_KWARG_NAMES)
 
     _func: _AnyFunc
     _input_indices: tuple[int, ...]

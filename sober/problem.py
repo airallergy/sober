@@ -10,7 +10,7 @@ from sober._tools import _parsed_path
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Literal
+    from typing import ClassVar, Literal
 
     import sober._evolver_pymoo as pm
     from sober._typing import (
@@ -30,11 +30,14 @@ if TYPE_CHECKING:
 class Problem:
     """defines the parametrics/optimisation problem"""
 
+    _ARG_NAMES: ClassVar = ("_model_file",)
+    _KWARG_NAMES: ClassVar = ("_evaluation_dir",)
+    _GETATTR_NAMES: ClassVar = ("_input_manager", "_output_manager")
+
     __slots__ = (
-        "_model_file",
-        "_input_manager",
-        "_output_manager",
-        "_evaluation_dir",
+        *_ARG_NAMES,
+        *_GETATTR_NAMES,
+        *_KWARG_NAMES,
         "_config_dir",
         "_elementwise",
         "_cartesian",

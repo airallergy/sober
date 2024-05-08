@@ -39,7 +39,7 @@ from sober.output import RVICollector, ScriptCollector, _Collector, _CopyCollect
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
-    from typing import Any, Final, TypeAlias, TypeGuard
+    from typing import Any, ClassVar, Final, TypeAlias, TypeGuard
 
     from sober._tools import AnyParallel
     from sober._typing import (
@@ -82,14 +82,10 @@ class _InputManager:
 
     _MODEL_TYPES: Final = frozenset({".idf", ".imf"})
 
-    __slots__ = (
-        "_weather_input",
-        "_model_inputs",
-        "_has_templates",
-        "_noise_sample_kwargs",
-        "_tagged_model",
-        "_model_type",
-    )
+    _ARG_NAMES: ClassVar = ("_weather_input", "_model_inputs")
+    _KWARG_NAMES: ClassVar = ("_has_templates", "_noise_sample_kwargs")
+
+    __slots__ = (*_ARG_NAMES, *_KWARG_NAMES, "_tagged_model", "_model_type")
 
     _weather_input: WeatherModifier
     _model_inputs: tuple[AnyModelModifier, ...]
@@ -430,11 +426,13 @@ class _OutputManager:
 
     _DEFAULT_CLEAN_PATTERNS: Final = frozenset({"*.audit", "*.end", "sqlite.err"})
 
+    _ARG_NAMES: ClassVar = ("_outputs",)
+    _KWARG_NAMES: ClassVar = ("_clean_patterns", "_removes_subdirs")
+
     __slots__ = (
         "_task_outputs",
         "_job_outputs",
-        "_clean_patterns",
-        "_removes_subdirs",
+        *_KWARG_NAMES,
         "_objectives",
         "_constraints",
         "_objective_indices",
@@ -479,6 +477,11 @@ class _OutputManager:
 
     def __len__(self) -> int:
         return len(self._task_outputs) + len(self._job_outputs)
+
+    @property
+    def _outputs(self) -> tuple[_Collector, ...]:
+        """helps serialisation"""
+        return tuple(self)
 
     @property
     def _has_rvis(self) -> bool:
