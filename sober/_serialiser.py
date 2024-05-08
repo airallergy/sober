@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import abc
+import itertools as it
 import typing
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from typing import Literal, Protocol, TypedDict, TypeGuard
 
     class _SupportsSlots(Protocol):
@@ -48,34 +50,65 @@ def _sober_mro(cls: type) -> list[_SupportsSober]:
         raise TypeError
 
 
-def _retraced_init_attr_names(
+def _mro_init_attr_names(
     cls: type, key: Literal["_ARG_NAMES", "_STAR_ARG_NAMES", "_KWARG_NAMES"]
-) -> tuple[str, ...]:
-    """retraces init attribute names"""
+) -> Iterator[tuple[str, ...]]:
+    """gets init attribute names in mro"""
 
-    attr_names = ()
     for item in _sober_mro(cls):
         # cls has to have the key
         if not hasattr(item, key):
             continue
 
         names = getattr(item, key)
+        names = cast(tuple[str, ...], names)  # mypy: python/mypy#5504
 
         # names in key have to be a subset of cls's __slots__
         if not (set(names) <= set(item.__slots__)):
             continue
 
+        yield names
+
+
+def _retraced_init_attr_names(
+    cls: type, key: Literal["_ARG_NAMES", "_STAR_ARG_NAMES", "_KWARG_NAMES"]
+) -> tuple[str, ...]:
+    """retraces init attribute names"""
+
+    # concatenate mro attr names
+    iterables = _mro_init_attr_names(cls, key)
+    if key == "_STAR_ARG_NAMES":
         # only _STAR_ARG_NAMES in the leftmost mro is accounted
         # NOTE: '_STAR_ARG_NAMES' is overriding
         #       whilst other keys are concatenatig like __slots__
-        if (key == "_STAR_ARG_NAMES") and len(attr_names):
-            # NOTE: expected to only apply to _bounds vs _options
-            assert names == ("_bounds",)
+        attr_names = list(next(iterables, ()))
+
+        # expected to only apply to _bounds vs _options
+        match next(iterables, 0):
+            case ("_bounds",):
+                assert next(iterables, 0) == 0
+            case 0:
+                pass
+            case _:
+                raise ValueError
+    else:
+        attr_names = list(it.chain(*iterables))
+
+    # only leaf classes should have _EXCLUDE_NAMES
+    for item in _sober_mro(cls)[1:]:
+        assert not hasattr(item, "_EXCLUDE_NAMES")
+
+    # remove names in _EXCLUDE_NAMES if any
+    for name in getattr(cls, "_EXCLUDE_NAMES", ()):
+        name = cast(str, name)  # mypy: python/mypy#5504
+
+        if name not in attr_names:
             continue
 
-        attr_names += names
+        assert attr_names.count(name) == 1
+        attr_names.remove(name)
 
-    return attr_names
+    return tuple(attr_names)
 
 
 def _retraced_init_attr_names_map(cls: type) -> _InitAttrNames:
