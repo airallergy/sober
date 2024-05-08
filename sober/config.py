@@ -203,6 +203,10 @@ def config_parallel(*, n_processes: int | None = None) -> None:
 
     _check_config_init()
 
+    n_processes = (
+        psutil.cpu_count(logical=False) - 1 if n_processes is None else n_processes
+    )
+
     if ("n.processes" in _config) and (_config["n.processes"] != n_processes):
         warnings.warn(
             f"n_processes has been configured to '{_config['n.processes']}', and will be overriden by '{n_processes}'.",
@@ -211,9 +215,7 @@ def config_parallel(*, n_processes: int | None = None) -> None:
 
     # the default number of processes is the number of physical cores - 1
     # this leaves one physical core idle
-    _config["n.processes"] = (
-        psutil.cpu_count(logical=False) - 1 if n_processes is None else n_processes
-    )
+    _config["n.processes"] = n_processes
 
 
 def config_script(*, python_exec: AnyStrPath | None = None) -> None:
