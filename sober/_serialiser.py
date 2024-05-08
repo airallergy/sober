@@ -19,10 +19,11 @@ if TYPE_CHECKING:
         _ARG_NAMES: tuple[str, ...]
         _STAR_ARG_NAMES: tuple[str, ...]
         _KWARG_NAMES: tuple[str, ...]
-        _GETATTR_KWARG_NAMES: tuple[str, ...]
+        _GETATTR_NAMES: tuple[str, ...]
 
-    _InitAttrKeys: TypeAlias = Literal[
-        "_ARG_NAMES", "_STAR_ARG_NAMES", "_KWARG_NAMES", "_GETATTR_KWARG_NAMES"
+    _AnyCoreInitAttrKey: TypeAlias = Literal["_ARG_NAMES", "_KWARG_NAMES"]
+    _AnyInitAttrKey: TypeAlias = Literal[
+        _AnyCoreInitAttrKey, "_STAR_ARG_NAMES", "_GETATTR_NAMES"
     ]
 
 
@@ -56,7 +57,7 @@ def _sober_mro(cls: type) -> list[_SupportsSober]:
         raise TypeError
 
 
-def _mro_init_attr_names(cls: type, key: _InitAttrKeys) -> Iterator[tuple[str, ...]]:
+def _mro_init_attr_names(cls: type, key: _AnyInitAttrKey) -> Iterator[tuple[str, ...]]:
     """iterates init attribute names over mro"""
 
     for item in _sober_mro(cls):
@@ -74,7 +75,7 @@ def _mro_init_attr_names(cls: type, key: _InitAttrKeys) -> Iterator[tuple[str, .
         yield names
 
 
-def _init_attr_names(cls: type, key: _InitAttrKeys) -> tuple[str, ...]:
+def _init_attr_names(cls: type, key: _AnyInitAttrKey) -> tuple[str, ...]:
     """retraces init attribute names"""
 
     # concatenate mro attr names
@@ -119,5 +120,5 @@ def _init_attr_map(cls: type) -> _InitAttrMap:
         "_ARG_NAMES": _init_attr_names(cls, "_ARG_NAMES"),
         "_STAR_ARG_NAMES": _init_attr_names(cls, "_STAR_ARG_NAMES"),
         "_KWARG_NAMES": _init_attr_names(cls, "_KWARG_NAMES"),
-        "_GETATTR_KWARG_NAMES": _init_attr_names(cls, "_GETATTR_KWARG_NAMES"),
+        "_GETATTR_NAMES": _init_attr_names(cls, "_GETATTR_NAMES"),
     }
