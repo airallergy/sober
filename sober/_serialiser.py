@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from typing import Literal, Protocol, TypedDict, TypeGuard
+    from typing import Literal, Protocol, TypeAlias, TypedDict, TypeGuard
 
     class _SupportsSlots(Protocol):
         __slots__: tuple[str, ...] = ()
@@ -15,10 +15,15 @@ if TYPE_CHECKING:
     class _SupportsSober(_SupportsSlots, Protocol):
         pass  # python/mypy#5504
 
-    class _InitAttrNames(TypedDict):
+    class _InitAttrMap(TypedDict):
         _ARG_NAMES: tuple[str, ...]
         _STAR_ARG_NAMES: tuple[str, ...]
         _KWARG_NAMES: tuple[str, ...]
+        _GETATTR_KWARG_NAMES: tuple[str, ...]
+
+    _InitAttrKeys: TypeAlias = Literal[
+        "_ARG_NAMES", "_STAR_ARG_NAMES", "_KWARG_NAMES", "_GETATTR_KWARG_NAMES"
+    ]
 
 
 def _all_sober_classes(classes: list[type]) -> TypeGuard[list[_SupportsSober]]:
@@ -50,10 +55,8 @@ def _sober_mro(cls: type) -> list[_SupportsSober]:
         raise TypeError
 
 
-def _mro_init_attr_names(
-    cls: type, key: Literal["_ARG_NAMES", "_STAR_ARG_NAMES", "_KWARG_NAMES"]
-) -> Iterator[tuple[str, ...]]:
-    """gets init attribute names in mro"""
+def _mro_init_attr_names(cls: type, key: _InitAttrKeys) -> Iterator[tuple[str, ...]]:
+    """iterates init attribute names over mro"""
 
     for item in _sober_mro(cls):
         # cls has to have the key
@@ -70,9 +73,7 @@ def _mro_init_attr_names(
         yield names
 
 
-def _retraced_init_attr_names(
-    cls: type, key: Literal["_ARG_NAMES", "_STAR_ARG_NAMES", "_KWARG_NAMES"]
-) -> tuple[str, ...]:
+def _init_attr_names(cls: type, key: _InitAttrKeys) -> tuple[str, ...]:
     """retraces init attribute names"""
 
     # concatenate mro attr names
@@ -111,10 +112,11 @@ def _retraced_init_attr_names(
     return tuple(attr_names)
 
 
-def _retraced_init_attr_names_map(cls: type) -> _InitAttrNames:
+def _init_attr_map(cls: type) -> _InitAttrMap:
     """retraces a map for init attribute names"""
     return {
-        "_ARG_NAMES": _retraced_init_attr_names(cls, "_ARG_NAMES"),
-        "_STAR_ARG_NAMES": _retraced_init_attr_names(cls, "_STAR_ARG_NAMES"),
-        "_KWARG_NAMES": _retraced_init_attr_names(cls, "_KWARG_NAMES"),
+        "_ARG_NAMES": _init_attr_names(cls, "_ARG_NAMES"),
+        "_STAR_ARG_NAMES": _init_attr_names(cls, "_STAR_ARG_NAMES"),
+        "_KWARG_NAMES": _init_attr_names(cls, "_KWARG_NAMES"),
+        "_GETATTR_KWARG_NAMES": _init_attr_names(cls, "_GETATTR_KWARG_NAMES"),
     }
