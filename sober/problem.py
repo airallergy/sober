@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload
 
+import inflection
 import tomlkit as toml
 from tomlkit.toml_file import TOMLFile
 
@@ -134,11 +135,9 @@ class Problem:
         self._output_manager._prepare(self._config_dir, self._input_manager._has_noises)
 
     def _to_toml(self) -> toml.TOMLDocument:
-        doc = toml.document()
+        doc = cf._to_toml()
 
-        doc.update(cf._to_toml())
-
-        doc.update(_to_toml(self))
+        doc.add(inflection.underscore(type(self).__name__), _to_toml(self))
 
         return doc
 

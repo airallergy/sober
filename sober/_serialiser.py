@@ -7,12 +7,13 @@ import typing
 from pathlib import Path
 from typing import TYPE_CHECKING, cast, overload
 
-import inflection
 import tomlkit as toml
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from typing import Literal, Protocol, TypeAlias, TypedDict, TypeGuard
+
+    from tomlkit.items import Array, String, Table
 
     class _SupportsSlots(Protocol):
         __slots__: tuple[str, ...] = ()
@@ -30,10 +31,6 @@ if TYPE_CHECKING:
     _AnyInitAttrKey: TypeAlias = Literal[
         _AnyCoreInitAttrKey, "_STAR_ARG_NAMES", "_GETATTR_NAMES"
     ]
-
-    # NOTE: this is incomplete for simplicity, e.g. sober has not datetime objects
-    #       may need to extend after python/mypy#7981
-    _AnyTOMLItemisable: TypeAlias = bool | int | float | str
 
 
 def _all_sober_classes(classes: list[type]) -> TypeGuard[list[_SupportsSober]]:
@@ -77,8 +74,11 @@ def _mro_init_attr_names(cls: type, key: _AnyInitAttrKey) -> Iterator[tuple[str,
         names = getattr(item, key)
         names = cast(tuple[str, ...], names)  # mypy: python/mypy#5504
 
-        # names in key have to be a subset of cls's __slots__
-        if not (set(names) <= set(item.__slots__)):
+        # names in key have to be either a property or a subset of cls's __slots__
+        non_property_names = tuple(
+            item for item in names if not isinstance(getattr(cls, item), property)
+        )
+        if not (set(non_property_names) <= set(item.__slots__)):
             continue
 
         yield names
@@ -135,21 +135,22 @@ def _init_attr_map(cls: type) -> _InitAttrMap:
 
 
 @overload
-def _toml_itemisable(value: Path) -> str: ...
+def _toml_encoder(value: Path) -> String: ...
 @overload
-def _toml_itemisable(value: _AnyTOMLItemisable) -> _AnyTOMLItemisable: ...
-def _toml_itemisable(value: Path | _AnyTOMLItemisable) -> _AnyTOMLItemisable:
+def _toml_encoder(value: frozenset[object]) -> Array: ...
+@toml.register_encoder
+def _toml_encoder(value: Path | frozenset[object]) -> String | Array:
     if isinstance(value, Path):
-        return os.fsdecode(value)
+        return toml.item(os.fsdecode(value))
+    elif isinstance(value, frozenset):
+        return toml.item(tuple(value))
     else:
-        return value
+        return toml.item(str(value))
+        raise TypeError  # tomlkit handles this exception
 
 
-def _to_toml(obj: object) -> toml.TOMLDocument:
-    cls = obj.__class__
-    init_attr_map = _init_attr_map(cls)
-
-    doc = toml.document()
+def _to_toml(obj: object) -> Table:
+    init_attr_map = _init_attr_map(type(obj))
 
     table = toml.table()
 
@@ -159,12 +160,11 @@ def _to_toml(obj: object) -> toml.TOMLDocument:
         init_attr_map["_KWARG_NAMES"],
     ):
         value = getattr(obj, name)
-        item = toml.item(_toml_itemisable(value))
+        item = toml.item(value)
         table.add(name.removeprefix("_"), item)
 
     for name in init_attr_map["_GETATTR_NAMES"]:
-        pass
+        getattr_table = _to_toml(getattr(obj, name))
+        table.update(getattr_table)
 
-    doc.add(inflection.underscore(cls.__name__), table)
-
-    return doc
+    return table
