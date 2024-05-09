@@ -149,7 +149,7 @@ def _toml_encoder(value: Path | frozenset[object]) -> String | Array:
         raise TypeError  # tomlkit handles this exception
 
 
-def _to_toml(obj: object) -> Table:
+def _to_toml_table(obj: object) -> Table:
     init_attr_map = _init_attr_map(type(obj))
 
     table = toml.table()
@@ -164,7 +164,7 @@ def _to_toml(obj: object) -> Table:
         table.add(name.removeprefix("_"), item)
 
     for name in init_attr_map["_GETATTR_NAMES"]:
-        getattr_table = _to_toml(getattr(obj, name))
+        getattr_table = _to_toml_table(getattr(obj, name))
         table.update(getattr_table)
 
     return table

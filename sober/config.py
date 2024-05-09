@@ -67,16 +67,16 @@ def __getattr__(  # type: ignore[misc]  # python/mypy#8203
             raise AttributeError(f"module '{__name__}' has no attribute '{name}'.")
 
 
-def _to_toml() -> toml.TOMLDocument:
+def _to_toml_document() -> toml.TOMLDocument:
     """tomlifies config"""
 
-    doc = toml.document()
+    document = toml.document()
 
     table = toml.table()
     table.update(_config)
-    doc.add("config", table)
+    document.add("config", table)
 
-    return doc
+    return document
 
 
 #############################################################################
