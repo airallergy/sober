@@ -229,7 +229,7 @@ class RVICollector(_Collector):
 
         rvi_str += "\n0\n"
 
-        rvi_filestem = _uuid(self.__class__.__name__, *rvi_str.splitlines())
+        rvi_filestem = _uuid(type(self).__name__, *rvi_str.splitlines())
         self._rvi_file = config_dir / (rvi_filestem + ".rvi")
         with self._rvi_file.open("wt") as fp:
             fp.write(rvi_str)

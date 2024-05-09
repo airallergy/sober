@@ -107,7 +107,7 @@ class Problem:
                 return self._pymoo
             case _:
                 raise AttributeError(
-                    f"'{self.__class__.__name__}' object has no attribute '{name}'."
+                    f"'{type(self).__name__}' object has no attribute '{name}'."
                 )
 
     def _check_args(self) -> None:

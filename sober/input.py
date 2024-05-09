@@ -93,9 +93,7 @@ class _Tagger(ABC, Generic[_TM]):
 
     @abstractmethod
     def __init__(self, *feature_groups: tuple[str, ...]) -> None:
-        self._tags = tuple(
-            _uuid(self.__class__.__name__, *item) for item in feature_groups
-        )
+        self._tags = tuple(_uuid(type(self).__name__, *item) for item in feature_groups)
 
     @abstractmethod
     def _tagged(self, model: _TM) -> _TM: ...
