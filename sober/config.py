@@ -33,6 +33,11 @@ if TYPE_CHECKING:
         total=False,
     )
 
+    class _EagerGlobalVars(TypedDict):
+        config: _Config
+        noise_sample_kwargs: NoiseSampleKwargs
+        removes_subdirs: bool
+
 
 #############################################################################
 #######                       GLOBAL CONSTANTS                        #######
@@ -47,34 +52,30 @@ _RECORDS_FILENAMES: Final[_RecordsFilenames] = {  # python/typing#1388
 #############################################################################
 #######                       GLOBAL VARIABLES                        #######
 #############################################################################
+# pass across processes
 _config: _Config
 
 # only used in the parent process
 _noise_sample_kwargs: NoiseSampleKwargs
 _removes_subdirs: bool
+
 ## lazy
 _has_batches: bool
 
 
-def _global_vars(includes_lazy: bool = False) -> dict[str, object]:
-    """returns global variables
-    this is currenly only used by resume"""
+def _eager_global_vars() -> _EagerGlobalVars:
+    """returns global variables"""
     return {
         "config": _config,
         "noise_sample_kwargs": _noise_sample_kwargs,
         "removes_subdirs": _removes_subdirs,
-        **({"has_batches": _has_batches} if includes_lazy else {}),
     }
 
 
-def _update_global_vars(
-    config: _Config,
-    noise_sample_kwargs: NoiseSampleKwargs,
-    removes_subdirs: bool,
-    has_batches: bool | None = None,
+def _update_eager_global_vars(
+    config: _Config, noise_sample_kwargs: NoiseSampleKwargs, removes_subdirs: bool
 ) -> None:
-    """updates global variables
-    this is currenly only used by resume"""
+    """updates global variables"""
 
     global _config
     global _noise_sample_kwargs
@@ -83,11 +84,6 @@ def _update_global_vars(
     _config = config
     _noise_sample_kwargs = noise_sample_kwargs
     _removes_subdirs = removes_subdirs
-
-    if has_batches:
-        global _has_batches
-
-        _has_batches = has_batches
 
 
 #############################################################################
