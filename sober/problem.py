@@ -10,6 +10,7 @@ import sober.config as cf
 from sober._evolver import _PymooEvolver
 from sober._io_managers import _InputManager, _OutputManager
 from sober._multiplier import _CartesianMultiplier, _ElementwiseMultiplier
+from sober._serialiser import _to_toml
 from sober._tools import _parsed_path
 
 if TYPE_CHECKING:
@@ -136,6 +137,8 @@ class Problem:
         doc = toml.document()
 
         doc.update(cf._to_toml())
+
+        doc.update(_to_toml(self))
 
         return doc
 

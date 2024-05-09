@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import abc
 import itertools as it
+import os
 import typing
-from typing import TYPE_CHECKING, cast
+from pathlib import Path
+from typing import TYPE_CHECKING, cast, overload
+
+import inflection
+import tomlkit as toml
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -25,6 +30,10 @@ if TYPE_CHECKING:
     _AnyInitAttrKey: TypeAlias = Literal[
         _AnyCoreInitAttrKey, "_STAR_ARG_NAMES", "_GETATTR_NAMES"
     ]
+
+    # NOTE: this is incomplete for simplicity, e.g. sober has not datetime objects
+    #       may need to extend after python/mypy#7981
+    _AnyTOMLItemisable: TypeAlias = bool | int | float | str
 
 
 def _all_sober_classes(classes: list[type]) -> TypeGuard[list[_SupportsSober]]:
@@ -116,9 +125,46 @@ def _init_attr_names(cls: type, key: _AnyInitAttrKey) -> tuple[str, ...]:
 
 def _init_attr_map(cls: type) -> _InitAttrMap:
     """retraces a map for init attribute names"""
+
     return {
         "_ARG_NAMES": _init_attr_names(cls, "_ARG_NAMES"),
         "_STAR_ARG_NAMES": _init_attr_names(cls, "_STAR_ARG_NAMES"),
         "_KWARG_NAMES": _init_attr_names(cls, "_KWARG_NAMES"),
         "_GETATTR_NAMES": _init_attr_names(cls, "_GETATTR_NAMES"),
     }
+
+
+@overload
+def _toml_itemisable(value: Path) -> str: ...
+@overload
+def _toml_itemisable(value: _AnyTOMLItemisable) -> _AnyTOMLItemisable: ...
+def _toml_itemisable(value: Path | _AnyTOMLItemisable) -> _AnyTOMLItemisable:
+    if isinstance(value, Path):
+        return os.fsdecode(value)
+    else:
+        return value
+
+
+def _to_toml(obj: object) -> toml.TOMLDocument:
+    cls = obj.__class__
+    init_attr_map = _init_attr_map(cls)
+
+    doc = toml.document()
+
+    table = toml.table()
+
+    for name in it.chain(
+        init_attr_map["_ARG_NAMES"],
+        init_attr_map["_STAR_ARG_NAMES"],
+        init_attr_map["_KWARG_NAMES"],
+    ):
+        value = getattr(obj, name)
+        item = toml.item(_toml_itemisable(value))
+        table.add(name.removeprefix("_"), item)
+
+    for name in init_attr_map["_GETATTR_NAMES"]:
+        pass
+
+    doc.add(inflection.underscore(cls.__name__), table)
+
+    return doc

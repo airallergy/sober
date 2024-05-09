@@ -14,6 +14,7 @@ numpy = "^1.23"
 scipy = "^1.12"
 psutil = "^5.9.5"
 tomlkit = "^0.12.5"
+inflection = "^0.5.1"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10"
