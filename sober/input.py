@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from eppy.bunch_subclass import EpBunch
     from numpy.typing import NDArray
 
-    from sober._typing import AnyStrPath
+    from sober._typing import AnyStrPath, AnyTagger
 
     class _SupportsStr(Protocol):
         __slots__ = ()
@@ -121,10 +121,6 @@ class _TextTagger(_Tagger[str]):
 
     @abstractmethod
     def _tagged(self, model: str) -> str: ...
-
-
-if TYPE_CHECKING:
-    _AnyTagger: TypeAlias = _IDFTagger | _TextTagger
 
 
 class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
@@ -286,10 +282,10 @@ class _ModelModifierMixin(ABC):
 
     __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
 
-    _tagger: _AnyTagger
+    _tagger: AnyTagger
 
     @abstractmethod
-    def __init__(self, tagger: _AnyTagger, *args: object, **kwargs: object) -> None:
+    def __init__(self, tagger: AnyTagger, *args: object, **kwargs: object) -> None:
         self._tagger = tagger  # type: ignore[misc]  # [1] microsoft/pyright#2039
 
         super().__init__(*args, **kwargs)  # NOTE: to _RealModifier/_IntegralModifier
@@ -435,7 +431,7 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
 
     def __init__(
         self,
-        tagger: _AnyTagger,
+        tagger: AnyTagger,
         low: float,
         high: float,
         /,
@@ -461,7 +457,7 @@ class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
 
     def __init__(
         self,
-        tagger: _AnyTagger,
+        tagger: AnyTagger,
         *options: float,
         distribution: _SupportsPPF | None = None,
         is_noise: bool = False,
@@ -480,7 +476,7 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
 
     def __init__(
         self,
-        tagger: _AnyTagger,
+        tagger: AnyTagger,
         *options: str,
         distribution: _SupportsPPF | None = None,
         is_noise: bool = False,
@@ -503,7 +499,7 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
 
     def __init__(
         self,
-        tagger: _AnyTagger,
+        tagger: AnyTagger,
         func: _AnyFunc,
         input_indices: Iterable[int],
         /,

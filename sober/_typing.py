@@ -35,13 +35,20 @@ if TYPE_CHECKING:
         ContinuousModifier,
         DiscreteModifier,
         FunctionalModifier,
+        _IDFTagger,
+        _IntegralModifier,
+        _RealModifier,
+        _TextTagger,
     )
 
     # python
     AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
 
     # input
-    # TODO: use Intersection after python/typing#213
+    AnyTagger: TypeAlias = _IDFTagger | _TextTagger
+    AnyModifier: TypeAlias = _RealModifier | _IntegralModifier[AnyModifierValue]
+
+    ## TODO: use Intersection after python/typing#213
     AnyIntegralModelModifier: TypeAlias = (
         DiscreteModifier | CategoricalModifier | FunctionalModifier
     )
