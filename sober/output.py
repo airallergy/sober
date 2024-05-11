@@ -3,6 +3,7 @@ from __future__ import annotations
 import enum
 import itertools as it
 import json
+import math
 import os
 import shutil
 from abc import ABC, abstractmethod
@@ -20,9 +21,7 @@ if TYPE_CHECKING:
     from sober._typing import AnyCoreLevel, AnyLanguage, AnyStrPath
 
     _AnyDirection: TypeAlias = Literal["minimise", "maximise"]
-    _AnyBounds: TypeAlias = (
-        tuple[None, float] | tuple[float, None] | tuple[float, float]
-    )
+    _AnyBounds: TypeAlias = tuple[float, float]
     _AnyEPOutputType: TypeAlias = Literal["variable", "meter"]
 
     # TODO: below goes to tests when made
@@ -119,12 +118,15 @@ class _Collector(ABC):
                     f"a collector containing constraints needs to be final: {self._filename}."
                 )
 
-            if (self._bounds[0] and self._bounds[1]) and (
-                self._bounds[0] >= self._bounds[1]
+            low, high = self._bounds
+            if (
+                (math.isnan(low) or math.isnan(high))
+                or (math.isinf(low) and math.isinf(high))
+                or (low == math.inf)
+                or (high == -math.inf)
+                or (low >= high)
             ):
-                raise ValueError(
-                    f"the lower bound should be less than the upper bound for constraints: {self._filename}."
-                )
+                raise ValueError(f"invalid constraint bounds: {self._bounds}.")
 
         if self._is_final and (self._filename.split(".")[-1] != "csv"):
             raise ValueError(
@@ -185,7 +187,7 @@ class RVICollector(_Collector):
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
         direction: _AnyDirection = "minimise",
-        bounds: _AnyBounds = (None, 0),
+        bounds: _AnyBounds = (-math.inf, 0),
         is_final: bool = True,
     ) -> None:
         self._ep_output_names = _parsed_str_iterable(ep_output_names, "ep output names")
@@ -260,7 +262,7 @@ class ScriptCollector(_Collector):
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
         direction: _AnyDirection = "minimise",
-        bounds: _AnyBounds = (None, 0),
+        bounds: _AnyBounds = (-math.inf, 0),
         is_final: bool = True,
     ) -> None:
         self._script_file = _parsed_path(script_file, "script file")
