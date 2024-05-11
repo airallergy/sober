@@ -153,7 +153,10 @@ def _toml_encoder(
     if isinstance(value, Path):
         return toml.item(os.fsdecode(value))
     elif isinstance(value, frozenset):
-        return toml.item(tuple(value))
+        # NOTE: can add other frozenset item types if need be
+        assert all(isinstance(item, str) for item in value)
+        value = cast(frozenset[str], value)  # mypy: python/mypy#13069
+        return toml.item(sorted(value))
     elif isinstance(value, _Tagger | _Modifier | _Collector):
         table = toml.table()
 
