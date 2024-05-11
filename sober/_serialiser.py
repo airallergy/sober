@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, cast, overload
 import tomlkit as toml
 from tomlkit.items import AoT, Array, Table
 
-from sober.input import _Modifier
+from sober.input import _Modifier, _Tagger
 from sober.output import _Collector
 
 if TYPE_CHECKING:
@@ -19,8 +19,7 @@ if TYPE_CHECKING:
 
     from tomlkit.items import String
 
-    from sober._typing import AnyModifierValue
-    from sober.input import _IntegralModifier, _RealModifier
+    from sober._typing import AnyModifier, AnyTagger
 
     class _SupportsSlots(Protocol):
         __slots__: tuple[str, ...] = ()
@@ -146,22 +145,16 @@ def _toml_encoder(value: Path) -> String: ...
 @overload
 def _toml_encoder(value: frozenset[object]) -> Array: ...
 @overload
-def _toml_encoder(
-    value: _RealModifier | _IntegralModifier[AnyModifierValue] | _Collector,
-) -> Table: ...
+def _toml_encoder(value: AnyTagger | AnyModifier | _Collector) -> Table: ...
 @toml.register_encoder
 def _toml_encoder(
-    value: Path
-    | frozenset[object]
-    | _RealModifier
-    | _IntegralModifier[AnyModifierValue]
-    | _Collector,
+    value: Path | frozenset[object] | AnyModifier | _Collector | AnyTagger,
 ) -> String | Array | Table:
     if isinstance(value, Path):
         return toml.item(os.fsdecode(value))
     elif isinstance(value, frozenset):
         return toml.item(tuple(value))
-    elif isinstance(value, _Modifier | _Collector):
+    elif isinstance(value, _Tagger | _Modifier | _Collector):
         table = toml.table()
 
         cls = type(value)
