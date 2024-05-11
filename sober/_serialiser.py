@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import enum
 import itertools as it
 import os
 import typing
@@ -181,6 +182,11 @@ def _to_toml_table(obj: object) -> Table:
         init_attr_map["_KWARG_NAMES"],
     ):
         value = getattr(obj, name)
+
+        # handle enum, as tomlkit will use its value due to mro
+        if isinstance(value, enum.Enum):
+            value = value.name.lower()
+
         item = toml.item(value)
         table.add(name.removeprefix("_"), item)
 
