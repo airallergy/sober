@@ -16,25 +16,14 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
     from typing import Concatenate, Self, TypeAlias
 
-    import numpy as np
     from eppy.bunch_subclass import EpBunch
-    from numpy.typing import NDArray
 
-    from sober._typing import AnyStrPath, AnyTagger
+    from sober._typing import AnyStrPath, AnyTagger, SupportsPPF
 
     class _SupportsStr(Protocol):
         __slots__ = ()
 
         def __str__(self) -> str: ...
-
-    _RVV = TypeVar("_RVV", np.float_, np.int_)  # AnyRandomVarValue
-
-    class _SupportsPPF(Protocol):
-        # NOTE: not yet seeing a benefit differing float and int
-        __slots__ = ()
-
-        def support(self) -> tuple[_RVV, _RVV]: ...
-        def ppf(self, q: Iterable[float]) -> NDArray[np.float_]: ...
 
     # NOTE: ... implies accepting args and kwargs, but only kwargs are accepted
     #       could be corrected using Protocol, but why bother
@@ -137,7 +126,7 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     )
 
     _bounds: tuple[float, float]
-    _distribution: _SupportsPPF
+    _distribution: SupportsPPF
     _is_ctrl: bool
     _is_noise: bool
     _name: str
@@ -148,7 +137,7 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     def __init__(
         self,
         bounds: tuple[float, float],
-        distribution: _SupportsPPF,
+        distribution: SupportsPPF,
         is_noise: bool,
         name: str,
     ) -> None:
@@ -209,7 +198,7 @@ class _RealModifier(_Modifier[float, float]):
     def __init__(
         self,
         bounds: tuple[float, float],
-        distribution: _SupportsPPF | None,
+        distribution: SupportsPPF | None,
         is_noise: bool,
         name: str,
     ) -> None:
@@ -241,7 +230,7 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
     def __init__(
         self,
         options: tuple[_MV_co, ...],
-        distribution: _SupportsPPF | None,
+        distribution: SupportsPPF | None,
         is_noise: bool,
         name: str,
     ) -> None:
@@ -404,7 +393,7 @@ class WeatherModifier(_IntegralModifier[Path]):
     def __init__(
         self,
         *options: AnyStrPath,
-        distribution: _SupportsPPF | None = None,
+        distribution: SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
     ) -> None:
@@ -436,7 +425,7 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
         high: float,
         /,
         *,
-        distribution: _SupportsPPF | None = None,
+        distribution: SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
     ) -> None:
@@ -459,7 +448,7 @@ class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
         self,
         tagger: AnyTagger,
         *options: float,
-        distribution: _SupportsPPF | None = None,
+        distribution: SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
     ) -> None:
@@ -478,7 +467,7 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
         self,
         tagger: AnyTagger,
         *options: str,
-        distribution: _SupportsPPF | None = None,
+        distribution: SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
     ) -> None:

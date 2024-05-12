@@ -24,8 +24,9 @@ AnyLevel: TypeAlias = Literal[AnyCoreLevel, "batch", "epoch"]
 
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from pathlib import Path
-    from typing import NotRequired, TypedDict
+    from typing import NotRequired, Protocol, TypedDict, TypeVar
 
     import numpy as np
     from numpy.typing import NDArray
@@ -45,6 +46,15 @@ if TYPE_CHECKING:
     AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
 
     # input
+    RVV = TypeVar("RVV", np.float_, np.int_)  # AnyRandomVarValue
+
+    class SupportsPPF(Protocol):
+        # NOTE: not yet seeing a benefit differing float and int
+        __slots__ = ()
+
+        def support(self) -> tuple[RVV, RVV]: ...
+        def ppf(self, q: Iterable[float]) -> NDArray[np.float_]: ...
+
     AnyTagger: TypeAlias = _IDFTagger | _TextTagger
     AnyModifier: TypeAlias = _RealModifier | _IntegralModifier[AnyModifierValue]
 
