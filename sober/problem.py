@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload
 
-import inflection
 from tomlkit.toml_file import TOMLFile
 
 import sober._evolver_pymoo as pm
@@ -140,7 +139,7 @@ class Problem:
         document = cf._to_toml_document()
 
         # append the problem table
-        document.add(inflection.underscore(type(self).__name__), _to_toml_table(self))
+        document.add("problem", _to_toml_table(self))
 
         # write the toml document to the file
         TOMLFile(file).write(document)
@@ -156,9 +155,7 @@ class Problem:
         cf._from_toml_document(document)
 
         # get args and kwargs
-        args, kwargs = _from_toml_table(
-            cls, document.pop(inflection.underscore(cls.__name__))
-        )
+        args, kwargs = _from_toml_table(cls, document.pop("problem"))
 
         return cls(*args, **kwargs)
 
