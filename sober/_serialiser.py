@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
     from tomlkit.items import String
 
-    from sober._typing import AnyModifier, AnyTagger
+    from sober._typing import AnyModifier, AnyTagger, SupportsPPF
 
     class _SupportsSlots(Protocol):
         __slots__: tuple[str, ...] = ()
@@ -147,9 +147,16 @@ def _toml_encoder(value: Path) -> String: ...
 def _toml_encoder(value: frozenset[object]) -> Array: ...
 @overload
 def _toml_encoder(value: AnyTagger | AnyModifier | _Collector) -> Table: ...
+@overload
+def _toml_encoder(value: SupportsPPF) -> Array: ...
 @toml.register_encoder
 def _toml_encoder(
-    value: Path | frozenset[object] | AnyModifier | _Collector | AnyTagger,
+    value: Path
+    | frozenset[object]
+    | AnyModifier
+    | _Collector
+    | AnyTagger
+    | SupportsPPF,
 ) -> String | Array | Table:
     if isinstance(value, Path):
         return toml.item(os.fsdecode(value))
@@ -166,8 +173,10 @@ def _toml_encoder(
         table.update(_to_toml_table(value))
 
         return table
+    elif hasattr(value, "ppf"):
+        # TODO: implement this after scipy/scipy#15928
+        return toml.item(["class", "support"])
     else:
-        return toml.item(str(value))  # TODO: delete
         raise TypeError  # tomlkit handles this exception
 
 
