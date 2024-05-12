@@ -196,8 +196,8 @@ def _to_toml_table(obj: object) -> Table:
         if isinstance(value, enum.Enum):
             value = value.name.lower()
 
-        item = toml.item(value)
-        table.add(name.removeprefix("_"), item)
+        value_ = toml.item(value)
+        table.add(name.removeprefix("_"), value_)
 
     for name in init_attr_map["_GETATTR_NAMES"]:
         getattr_obj = getattr(obj, name)
