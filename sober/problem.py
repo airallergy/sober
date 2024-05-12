@@ -133,8 +133,8 @@ class Problem:
         self._input_manager._prepare(self._model_file)
         self._output_manager._prepare(self._config_dir, self._input_manager._has_noises)
 
-    def dump(self, file: AnyStrPath) -> None:
-        """dumps the problem to a toml file"""
+    def to_toml(self, file: AnyStrPath) -> None:
+        """serialises the problem to a toml file"""
 
         document = cf._to_toml_document()
 
