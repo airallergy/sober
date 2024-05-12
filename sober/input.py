@@ -293,9 +293,9 @@ class IndexTagger(_IDFTagger):
     no support for nested regular commands inside macro files
     """
 
-    _KWARG_NAMES: ClassVar = ("_index_trios",)
+    _STAR_ARG_NAMES: ClassVar = ("_index_trios",)
 
-    __slots__ = (*_KWARG_NAMES,)
+    __slots__ = (*_STAR_ARG_NAMES,)
 
     _index_trios: tuple[tuple[str, str, str], ...]
 
@@ -339,9 +339,9 @@ class StringTagger(_TextTagger):
     no support for nested macro commands inside macro files
     """
 
-    _KWARG_NAMES: ClassVar = ("_string_trios",)
+    _STAR_ARG_NAMES: ClassVar = ("_string_trios",)
 
-    __slots__ = (*_KWARG_NAMES,)
+    __slots__ = (*_STAR_ARG_NAMES,)
 
     _string_trios: tuple[tuple[str, str, str], ...]
 
