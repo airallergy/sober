@@ -34,9 +34,9 @@ if TYPE_CHECKING:
     )
 
     class _EagerGlobalVars(TypedDict):
-        config: _Config
         noise_sample_kwargs: NoiseSampleKwargs
         removes_subdirs: bool
+        config: _Config
 
 
 #############################################################################
@@ -52,9 +52,6 @@ _RECORDS_FILENAMES: Final[_RecordsFilenames] = {  # python/typing#1388
 #############################################################################
 #######                       GLOBAL VARIABLES                        #######
 #############################################################################
-# pass across processes
-_config: _Config
-
 # only used in the parent process
 _noise_sample_kwargs: NoiseSampleKwargs
 _removes_subdirs: bool
@@ -62,28 +59,31 @@ _removes_subdirs: bool
 ## lazy
 _has_batches: bool
 
+# pass across processes
+_config: _Config
+
 
 def _eager_global_vars() -> _EagerGlobalVars:
     """returns global variables"""
     return {
-        "config": _config,
         "noise_sample_kwargs": _noise_sample_kwargs,
         "removes_subdirs": _removes_subdirs,
+        "config": _config,
     }
 
 
 def _update_eager_global_vars(
-    config: _Config, noise_sample_kwargs: NoiseSampleKwargs, removes_subdirs: bool
+    noise_sample_kwargs: NoiseSampleKwargs, removes_subdirs: bool, config: _Config
 ) -> None:
     """updates global variables"""
 
-    global _config
     global _noise_sample_kwargs
     global _removes_subdirs
 
-    _config = config
     _noise_sample_kwargs = noise_sample_kwargs
     _removes_subdirs = removes_subdirs
+
+    _update_config(config)
 
 
 #############################################################################
