@@ -171,7 +171,9 @@ def config_energyplus(
         readvars_exec = root / "PostProcess" / "ReadVarsESO"
 
     if (schema is None) or (exec is None):
-        raise ValueError("One of version, root or (schema, exec) needs to be provided.")
+        raise ValueError(
+            "one of 'version', 'root' or 'schema & exec' needs to be provided."
+        )
 
     _config = {
         "schema.energyplus": os.fsdecode(_parsed_path(schema, "energyplus schema")),
