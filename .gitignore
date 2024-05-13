@@ -5,7 +5,6 @@
 __pycache__
 .vscode
 .ipynb_checkpoints
-.pytest_cache
 .coverage
 
 # do not lock dependecies for now
