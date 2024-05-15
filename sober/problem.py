@@ -20,7 +20,6 @@ if TYPE_CHECKING:
         AnyReferenceDirections,
         AnySampleMode,
         AnyStrPath,
-        NoiseSampleKwargs,
     )
     from sober.input import WeatherModifier
 
@@ -62,10 +61,6 @@ class Problem:
         evaluation_dir: AnyStrPath | None = None,
         has_templates: bool = False,
         clean_patterns: str | Iterable[str] = _OutputManager._DEFAULT_CLEAN_PATTERNS,
-        n_processes: int | None = None,
-        python_exec: AnyStrPath | None = None,
-        noise_sample_kwargs: NoiseSampleKwargs | None = None,
-        removes_subdirs: bool = False,
     ) -> None:
         self._model_file = _parsed_path(model_file, "model file")
         self._input_manager = _InputManager(weather_input, model_inputs, has_templates)
@@ -77,7 +72,7 @@ class Problem:
         )
         self._config_dir = self._evaluation_dir / ("." + __package__.split(".")[-1])
 
-        self._prepare(n_processes, python_exec, noise_sample_kwargs, removes_subdirs)
+        self._prepare()
 
     @overload
     def __getattr__(  # type: ignore[misc]  # python/mypy#8203
@@ -113,13 +108,7 @@ class Problem:
     def _check_args(self) -> None:
         pass
 
-    def _prepare(
-        self,
-        n_processes: int | None,
-        python_exec: AnyStrPath | None,
-        noise_sample_kwargs: NoiseSampleKwargs | None,
-        removes_subdirs: bool,
-    ) -> None:
+    def _prepare(self) -> None:
         self._check_args()
 
         # mkdir
@@ -131,9 +120,7 @@ class Problem:
         self._input_manager._prepare(self._model_file)
         self._output_manager._prepare(self._config_dir, self._input_manager._has_noises)
 
-        # config
-        cf.config_parallel(n_processes=n_processes)
-        cf.config_script(python_exec=python_exec)
+        # check config
         cf._check_config(
             self._input_manager._model_type,
             self._input_manager._has_templates,
@@ -144,12 +131,6 @@ class Problem:
                 if isinstance(item, ScriptCollector)
             },
         )
-
-        # global variables
-        cf._noise_sample_kwargs = (
-            noise_sample_kwargs if noise_sample_kwargs else {"mode": "auto"}
-        )
-        cf._removes_subdirs = removes_subdirs
 
     def run_random(
         self, size: int, /, *, mode: AnySampleMode = "auto", seed: int | None = None

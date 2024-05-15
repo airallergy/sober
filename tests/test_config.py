@@ -52,23 +52,29 @@ def config_energyplus_kwargs(
     [
         ({"root": ("ep_dir",)}, [slice(None)]),  # via root
         (
-            {"schema": ("ep_dir", "Energy+.idd"), "exec": ("ep_dir", "energyplus")},
-            [slice(2)],  # via schema & exec
+            {
+                "schema_energyplus": ("ep_dir", "Energy+.idd"),
+                "exec_energyplus": ("ep_dir", "energyplus"),
+            },
+            [slice(2)],  # via schema_energyplus & exec_energyplus
         ),
         (
             {
-                "schema": ("ep_dir", "Energy+.idd"),
-                "exec": ("ep_dir", "energyplus"),
-                "epmacro_exec": ("ep_dir", "EPMacro"),
-                "readvars_exec": ("ep_dir", "PostProcess", "ReadVarsESO"),
+                "schema_energyplus": ("ep_dir", "Energy+.idd"),
+                "exec_energyplus": ("ep_dir", "energyplus"),
+                "exec_epmacro": ("ep_dir", "EPMacro"),
+                "exec_readvars": ("ep_dir", "PostProcess", "ReadVarsESO"),
             },
-            [slice(3), slice(4, None)],  # via schema & exec, with optionals
+            [
+                slice(3),
+                slice(4, None),
+            ],  # via schema_energyplus & exec_energyplus, with optionals
         ),
         (
             {
                 "root": ("ep_dir",),
-                "schema": ("this", "is", "ignored"),
-                "expandobjects_exec": ("this", "is", "also", "ignored"),
+                "schema_energyplus": ("this", "is", "ignored"),
+                "exec_expandobjects": ("this", "is", "also", "ignored"),
             },
             [slice(None)],  # via root, ignoring the rest
         ),
@@ -90,6 +96,8 @@ def test_config_energyplus_pass(
         )
     )
 
+    del cf._config
+
 
 @pytest.mark.parametrize(
     ("config_energyplus_kwargs", "expected_result"),
@@ -98,13 +106,13 @@ def test_config_energyplus_pass(
             [
                 {"root": ("this", "is", "non-existent")},
                 {
-                    "schema": ("this", "is", "non-existent"),
-                    "exec": ("this", "is", "unreachable"),
+                    "schema_energyplus": ("this", "is", "non-existent"),
+                    "exec_energyplus": ("this", "is", "unreachable"),
                 },
                 {
-                    "schema": ("ep_dir", "Energy+.idd"),
-                    "exec": ("ep_dir", "energyplus"),
-                    "epmacro_exec": ("this", "is", "non-existent"),
+                    "schema_energyplus": ("ep_dir", "Energy+.idd"),
+                    "exec_energyplus": ("ep_dir", "energyplus"),
+                    "exec_epmacro": ("this", "is", "non-existent"),
                 },
             ],
             [
@@ -118,14 +126,14 @@ def test_config_energyplus_pass(
         *it.product(
             [
                 {},
-                {"schema": ("ep_dir", "Energy+.idd")},
-                {"readvars_exec": ("ep_dir", "PostProcess", "ReadVarsESO")},
+                {"schema_energyplus": ("ep_dir", "Energy+.idd")},
+                {"exec_readvars": ("ep_dir", "PostProcess", "ReadVarsESO")},
             ],
             [
                 (
                     ValueError,  # from config.config_energyplus
                     "equals",
-                    "one of 'version', 'root' or 'schema & exec' needs to be provided.",
+                    "one of 'version', 'root' or 'schema_energyplus & exec_energyplus' needs to be provided.",
                 )
             ],
         ),
