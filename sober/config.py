@@ -21,47 +21,35 @@ if TYPE_CHECKING:
         job: str
         batch: str
 
-    _Config = TypedDict(
-        "_Config",
-        {
-            "schema.energyplus": str,
-            "exec.energyplus": str,
-            "exec.epmacro": str,
-            "exec.expandobjects": str,
-            "exec.readvars": str,
-            "exec.python": str,
-            "n.processes": int,
-        },
-        total=False,
-    )
+    class _Config(TypedDict, total=False):
+        schema_energyplus: str
+        exec_energyplus: str
+        exec_epmacro: str
+        exec_expandobjects: str
+        exec_readvars: str
+        exec_python: str
+        n_processes: int
 
     _AnyPathConfigName: TypeAlias = Literal[
-        "schema.energyplus",
-        "exec.energyplus",
-        "exec.epmacro",
-        "exec.expandobjects",
-        "exec.readvars",
-        "exec.python",
+        "schema_energyplus",
+        "exec_energyplus",
+        "exec_epmacro",
+        "exec_expandobjects",
+        "exec_readvars",
+        "exec_python",
     ]
-    _AnyIntConfigName: TypeAlias = Literal["n.processes"]
+    _AnyIntConfigName: TypeAlias = Literal["n_processes"]
     _AnyConfigName: TypeAlias = Literal[_AnyPathConfigName, _AnyIntConfigName]
 
 
-#############################################################################
-#######                      PACKAGE ATTRIBUTES                       #######
-#############################################################################
-# constant
 _RECORDS_FILENAMES: Final[_RecordsFilenames] = {  # python/typing#1388
     "task": "task_records.csv",
     "job": "job_records.csv",
     "batch": "batch_records.csv",
 }
 
-# variable, pass across processes
 _config: _Config
-
-## dependent on analysis type (parametrics or optimisation)
-_has_batches: bool
+_has_batches: bool  # dependent on analysis type (parametrics or optimisation)
 
 
 def __getattr__(  # type: ignore[misc]  # python/mypy#8203
@@ -97,23 +85,26 @@ def _check_config(
 ) -> None:
     """checks the configuration sufficiency"""
 
-    if model_type == ".imf" and ("exec.epmacro" not in _config):
+    if "n_processes" not in _config:
+        _config["n_processes"] = psutil.cpu_count(logical=False) - 1
+
+    if model_type == ".imf" and ("exec_epmacro" not in _config):
         raise ValueError(
             f"a macro model is input, but the epmacro executable is not configured: {_config}."
         )
 
-    if has_templates and ("exec.expandobjects" not in _config):
+    if has_templates and ("exec_expandobjects" not in _config):
         raise ValueError(
             f"HVAC templates are used, but the expandobjects executable is not configured: {_config}."
         )
 
-    if uses_rvi and ("exec.readvars" not in _config):
+    if uses_rvi and ("exec_readvars" not in _config):
         raise ValueError(
             f"an RVICollector is used, but the readvars executable is not configured: {_config}."
         )
 
     for item in languages:
-        if "exec." + item not in _config:
+        if "exec_" + item not in _config:
             raise ValueError(
                 f"an ScriptCollector of {item} is used, but the {item} executable is not configured: {_config}."
             )
@@ -133,7 +124,7 @@ def _set_config_item(name: _AnyConfigName, value: Path | int) -> None:
 
         if not is_equal:
             warnings.warn(
-                f"'{name.replace('.','_')}' has been configured to '{_config[name]}', and will be overriden by '{value}'.",
+                f"'{name}' has been configured to '{_config[name]}', and will be overriden by '{value}'.",
                 stacklevel=2,
             )
 
@@ -165,8 +156,7 @@ def config_energyplus(
     exec_expandobjects: AnyStrPath | None = None,
     exec_readvars: AnyStrPath | None = None,
 ) -> None:
-    """sets EnergyPlus-related configuration
-    this initialise _config, so needs to happen before all others"""
+    """sets EnergyPlus-related configuration"""
     # TODO: change this to non-mandatory when metamodelling is supported
 
     if version is not None:
@@ -186,43 +176,36 @@ def config_energyplus(
         )
 
     _set_config_item(
-        "schema.energyplus", _parsed_path(schema_energyplus, "energyplus schema")
+        "schema_energyplus", _parsed_path(schema_energyplus, "energyplus schema")
     )
     _set_config_item(
-        "exec.energyplus", _parsed_path(exec_energyplus, "energyplus executable")
+        "exec_energyplus", _parsed_path(exec_energyplus, "energyplus executable")
     )
 
     if exec_epmacro is not None:
         _set_config_item(
-            "exec.epmacro", _parsed_path(exec_epmacro, "epmacro executable")
+            "exec_epmacro", _parsed_path(exec_epmacro, "epmacro executable")
         )
     if exec_expandobjects is not None:
         _set_config_item(
-            "exec.expandobjects",
+            "exec_expandobjects",
             _parsed_path(exec_expandobjects, "expandobjects executable"),
         )
     if exec_readvars is not None:
         _set_config_item(
-            "exec.readvars", _parsed_path(exec_readvars, "readvars executable")
+            "exec_readvars", _parsed_path(exec_readvars, "readvars executable")
         )
 
 
 def config_parallel(*, n_processes: int | None = None) -> None:
     """sets parallel-related configuration"""
 
-    # the default number of processes is the number of physical cores - 1
-    # this leaves one physical core idle
-    n_processes = (
-        psutil.cpu_count(logical=False) - 1 if n_processes is None else n_processes
-    )
-
-    _set_config_item("n.processes", n_processes)
+    if n_processes is not None:
+        _set_config_item("n_processes", n_processes)
 
 
-def config_script(*, python_exec: AnyStrPath | None = None) -> None:
-    """sets script-related configuration
-    only supports python currently"""
-    # TODO: **kwargs from PEP 692/3.12
+def config_script(*, exec_python: AnyStrPath | None = None) -> None:
+    """sets script-related configuration"""
 
-    if python_exec is not None:
-        _set_config_item("exec.python", _parsed_path(python_exec, "python executable"))
+    if exec_python is not None:
+        _set_config_item("exec_python", _parsed_path(exec_python, "python executable"))

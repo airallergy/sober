@@ -274,9 +274,9 @@ class ScriptCollector(_Collector):
         )
 
     def __call__(self, cwd: Path) -> None:
-        language_exec = cf._config["exec." + self._script_language]  # type: ignore[literal-required]  # python/mypy#12554
+        exec_language = cf._config["exec_" + self._script_language]  # type: ignore[literal-required]  # python/mypy#12554
 
-        cmd_args = (language_exec, self._script_file, self._dumps_kwargs(cwd))
+        cmd_args = (exec_language, self._script_file, self._dumps_kwargs(cwd))
 
         _run(cmd_args, cwd)
 

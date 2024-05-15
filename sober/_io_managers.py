@@ -198,8 +198,8 @@ class _InputManager:
 
         # read regular commands into eppy
         # and configure energyplus if not yet
-        if hasattr(cf, "_config"):
-            idf = openidf(StringIO(regulars), cf._config["schema.energyplus"])
+        if "schema_energyplus" in cf._config:
+            idf = openidf(StringIO(regulars), cf._config["schema_energyplus"])
         else:
             idf = openidf(StringIO(regulars))
             cf.config_energyplus(

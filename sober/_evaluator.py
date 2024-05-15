@@ -21,7 +21,7 @@ def _evaluate(
     batch = input_manager._job_items(*ctrl_key_vecs)
 
     with _Parallel(
-        cf._config["n.processes"], cf._set_config, (cf._config,)
+        cf._config["n_processes"], cf._set_config, (cf._config,)
     ) as parallel:
         input_manager._make_batch(batch_dir, batch, parallel)
 

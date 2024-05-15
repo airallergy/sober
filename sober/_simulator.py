@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 def _run_epmacro(cwd: Path) -> None:
     """runs EPMacro"""
 
-    cmd_args = (cf._config["exec.epmacro"],)
+    cmd_args = (cf._config["exec_epmacro"],)
     _run(cmd_args, cwd)
 
     # rename output files
@@ -31,10 +31,10 @@ def _run_expandobjects(cwd: Path) -> None:
     """runs ExpandObjects"""
 
     # make a symlink to the idd file in cwd
-    idd_file = cwd / Path(cf._config["schema.energyplus"]).name
-    idd_file.symlink_to(cf._config["schema.energyplus"])
+    idd_file = cwd / Path(cf._config["schema_energyplus"]).name
+    idd_file.symlink_to(cf._config["schema_energyplus"])
 
-    cmd_args = (cf._config["exec.expandobjects"],)
+    cmd_args = (cf._config["exec_expandobjects"],)
     _run(cmd_args, cwd)
 
     # rename output files
@@ -47,7 +47,7 @@ def _run_expandobjects(cwd: Path) -> None:
 def _run_energyplus(cwd: Path) -> None:
     """runs EnergyPlus"""
 
-    cmd_args = (cf._config["exec.energyplus"],)
+    cmd_args = (cf._config["exec_energyplus"],)
     _run(cmd_args, cwd)
 
 
@@ -55,7 +55,7 @@ def _run_readvars(cwd: Path, rvi_file: Path, frequency: str) -> None:
     """runs ReadVarsESO"""
 
     cmd_args = (
-        cf._config["exec.readvars"],
+        cf._config["exec_readvars"],
         rvi_file,
         "Unlimited",
         "FixHeader",

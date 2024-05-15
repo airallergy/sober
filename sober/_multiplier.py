@@ -74,7 +74,6 @@ class _Multiplier(ABC):
     def _prepare(self) -> None:
         self._check_args()
 
-        # package variables
         cf._has_batches = False
 
     def _evaluate(self, *ctrl_key_vecs: tuple[float, ...]) -> None:

@@ -29,11 +29,11 @@ def ep_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
 @pytest.fixture(scope="module")
 def ep_files(ep_dir: Path) -> _Config:
     return {
-        "schema.energyplus": os.path.join(ep_dir, "Energy+.idd"),
-        "exec.energyplus": os.path.join(ep_dir, "energyplus"),
-        "exec.epmacro": os.path.join(ep_dir, "EPMacro"),
-        "exec.expandobjects": os.path.join(ep_dir, "ExpandObjects"),
-        "exec.readvars": os.path.join(ep_dir, "PostProcess", "ReadVarsESO"),
+        "schema_energyplus": os.path.join(ep_dir, "Energy+.idd"),
+        "exec_energyplus": os.path.join(ep_dir, "energyplus"),
+        "exec_epmacro": os.path.join(ep_dir, "EPMacro"),
+        "exec_expandobjects": os.path.join(ep_dir, "ExpandObjects"),
+        "exec_readvars": os.path.join(ep_dir, "PostProcess", "ReadVarsESO"),
     }
 
 

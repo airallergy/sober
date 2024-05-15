@@ -49,7 +49,6 @@ class _Evolver(ABC):
     def _prepare(self) -> None:
         self._check_args()
 
-        # package variables
         cf._has_batches = True
 
 
@@ -302,8 +301,8 @@ class _PymooEvolver(_Evolver):
         if not (isinstance(self, cls) and isinstance(algorithm, pm.Algorithm)):
             raise TypeError(f"invalid checkpoint file: {checkpoint_file}.")
 
-        # set package attributes
-        cf._set_config(**config)
+        # set config
+        cf._set_config(config)
         self._prepare()  # mainly to set cf._has_batches
 
         # update termination first if specified
