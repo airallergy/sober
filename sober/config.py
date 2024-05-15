@@ -112,30 +112,24 @@ def _package_attrs() -> _PackageAttrs:
     }
 
 
-def _update_package_attrs(
+def _set_package_attrs(
     config: _Config, noise_sample_kwargs: NoiseSampleKwargs, removes_subdirs: bool
 ) -> None:
-    """updates package attributes"""
+    """sets package attributes"""
 
-    _update_config(config)
-
-    global _noise_sample_kwargs
-    global _removes_subdirs
-
-    _noise_sample_kwargs = noise_sample_kwargs
-    _removes_subdirs = removes_subdirs
+    _set_config(config)
+    _set_bare_attrs(noise_sample_kwargs, removes_subdirs)
 
 
 #############################################################################
 #######                    CONFIGURATION FUNCTIONS                    #######
 #############################################################################
-def _update_config(config: _Config) -> None:
-    """updates configuration in the current python interpreter process
-    this is to copy configuration into child processes when using multiprocessing"""
+def _set_config(config: _Config) -> None:
+    """sets configuration
+    this helps copy configuration into child processes when using multiprocessing"""
 
-    global _config
-
-    _config = config
+    for name, value in config.items():
+        _set_config_item(name, value)  # type: ignore[call-overload]  # python/mypy#7981
 
 
 def _check_config(
@@ -275,3 +269,18 @@ def config_script(*, python_exec: AnyStrPath | None = None) -> None:
 
     if python_exec is not None:
         _set_config_item("exec.python", _parsed_path(python_exec, "python executable"))
+
+
+#############################################################################
+#######                   BARE ATTRIBUTE FUNCTIONS                    #######
+#############################################################################
+def _set_bare_attrs(
+    noise_sample_kwargs: NoiseSampleKwargs, removes_subdirs: bool
+) -> None:
+    """sets bare (non-config) package attributes"""
+
+    global _noise_sample_kwargs
+    global _removes_subdirs
+
+    _noise_sample_kwargs = noise_sample_kwargs
+    _removes_subdirs = removes_subdirs

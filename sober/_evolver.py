@@ -303,7 +303,7 @@ class _PymooEvolver(_Evolver):
             raise TypeError(f"invalid checkpoint file: {checkpoint_file}.")
 
         # set package attributes
-        cf._update_package_attrs(**package_attrs)
+        cf._set_package_attrs(**package_attrs)
         self._prepare()  # mainly to set cf._has_batches
 
         # update termination first if specified
