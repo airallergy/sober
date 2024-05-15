@@ -89,7 +89,7 @@ class _Multiplier(ABC):
             # impossible, there is at least the weather modifer
             raise IndexError("no modifiers are defined.")
 
-        if cf._removes_subdirs:
+        if self._output_manager._removes_subdirs:
             for job_uid, _ in batch:
                 shutil.rmtree(self._evaluation_dir / job_uid)
 

@@ -20,6 +20,7 @@ if TYPE_CHECKING:
         AnyReferenceDirections,
         AnySampleMode,
         AnyStrPath,
+        NoiseSampleKwargs,
     )
     from sober.input import WeatherModifier
 
@@ -60,11 +61,15 @@ class Problem:
         *,
         evaluation_dir: AnyStrPath | None = None,
         has_templates: bool = False,
+        noise_sample_kwargs: NoiseSampleKwargs | None = None,
         clean_patterns: str | Iterable[str] = _OutputManager._DEFAULT_CLEAN_PATTERNS,
+        removes_subdirs: bool = False,
     ) -> None:
         self._model_file = _parsed_path(model_file, "model file")
-        self._input_manager = _InputManager(weather_input, model_inputs, has_templates)
-        self._output_manager = _OutputManager(outputs, clean_patterns)
+        self._input_manager = _InputManager(
+            weather_input, model_inputs, has_templates, noise_sample_kwargs
+        )
+        self._output_manager = _OutputManager(outputs, clean_patterns, removes_subdirs)
         self._evaluation_dir = (
             self._model_file.parent / "evaluation"
             if evaluation_dir is None

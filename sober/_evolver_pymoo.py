@@ -16,7 +16,6 @@ from pymoo.operators.repair.rounding import RoundingRepair
 from pymoo.operators.selection.tournament import TournamentSelection
 from pymoo.termination.max_gen import MaximumGenerationTermination
 
-import sober.config as cf
 from sober._evaluator import _evaluate
 from sober._logger import _log
 from sober._tools import _natural_width
@@ -241,7 +240,7 @@ class _Problem(Problem):  # type: ignore[misc]  # pymoo
 
         _log(self._evaluation_dir, f"evaluated {batch_uid}")
 
-        if cf._removes_subdirs:
+        if self._output_manager._removes_subdirs:
             shutil.rmtree(batch_dir)
 
 

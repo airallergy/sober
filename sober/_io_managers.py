@@ -52,6 +52,7 @@ if TYPE_CHECKING:
         AnyModelTask,
         AnyModelType,
         AnyTask,
+        NoiseSampleKwargs,
     )
     from sober.input import _Modifier
 
@@ -84,6 +85,7 @@ class _InputManager:
         "_weather_input",
         "_model_inputs",
         "_has_templates",
+        "_noise_sample_kwargs",
         "_tagged_model",
         "_model_type",
         "_has_ctrls",
@@ -95,6 +97,7 @@ class _InputManager:
     _weather_input: WeatherModifier
     _model_inputs: tuple[AnyModelModifier, ...]
     _has_templates: bool
+    _noise_sample_kwargs: NoiseSampleKwargs
     _tagged_model: str
     _model_type: AnyModelType
     _has_ctrls: bool
@@ -107,10 +110,14 @@ class _InputManager:
         weather_input: WeatherModifier,
         model_inputs: Iterable[AnyModelModifier],
         has_templates: bool,
+        noise_sample_kwargs: NoiseSampleKwargs | None,
     ) -> None:
         self._weather_input = weather_input
         self._model_inputs = tuple(model_inputs)
         self._has_templates = has_templates
+        self._noise_sample_kwargs = (
+            {"mode": "auto"} if noise_sample_kwargs is None else noise_sample_kwargs
+        )
 
     def __iter__(self) -> Iterator[_Modifier[Any, AnyModifierValue]]:
         yield self._weather_input
@@ -210,19 +217,19 @@ class _InputManager:
     def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> AnyJob:
         # align ctrl and noise keys and convert non-functional keys
         # TODO: consider reusing the multiplier facility here after py3.13 pep728, but maybe not worth it
-        if (cf._noise_sample_kwargs["mode"] == "elementwise") or (
-            (cf._noise_sample_kwargs["mode"] == "auto") and self._has_real_noises
+        if (self._noise_sample_kwargs["mode"] == "elementwise") or (
+            (self._noise_sample_kwargs["mode"] == "auto") and self._has_real_noises
         ):
-            size = cf._noise_sample_kwargs.get("size", None)
-            method = cf._noise_sample_kwargs.get("method", None)
-            seed = cf._noise_sample_kwargs.get("seed", None)
+            size = self._noise_sample_kwargs.get("size", None)
+            method = self._noise_sample_kwargs.get("method", None)
+            seed = self._noise_sample_kwargs.get("seed", None)
 
             if (size is None) or (method is None):
                 raise ValueError(
                     "the"
                     + (
                         " auto determined"
-                        if cf._noise_sample_kwargs["mode"] == "auto"
+                        if self._noise_sample_kwargs["mode"] == "auto"
                         else ""
                     )
                     + " noise sample mode is 'elementwise', but the size and the method is not specified."
@@ -426,6 +433,7 @@ class _OutputManager:
         "_task_outputs",
         "_job_outputs",
         "_clean_patterns",
+        "_removes_subdirs",
         "_objectives",
         "_constraints",
         "_objective_indices",
@@ -437,6 +445,7 @@ class _OutputManager:
     _task_outputs: tuple[_Collector, ...]
     _job_outputs: tuple[_Collector, ...]
     _clean_patterns: frozenset[str]
+    _removes_subdirs: bool
     _objectives: tuple[str, ...]
     _constraints: tuple[str, ...]
     _objective_indices: tuple[int, ...]
@@ -445,7 +454,10 @@ class _OutputManager:
     _to_constraints: tuple[_AnyConverter, ...]
 
     def __init__(
-        self, outputs: Iterable[_Collector], clean_patterns: str | Iterable[str]
+        self,
+        outputs: Iterable[_Collector],
+        clean_patterns: str | Iterable[str],
+        removes_subdirs: bool,
     ) -> None:
         # split collectors as per their level
         outputs = tuple(outputs)
@@ -458,6 +470,7 @@ class _OutputManager:
                 os.path.normpath, _parsed_str_iterable(clean_patterns, "clean patterns")
             )
         )
+        self._removes_subdirs = removes_subdirs
 
     def __iter__(self) -> Iterator[_Collector]:
         yield from self._task_outputs

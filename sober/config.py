@@ -14,7 +14,7 @@ from sober._tools import _parsed_path
 if TYPE_CHECKING:
     from typing import Final, Literal, TypeAlias, TypedDict
 
-    from sober._typing import AnyLanguage, AnyModelType, AnyStrPath, NoiseSampleKwargs
+    from sober._typing import AnyLanguage, AnyModelType, AnyStrPath
 
     class _RecordsFilenames(TypedDict):
         task: str
@@ -46,11 +46,6 @@ if TYPE_CHECKING:
     _AnyIntConfigName: TypeAlias = Literal["n.processes"]
     _AnyConfigName: TypeAlias = Literal[_AnyPathConfigName, _AnyIntConfigName]
 
-    class _PackageAttrs(TypedDict):
-        config: _Config
-        noise_sample_kwargs: NoiseSampleKwargs
-        removes_subdirs: bool
-
 
 #############################################################################
 #######                      PACKAGE ATTRIBUTES                       #######
@@ -65,23 +60,13 @@ _RECORDS_FILENAMES: Final[_RecordsFilenames] = {  # python/typing#1388
 # variable, pass across processes
 _config: _Config
 
-# variable, only used in the parent process
-_noise_sample_kwargs: NoiseSampleKwargs
-_removes_subdirs: bool
-
 ## dependent on analysis type (parametrics or optimisation)
 _has_batches: bool
 
 
-@overload
-def __getattr__(name: Literal["_noise_sample_kwargs"], /) -> NoiseSampleKwargs: ...  # type: ignore[misc]  # python/mypy#8203
-@overload
-def __getattr__(name: Literal["_removes_subdirs"], /) -> bool: ...  # type: ignore[misc]  # python/mypy#8203
-@overload
 def __getattr__(  # type: ignore[misc]  # python/mypy#8203
     name: Literal["_config"], /
-) -> _Config: ...
-def __getattr__(name: str, /) -> object:
+) -> _Config:
     """lazily set these attributes when they are called for the first time"""
     match name:
         case "_config":
@@ -89,36 +74,8 @@ def __getattr__(name: str, /) -> object:
 
             _config = {}
             return _config
-        case "_noise_sample_kwargs":
-            global _noise_sample_kwargs
-
-            _noise_sample_kwargs = {"mode": "auto"}
-            return _noise_sample_kwargs
-        case "_removes_subdirs":
-            global _removes_subdirs
-
-            _removes_subdirs = False
-            return _removes_subdirs
         case _:
             raise AttributeError(f"module '{__name__}' has no attribute '{name}'.")
-
-
-def _package_attrs() -> _PackageAttrs:
-    """returns package attributes"""
-    return {
-        "noise_sample_kwargs": _noise_sample_kwargs,
-        "removes_subdirs": _removes_subdirs,
-        "config": _config,
-    }
-
-
-def _set_package_attrs(
-    config: _Config, noise_sample_kwargs: NoiseSampleKwargs, removes_subdirs: bool
-) -> None:
-    """sets package attributes"""
-
-    _set_config(config)
-    _set_bare_attrs(noise_sample_kwargs, removes_subdirs)
 
 
 #############################################################################
@@ -269,18 +226,3 @@ def config_script(*, python_exec: AnyStrPath | None = None) -> None:
 
     if python_exec is not None:
         _set_config_item("exec.python", _parsed_path(python_exec, "python executable"))
-
-
-#############################################################################
-#######                   BARE ATTRIBUTE FUNCTIONS                    #######
-#############################################################################
-def _set_bare_attrs(
-    noise_sample_kwargs: NoiseSampleKwargs, removes_subdirs: bool
-) -> None:
-    """sets bare (non-config) package attributes"""
-
-    global _noise_sample_kwargs
-    global _removes_subdirs
-
-    _noise_sample_kwargs = noise_sample_kwargs
-    _removes_subdirs = removes_subdirs

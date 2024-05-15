@@ -29,7 +29,7 @@ def _evaluate(
 
         output_manager._scan_batch(batch_dir, batch, parallel)
 
-        if not cf._removes_subdirs:  # no need to clean if subdirs are to be removed
+        if not output_manager._removes_subdirs:
             output_manager._clean_batch(batch_dir, batch, parallel)
 
     return batch

@@ -191,7 +191,7 @@ class _PymooEvolver(_Evolver):
                 # as per [1], algorithm.n_gen has been increased for next gen at this point, hence -2
                 if algorithm.n_gen - 2 == i_gen_checkpoint:
                     with (epoch_dir / "checkpoint.pickle").open("wb") as fp:
-                        pickle.dump((cf._package_attrs(), self, algorithm), fp)
+                        pickle.dump((cf._config, self, algorithm), fp)
 
                     _log(
                         epoch_dir,
@@ -295,7 +295,7 @@ class _PymooEvolver(_Evolver):
         checkpoint_file = _parsed_path(checkpoint_file, "checkpoint file")
 
         with checkpoint_file.open("rb") as fp:
-            package_attrs, self, algorithm = pickle.load(fp)
+            config, self, algorithm = pickle.load(fp)
 
         # checks validity of the checkpoint file
         # currently only checks the object type, but there might be better checks
@@ -303,7 +303,7 @@ class _PymooEvolver(_Evolver):
             raise TypeError(f"invalid checkpoint file: {checkpoint_file}.")
 
         # set package attributes
-        cf._set_package_attrs(**package_attrs)
+        cf._set_config(**config)
         self._prepare()  # mainly to set cf._has_batches
 
         # update termination first if specified
