@@ -49,7 +49,7 @@ class _Evolver(ABC):
     def _prepare(self) -> None:
         self._check_args()
 
-        # global variables
+        # package variables
         cf._has_batches = True
 
 
@@ -191,7 +191,7 @@ class _PymooEvolver(_Evolver):
                 # as per [1], algorithm.n_gen has been increased for next gen at this point, hence -2
                 if algorithm.n_gen - 2 == i_gen_checkpoint:
                     with (epoch_dir / "checkpoint.pickle").open("wb") as fp:
-                        pickle.dump((cf._eager_global_vars(), self, algorithm), fp)
+                        pickle.dump((cf._package_attrs(), self, algorithm), fp)
 
                     _log(
                         epoch_dir,
@@ -295,15 +295,15 @@ class _PymooEvolver(_Evolver):
         checkpoint_file = _parsed_path(checkpoint_file, "checkpoint file")
 
         with checkpoint_file.open("rb") as fp:
-            eager_global_vars, self, algorithm = pickle.load(fp)
+            package_attrs, self, algorithm = pickle.load(fp)
 
         # checks validity of the checkpoint file
         # currently only checks the object type, but there might be better checks
         if not (isinstance(self, cls) and isinstance(algorithm, pm.Algorithm)):
             raise TypeError(f"invalid checkpoint file: {checkpoint_file}.")
 
-        # set global vars
-        cf._update_eager_global_vars(**eager_global_vars)
+        # set package attributes
+        cf._update_package_attrs(**package_attrs)
         self._prepare()  # mainly to set cf._has_batches
 
         # update termination first if specified

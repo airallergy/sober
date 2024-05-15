@@ -46,34 +46,31 @@ if TYPE_CHECKING:
     _AnyIntConfigName: TypeAlias = Literal["n.processes"]
     _AnyConfigName: TypeAlias = Literal[_AnyPathConfigName, _AnyIntConfigName]
 
-    class _EagerGlobalVars(TypedDict):
+    class _PackageAttrs(TypedDict):
+        config: _Config
         noise_sample_kwargs: NoiseSampleKwargs
         removes_subdirs: bool
-        config: _Config
 
 
 #############################################################################
-#######                       GLOBAL CONSTANTS                        #######
+#######                      PACKAGE ATTRIBUTES                       #######
 #############################################################################
+# constant
 _RECORDS_FILENAMES: Final[_RecordsFilenames] = {  # python/typing#1388
     "task": "task_records.csv",
     "job": "job_records.csv",
     "batch": "batch_records.csv",
 }
 
+# variable, pass across processes
+_config: _Config
 
-#############################################################################
-#######                       GLOBAL VARIABLES                        #######
-#############################################################################
-# only used in the parent process
+# variable, only used in the parent process
 _noise_sample_kwargs: NoiseSampleKwargs
 _removes_subdirs: bool
 
-## lazy
+## dependent on analysis type (parametrics or optimisation)
 _has_batches: bool
-
-# pass across processes
-_config: _Config
 
 
 @overload
@@ -87,6 +84,11 @@ def __getattr__(  # type: ignore[misc]  # python/mypy#8203
 def __getattr__(name: str, /) -> object:
     """lazily set these attributes when they are called for the first time"""
     match name:
+        case "_config":
+            global _config
+
+            _config = {}
+            return _config
         case "_noise_sample_kwargs":
             global _noise_sample_kwargs
 
@@ -97,17 +99,12 @@ def __getattr__(name: str, /) -> object:
 
             _removes_subdirs = False
             return _removes_subdirs
-        case "_config":
-            global _config
-
-            _config = {}
-            return _config
         case _:
             raise AttributeError(f"module '{__name__}' has no attribute '{name}'.")
 
 
-def _eager_global_vars() -> _EagerGlobalVars:
-    """returns global variables"""
+def _package_attrs() -> _PackageAttrs:
+    """returns package attributes"""
     return {
         "noise_sample_kwargs": _noise_sample_kwargs,
         "removes_subdirs": _removes_subdirs,
@@ -115,10 +112,12 @@ def _eager_global_vars() -> _EagerGlobalVars:
     }
 
 
-def _update_eager_global_vars(
-    noise_sample_kwargs: NoiseSampleKwargs, removes_subdirs: bool, config: _Config
+def _update_package_attrs(
+    config: _Config, noise_sample_kwargs: NoiseSampleKwargs, removes_subdirs: bool
 ) -> None:
-    """updates global variables"""
+    """updates package attributes"""
+
+    _update_config(config)
 
     global _noise_sample_kwargs
     global _removes_subdirs
@@ -126,14 +125,12 @@ def _update_eager_global_vars(
     _noise_sample_kwargs = noise_sample_kwargs
     _removes_subdirs = removes_subdirs
 
-    _update_config(config)
-
 
 #############################################################################
 #######                    CONFIGURATION FUNCTIONS                    #######
 #############################################################################
 def _update_config(config: _Config) -> None:
-    """updates configuration globally in the current python interpreter process
+    """updates configuration in the current python interpreter process
     this is to copy configuration into child processes when using multiprocessing"""
 
     global _config
