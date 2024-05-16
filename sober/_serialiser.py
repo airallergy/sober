@@ -8,12 +8,19 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast, overload
 
 import tomlkit as toml
+from tomlkit.items import AoT, Array, Table
+
+from sober.input import _Modifier
+from sober.output import _Collector
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from typing import Literal, Protocol, TypeAlias, TypedDict, TypeGuard
 
-    from tomlkit.items import Array, String, Table
+    from tomlkit.items import String
+
+    from sober._typing import AnyModifierValue
+    from sober.input import _IntegralModifier, _RealModifier
 
     class _SupportsSlots(Protocol):
         __slots__: tuple[str, ...] = ()
@@ -138,14 +145,32 @@ def _init_attr_map(cls: type) -> _InitAttrMap:
 def _toml_encoder(value: Path) -> String: ...
 @overload
 def _toml_encoder(value: frozenset[object]) -> Array: ...
+@overload
+def _toml_encoder(
+    value: _RealModifier | _IntegralModifier[AnyModifierValue] | _Collector,
+) -> Table: ...
 @toml.register_encoder
-def _toml_encoder(value: Path | frozenset[object]) -> String | Array:
+def _toml_encoder(
+    value: Path
+    | frozenset[object]
+    | _RealModifier
+    | _IntegralModifier[AnyModifierValue]
+    | _Collector,
+) -> String | Array | Table:
     if isinstance(value, Path):
         return toml.item(os.fsdecode(value))
     elif isinstance(value, frozenset):
         return toml.item(tuple(value))
+    elif isinstance(value, _Modifier | _Collector):
+        table = toml.table()
+
+        cls = type(value)
+        table.add("class", (cls.__module__, cls.__qualname__))
+        table.update(_to_toml_table(value))
+
+        return table
     else:
-        return toml.item(str(value))
+        return toml.item(str(value))  # TODO: delete
         raise TypeError  # tomlkit handles this exception
 
 
@@ -164,7 +189,23 @@ def _to_toml_table(obj: object) -> Table:
         table.add(name.removeprefix("_"), item)
 
     for name in init_attr_map["_GETATTR_NAMES"]:
-        getattr_table = _to_toml_table(getattr(obj, name))
-        table.update(getattr_table)
+        getattr_obj = getattr(obj, name)
+        getattr_table = _to_toml_table(getattr_obj)
+
+        # below handles modifiers and collectors as AoT
+        # which are not handled properly as their sequence is parsed before them
+        # such that tomlkit is not aware they are tables beforehand
+        for getattr_key, getattr_value in getattr_table.items():
+            is_array = isinstance(getattr_value, Array)
+
+            if is_array and all(isinstance(item, Table) for item in getattr_value):
+                # sequence of modifiers or collectors
+                table.add(getattr_key, AoT(getattr_value))
+            elif is_array and any(isinstance(item, Table) for item in getattr_value):
+                # should never go in here
+                raise TypeError
+            else:
+                # others
+                table.add(getattr_key, getattr_value)
 
     return table
