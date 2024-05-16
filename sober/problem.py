@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-import functools as ft
 from typing import TYPE_CHECKING, overload
 
-import sober._evolver_pymoo as pm
-import sober.config as cf
 from sober._evolver import _PymooEvolver
 from sober._io_managers import _InputManager, _OutputManager
 from sober._multiplier import _CartesianMultiplier, _ElementwiseMultiplier
 from sober._tools import _parsed_path
-from sober.output import RVICollector, ScriptCollector, _Collector
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Iterable
     from pathlib import Path
-    from typing import Concatenate, Literal, ParamSpec, TypeVar
+    from typing import Literal
 
+    import sober._evolver_pymoo as pm
     from sober._typing import (
         AnyModelModifier,
         AnyReferenceDirections,
@@ -24,35 +21,12 @@ if TYPE_CHECKING:
         NoiseSampleKwargs,
     )
     from sober.input import WeatherModifier
-
-    _P = ParamSpec("_P")
-    _R_co = TypeVar("_R_co", covariant=True)
+    from sober.output import _Collector
 
 
 #############################################################################
 #######                         PROBLEM CLASS                         #######
 #############################################################################
-def _pre_run_hook(
-    func: Callable[Concatenate[Problem, _P], _R_co],
-) -> Callable[Concatenate[Problem, _P], _R_co]:
-    @ft.wraps(func)
-    def wrapper(self: Problem, /, *args: _P.args, **kwargs: _P.kwargs) -> _R_co:
-        # check config
-        cf._check_config(
-            self._input_manager._model_type,
-            self._input_manager._has_templates,
-            any(isinstance(item, RVICollector) for item in self._output_manager),
-            {
-                item._script_language
-                for item in self._output_manager
-                if isinstance(item, ScriptCollector)
-            },
-        )
-        return func(self, *args, **kwargs)
-
-    return wrapper
-
-
 class Problem:
     """defines the parametrics/optimisation problem"""
 
@@ -150,7 +124,6 @@ class Problem:
         self._input_manager._prepare(self._model_file)
         self._output_manager._prepare(self._config_dir, self._input_manager._has_noises)
 
-    @_pre_run_hook
     def run_random(
         self, size: int, /, *, mode: AnySampleMode = "auto", seed: int | None = None
     ) -> None:
@@ -164,19 +137,16 @@ class Problem:
         else:
             self._cartesian._random(size, seed)
 
-    @_pre_run_hook
     def run_latin_hypercube(self, size: int, /, *, seed: int | None = None) -> None:
         """runs parametrics via a latin hypercube sample"""
 
         self._elementwise._latin_hypercube(size, seed)
 
-    @_pre_run_hook
     def run_exhaustive(self) -> None:
         """runs parametrics via the exhaustive sample"""
 
         self._cartesian._exhaustive()
 
-    @_pre_run_hook
     def run_nsga2(
         self,
         population_size: int,
@@ -203,7 +173,6 @@ class Problem:
             seed,
         )
 
-    @_pre_run_hook
     def run_nsga3(
         self,
         population_size: int,

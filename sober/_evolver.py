@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING
 import sober._evolver_pymoo as pm
 import sober.config as cf
 from sober._logger import _log, _LoggerManager
-from sober._tools import _parsed_path, _write_records
+from sober._tools import _parsed_path, _pre_evaluation_hook, _write_records
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import Literal
+    from typing import Final, Literal
 
     from sober._io_managers import _InputManager, _OutputManager
     from sober._typing import AnyReferenceDirections, AnyStrPath
@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 #############################################################################
 class _Evolver(ABC):
     """an abstract base class for evolvers"""
+
+    _HAS_BATCHES: Final = True
 
     __slots__ = ("_input_manager", "_output_manager", "_evaluation_dir")
 
@@ -48,8 +50,6 @@ class _Evolver(ABC):
 
     def _prepare(self) -> None:
         self._check_args()
-
-        cf._has_batches = True
 
 
 #############################################################################
@@ -131,6 +131,7 @@ class _PymooEvolver(_Evolver):
             record_dir / cf._RECORDS_FILENAMES[level], header_row, *record_rows
         )
 
+    @_pre_evaluation_hook
     @_LoggerManager(is_first=True)
     def _evolve_epoch(
         self,
@@ -303,7 +304,6 @@ class _PymooEvolver(_Evolver):
 
         # set config
         cf._set_config(config)
-        self._prepare()  # mainly to set cf._has_batches
 
         # update termination first if specified
         if termination:

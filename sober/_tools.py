@@ -18,13 +18,34 @@ from sober._logger import _log
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
     from queue import SimpleQueue
-    from typing import Any, Final, Self, TypeAlias, TypeVar, TypeVarTuple
+    from typing import (
+        Any,
+        Concatenate,
+        Final,
+        ParamSpec,
+        Protocol,
+        Self,
+        TypeAlias,
+        TypeVar,
+        TypeVarTuple,
+    )
 
+    from sober._io_managers import _InputManager, _OutputManager
     from sober._typing import AnyCmdArgs, AnyStrPath
 
     _InitArgs = TypeVarTuple("_InitArgs")
     _T_contra = TypeVar("_T_contra", contravariant=True)
+    _P = ParamSpec("_P")
     _R_co = TypeVar("_R_co", covariant=True)
+
+    class _Analyser(Protocol):
+        @property
+        def _HAS_BATCHES(self) -> bool: ...  # noqa: N802  # python/typing#922
+
+        _input_manager: _InputManager
+        _output_manager: _OutputManager
+
+    _A = TypeVar("_A", bound=_Analyser)
 
     # [1] quite a few mypy complaints due to typeshed,
     #     stemmed from the implementation of starmap/starimap
@@ -124,6 +145,25 @@ def _parsed_path(path: AnyStrPath, who: str = "") -> Path:
         raise FileNotFoundError(f"{who} not found: '{path}'.")
 
     return path
+
+
+def _pre_evaluation_hook(
+    func: Callable[Concatenate[_A, _P], _R_co],
+) -> Callable[Concatenate[_A, _P], _R_co]:
+    @ft.wraps(func)
+    def wrapper(obj: _A, /, *args: _P.args, **kwargs: _P.kwargs) -> _R_co:
+        # check config
+        cf._has_batches = obj._HAS_BATCHES
+
+        cf._check_config(
+            obj._input_manager._model_type,
+            obj._input_manager._has_templates,
+            obj._output_manager._has_rvis,
+            obj._output_manager._languages,
+        )
+        return func(obj, *args, **kwargs)
+
+    return wrapper
 
 
 #############################################################################

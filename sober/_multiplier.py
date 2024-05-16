@@ -11,15 +11,15 @@ from typing import TYPE_CHECKING, Generic, TypeVar, cast
 import numpy as np
 import scipy.stats.qmc
 
-import sober.config as cf
 from sober._evaluator import _evaluate
+from sober._tools import _pre_evaluation_hook
 from sober._typing import AnyModifierValue
 from sober.input import _IntegralModifier
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Any, TypeGuard
+    from typing import Any, Final, TypeGuard
 
     from sober._io_managers import _InputManager, _OutputManager
 
@@ -46,6 +46,8 @@ def each_tuple_is_non_empty_and_starts_with_int(
 #############################################################################
 class _Multiplier(ABC):
     """an abstract base class for multipliers"""
+
+    _HAS_BATCHES: Final = False
 
     __slots__ = ("_input_manager", "_output_manager", "_evaluation_dir")
 
@@ -74,8 +76,7 @@ class _Multiplier(ABC):
     def _prepare(self) -> None:
         self._check_args()
 
-        cf._has_batches = False
-
+    @_pre_evaluation_hook
     def _evaluate(self, *ctrl_key_vecs: tuple[float, ...]) -> None:
         if each_tuple_is_non_empty_and_starts_with_int(ctrl_key_vecs):
             batch = _evaluate(
