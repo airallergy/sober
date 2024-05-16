@@ -64,6 +64,9 @@ if TYPE_CHECKING:
     _AnyAddedTOMLValue: TypeAlias = String | Array | Table
 
 
+#############################################################################
+#######                      ATTR GLOB FUNCTIONS                      #######
+#############################################################################
 def _all_sober_classes(classes: list[type]) -> TypeGuard[list[_SupportsSober]]:
     return all(cls.__module__.split(".")[0] == "sober" for cls in classes)
 
@@ -165,6 +168,9 @@ def _init_attr_map(cls: type) -> _InitAttrMap:
     }
 
 
+#############################################################################
+#######                    TOMLIFICATION FUNCTIONS                    #######
+#############################################################################
 @overload
 def _toml_encoder(value: Path) -> String: ...
 @overload
