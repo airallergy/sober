@@ -18,7 +18,7 @@ psutil = "^5.9.5"
 mypy = "^1.10"
 pytest = "^8.2.0"
 pytest-cov = "^5.0.0"
-ruff = "^0.4"
+ruff = "^0.4.4"
 
 [build-system]
 requires = ["poetry-core"]
@@ -59,6 +59,7 @@ select = [
 extend-select = ["RUF022"] # explicit preview rules
 # consider removing:
 #   - E501: long line
+#   - PLR0912: too many branches
 #   - PLR2004: magic number
 #   - PLW0603: use global
 #   - TRY003: long raise message
@@ -66,6 +67,7 @@ ignore = [
     "E266",
     "E501",
     "E741",
+    "PLR0912",
     "PLR0913",
     "PLR2004",
     "PLW0603",
