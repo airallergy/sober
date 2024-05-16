@@ -199,7 +199,9 @@ def _to_toml_table(obj: object) -> Table:
         if isinstance(value, enum.Enum):
             value = value.name.lower()
 
-        value_ = toml.item(value)
+        # NOTE: _parent=toml.array() tricks tomlkit to convert all dicts to inline tables
+        #       which does not seem to pose any side effect yet
+        value_ = toml.item(value, _parent=toml.array())
         table.add(name.removeprefix("_"), value_)
 
     for name in init_attr_map["_GETATTR_NAMES"]:
@@ -212,7 +214,6 @@ def _to_toml_table(obj: object) -> Table:
         for getattr_key, getattr_value in getattr_table.items():
             value = getattr(getattr_obj, "_" + getattr_key)
             is_array = isinstance(getattr_value, Array)
-            is_table = isinstance(getattr_value, Table)
 
             if is_array and all(
                 isinstance(item, _Modifier | _Collector) for item in value
@@ -224,11 +225,6 @@ def _to_toml_table(obj: object) -> Table:
             ):
                 # should never go in here
                 raise TypeError
-            elif is_table and not isinstance(value, _Modifier | _Collector):
-                # non-io objects converted to InlineTable
-                inline_table = toml.inline_table()
-                inline_table.update(getattr_value)
-                table.add(getattr_key, inline_table)
             else:
                 # others
                 table.add(getattr_key, getattr_value)
