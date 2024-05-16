@@ -35,7 +35,7 @@ from sober.input import (
     _RealModifier,
     _TextTagger,
 )
-from sober.output import RVICollector, _Collector, _CopyCollector
+from sober.output import RVICollector, ScriptCollector, _Collector, _CopyCollector
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
@@ -47,6 +47,7 @@ if TYPE_CHECKING:
         AnyCoreLevel,
         AnyCtrlKeyVec,
         AnyJob,
+        AnyLanguage,
         AnyModelModifier,
         AnyModelModifierValue,
         AnyModelTask,
@@ -88,10 +89,6 @@ class _InputManager:
         "_noise_sample_kwargs",
         "_tagged_model",
         "_model_type",
-        "_has_ctrls",
-        "_has_noises",
-        "_has_real_ctrls",
-        "_has_real_noises",
     )
 
     _weather_input: WeatherModifier
@@ -100,10 +97,6 @@ class _InputManager:
     _noise_sample_kwargs: NoiseSampleKwargs
     _tagged_model: str
     _model_type: AnyModelType
-    _has_ctrls: bool
-    _has_noises: bool
-    _has_real_ctrls: bool
-    _has_real_noises: bool
 
     def __init__(
         self,
@@ -126,6 +119,24 @@ class _InputManager:
     def __len__(self) -> int:
         return 1 + len(self._model_inputs)
 
+    @property
+    def _has_ctrls(self) -> bool:
+        return any(input._is_ctrl for input in self)
+
+    @property
+    def _has_noises(self) -> bool:
+        return any(input._is_noise for input in self)
+
+    @property
+    def _has_real_ctrls(self) -> bool:
+        return any(isinstance(input, _RealModifier) for input in self if input._is_ctrl)
+
+    @property
+    def _has_real_noises(self) -> bool:
+        return any(
+            isinstance(input, _RealModifier) for input in self if input._is_noise
+        )
+
     def _prepare(self, model_file: Path) -> None:
         # check model type
         suffix = model_file.suffix
@@ -134,16 +145,6 @@ class _InputManager:
         self._model_type = suffix  # type: ignore[assignment] # python/mypy#12535
 
         self._tagged_model = self._tagged(model_file)
-
-        self._has_ctrls = any(input._is_ctrl for input in self)
-        self._has_noises = any(input._is_noise for input in self)
-
-        self._has_real_ctrls = any(
-            isinstance(input, _RealModifier) for input in self if input._is_ctrl
-        )
-        self._has_real_noises = any(
-            isinstance(input, _RealModifier) for input in self if input._is_noise
-        )
 
         # assign index and label to each input
         has_names = any(input._name for input in self)
@@ -478,6 +479,18 @@ class _OutputManager:
 
     def __len__(self) -> int:
         return len(self._task_outputs) + len(self._job_outputs)
+
+    @property
+    def _has_rvis(self) -> bool:
+        return any(isinstance(output, RVICollector) for output in self)
+
+    @property
+    def _languages(self) -> frozenset[AnyLanguage]:
+        return frozenset(
+            output._script_language
+            for output in self
+            if isinstance(output, ScriptCollector)
+        )
 
     def _prepare(self, config_dir: Path, has_noises: bool) -> None:
         # add copy collectors if no noise

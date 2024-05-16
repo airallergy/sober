@@ -80,8 +80,8 @@ def _set_config(config: _Config) -> None:
 def _check_config(
     model_type: AnyModelType,
     has_templates: bool,
-    uses_rvi: bool,
-    languages: set[AnyLanguage],
+    has_rvis: bool,
+    languages: frozenset[AnyLanguage],
 ) -> None:
     """checks the configuration sufficiency"""
 
@@ -98,7 +98,7 @@ def _check_config(
             f"HVAC templates are used, but the expandobjects executable is not configured: {_config}."
         )
 
-    if uses_rvi and ("exec_readvars" not in _config):
+    if has_rvis and ("exec_readvars" not in _config):
         raise ValueError(
             f"an RVICollector is used, but the readvars executable is not configured: {_config}."
         )
