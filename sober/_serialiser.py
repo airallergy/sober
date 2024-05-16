@@ -210,14 +210,25 @@ def _to_toml_table(obj: object) -> Table:
         # which are not handled properly as their sequence is parsed before them
         # such that tomlkit is not aware they are tables beforehand
         for getattr_key, getattr_value in getattr_table.items():
+            value = getattr(getattr_obj, "_" + getattr_key)
             is_array = isinstance(getattr_value, Array)
+            is_table = isinstance(getattr_value, Table)
 
-            if is_array and all(isinstance(item, Table) for item in getattr_value):
-                # sequence of modifiers or collectors
+            if is_array and all(
+                isinstance(item, _Modifier | _Collector) for item in value
+            ):
+                # sequence of io objects converted to AoT
                 table.add(getattr_key, AoT(getattr_value))
-            elif is_array and any(isinstance(item, Table) for item in getattr_value):
+            elif is_array and any(
+                isinstance(item, _Modifier | _Collector) for item in value
+            ):
                 # should never go in here
                 raise TypeError
+            elif is_table and not isinstance(value, _Modifier | _Collector):
+                # non-io objects converted to InlineTable
+                inline_table = toml.inline_table()
+                inline_table.update(getattr_value)
+                table.add(getattr_key, inline_table)
             else:
                 # others
                 table.add(getattr_key, getattr_value)
