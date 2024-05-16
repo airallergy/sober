@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload
 
+import tomlkit as toml
+from tomlkit.toml_file import TOMLFile
+
+import sober._evolver_pymoo as pm
+import sober.config as cf
 from sober._evolver import _PymooEvolver
 from sober._io_managers import _InputManager, _OutputManager
 from sober._multiplier import _CartesianMultiplier, _ElementwiseMultiplier
@@ -126,6 +131,20 @@ class Problem:
         # prepare io managers
         self._input_manager._prepare(self._model_file)
         self._output_manager._prepare(self._config_dir, self._input_manager._has_noises)
+
+    def _to_toml(self) -> toml.TOMLDocument:
+        doc = toml.document()
+
+        doc.update(cf._to_toml())
+
+        return doc
+
+    def dump(self, file: AnyStrPath) -> None:
+        """dumps the problem to a toml file"""
+
+        doc = self._to_toml()
+
+        TOMLFile(file).write(doc)
 
     def run_random(
         self, size: int, /, *, mode: AnySampleMode = "auto", seed: int | None = None

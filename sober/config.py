@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, overload
 
 import psutil
+import tomlkit as toml
 
 from sober._tools import _parsed_path
 
@@ -64,6 +65,18 @@ def __getattr__(  # type: ignore[misc]  # python/mypy#8203
             return _config
         case _:
             raise AttributeError(f"module '{__name__}' has no attribute '{name}'.")
+
+
+def _to_toml() -> toml.TOMLDocument:
+    """tomlifies config"""
+
+    doc = toml.document()
+
+    table = toml.table()
+    table.update(_config)
+    doc.add("config", table)
+
+    return doc
 
 
 #############################################################################
