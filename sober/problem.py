@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload
 
+import tomlkit as toml
 from tomlkit.toml_file import TOMLFile
 
 import sober._evolver_pymoo as pm
@@ -135,8 +136,11 @@ class Problem:
     def to_toml(self, file: AnyStrPath) -> None:
         """serialises the problem to a toml file"""
 
-        # init the toml document from config
-        document = cf._to_toml_document()
+        # init the toml document
+        document = toml.document()
+
+        # append the config table
+        document.add("config", toml.item(dict(cf._config)))
 
         # append the problem table
         document.add("problem", _to_toml_table(self))
@@ -152,11 +156,12 @@ class Problem:
         document = TOMLFile(file).read()
 
         # deserialise config
-        cf._from_toml_document(document)
+        cf._set_config(document.pop("config").unwrap())
 
-        # get args and kwargs
+        # get problem args & kwargs
         args, kwargs = _from_toml_table(cls, document.pop("problem"))
 
+        # deserialise problem
         return cls(*args, **kwargs)
 
     def run_random(
