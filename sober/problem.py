@@ -10,13 +10,13 @@ import sober.config as cf
 from sober._evolver import _PymooEvolver
 from sober._io_managers import _InputManager, _OutputManager
 from sober._multiplier import _CartesianMultiplier, _ElementwiseMultiplier
-from sober._serialiser import _to_toml_table
+from sober._serialiser import _from_toml_table, _to_toml_table
 from sober._tools import _parsed_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import ClassVar, Literal
+    from typing import ClassVar, Literal, Self
 
     import sober._evolver_pymoo as pm
     from sober._typing import (
@@ -136,11 +136,31 @@ class Problem:
     def to_toml(self, file: AnyStrPath) -> None:
         """serialises the problem to a toml file"""
 
+        # init the toml document from config
         document = cf._to_toml_document()
 
+        # append the problem table
         document.add(inflection.underscore(type(self).__name__), _to_toml_table(self))
 
+        # write the toml document to the file
         TOMLFile(file).write(document)
+
+    @classmethod
+    def from_toml(cls, file: AnyStrPath) -> Self:
+        """deserialises the problem from a toml file"""
+
+        # read the toml document from the file
+        document = TOMLFile(file).read()
+
+        # deserialise config
+        cf._from_toml_document(document)
+
+        # get args and kwargs
+        args, kwargs = _from_toml_table(
+            cls, document.pop(inflection.underscore(cls.__name__))
+        )
+
+        return cls(*args, **kwargs)
 
     def run_random(
         self, size: int, /, *, mode: AnySampleMode = "auto", seed: int | None = None

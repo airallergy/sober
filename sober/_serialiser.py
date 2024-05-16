@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import abc
 import enum
+import importlib
+import inspect
 import itertools as it
 import os
+import sys
 import typing
 from pathlib import Path
 from typing import TYPE_CHECKING, cast, overload
@@ -16,9 +19,9 @@ from sober.output import _Collector
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from typing import Literal, Protocol, TypeAlias, TypedDict, TypeGuard
+    from typing import Any, Literal, Protocol, TypeAlias, TypedDict, TypeGuard
 
-    from tomlkit.items import String
+    from tomlkit.items import Item, String
 
     from sober._typing import AnyModifier, AnyTagger, SupportsPPF
 
@@ -220,3 +223,71 @@ def _to_toml_table(obj: object) -> Table:
                 table.add(getattr_key, getattr_value)
 
     return table
+
+
+@overload
+def _toml_decoder(value_: bool) -> bool: ...
+@overload
+def _toml_decoder(value_: Table) -> AnyTagger | AnyModifier | _Collector: ...
+@overload
+def _toml_decoder(value_: AoT) -> tuple[AnyModifier | _Collector, ...]: ...
+def _toml_decoder(value_: bool | Item) -> object:
+    if isinstance(value_, bool):
+        return value_
+    elif isinstance(value_, Table) and ("class" in value_):
+        module_name, cls_name = value_.pop("class")
+        module = importlib.import_module(module_name)
+        cls = getattr(module, cls_name)
+        assert issubclass(cls, _Tagger | _Modifier | _Collector)
+
+        args, kwargs = _from_toml_table(cls, value_)
+        return cls(*args, **kwargs)
+    elif isinstance(value_, AoT) and all("class" in item for item in value_):
+        return tuple(_toml_decoder(item) for item in value_)
+    elif isinstance(value_, AoT) and any("class" in item for item in value_):
+        raise TypeError
+    else:
+        return value_.unwrap()
+
+
+def _from_toml_table(cls: type, table: Table) -> tuple[tuple[Any, ...], dict[str, Any]]:
+    init_attr_map = _init_attr_map(cls)
+
+    args: tuple[Any, ...] = ()
+    kwargs: dict[str, Any] = {}
+
+    for name in it.chain(
+        init_attr_map["_ARG_NAMES"],
+        init_attr_map["_STAR_ARG_NAMES"],
+        init_attr_map["_KWARG_NAMES"],
+    ):
+        key = name.removeprefix("_")
+        value_ = table.pop(key)
+
+        if key == "distribution":
+            # TODO: implement this after scipy/scipy#15928
+            continue
+
+        value = _toml_decoder(value_)
+
+        if name in init_attr_map["_ARG_NAMES"]:
+            args += (value,)
+        elif name in init_attr_map["_STAR_ARG_NAMES"]:
+            args += tuple(value)
+        else:
+            kwargs[key] = value
+
+    for name in init_attr_map["_GETATTR_NAMES"]:
+        # prepare for eval
+        getattr_cls_name = inspect.get_annotations(cls)[name]
+        getattr_cls_globals = sys.modules[cls.__module__].__dict__
+
+        # get cls via eval
+        getattr_cls = eval(getattr_cls_name, getattr_cls_globals)
+        assert isinstance(getattr_cls, type)
+
+        getattr_args, getattr_kwargs = _from_toml_table(getattr_cls, table)
+        args += getattr_args
+        kwargs |= getattr_kwargs
+
+    return args, kwargs

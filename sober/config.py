@@ -79,6 +79,12 @@ def _to_toml_document() -> toml.TOMLDocument:
     return document
 
 
+def _from_toml_document(document: toml.TOMLDocument) -> None:
+    """detomlifies global variables"""
+
+    _set_config(document.pop("config").unwrap())
+
+
 #############################################################################
 #######                    CONFIGURATION FUNCTIONS                    #######
 #############################################################################
