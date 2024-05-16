@@ -192,7 +192,7 @@ def _toml_encoder(value: _AnyAddedPythonValue) -> _AnyAddedTOMLValue:
         table = toml.table()
 
         cls = type(value)
-        table.add("class", (cls.__module__, cls.__qualname__))
+        table.add("class", cls.__name__)
         table.update(_to_toml_table(value))
 
         return table
@@ -294,8 +294,8 @@ def _from_toml_value(
         # tomlkit seems to convert Boolean to bool directly
         return value_
     elif isinstance(value_, Table) and ("class" in value_):
-        module_name, cls_name = value_.pop("class")
-        module = importlib.import_module(module_name)
+        cls_name = value_.pop("class")
+        module = importlib.import_module("sober")
         cls = getattr(module, cls_name)
         assert issubclass(cls, _Tagger | _Modifier | _Collector)
 
