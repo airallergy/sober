@@ -18,10 +18,10 @@ from sober.input import _Modifier, _Tagger
 from sober.output import _Collector
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
     from typing import Any, Literal, Protocol, TypeAlias, TypedDict, TypeGuard
 
-    from tomlkit.items import Item, String
+    from tomlkit.items import Bool, Float, InlineTable, Integer, String
 
     from sober._typing import AnyModifier, AnyTagger, SupportsPPF
 
@@ -41,6 +41,27 @@ if TYPE_CHECKING:
     _AnyInitAttrKey: TypeAlias = Literal[
         _AnyCoreInitAttrKey, "_STAR_ARG_NAMES", "_GETATTR_NAMES"
     ]
+
+    # incomplete python-toml value type pairs used in sober
+    ## pairs that use the tomlkit native encodeer
+    _AnyNativeNonTupleIOValue: TypeAlias = (
+        Sequence[object] | bool | int | float | str | dict[str, object]
+    )
+    _AnyNativeNonAoTValue: TypeAlias = (
+        Array | Bool | Integer | Float | String | InlineTable
+    )
+    ### AoT is handled elsewhere
+    ### here is to exclude Sequence[dict[str, object]] from Sequence[object]
+    ### as per overload order
+    _AnyNativePythonValue: TypeAlias = (
+        Sequence[dict[str, object]] | _AnyNativeNonTupleIOValue
+    )
+    _AnyNativeTOMLValue: TypeAlias = AoT | _AnyNativeNonAoTValue
+    ## pairs that use the added encodeer
+    _AnyAddedPythonValue: TypeAlias = (
+        Path | frozenset[object] | AnyModifier | _Collector | AnyTagger | SupportsPPF
+    )
+    _AnyAddedTOMLValue: TypeAlias = String | Array | Table
 
 
 def _all_sober_classes(classes: list[type]) -> TypeGuard[list[_SupportsSober]]:
@@ -153,14 +174,7 @@ def _toml_encoder(value: AnyTagger | AnyModifier | _Collector) -> Table: ...
 @overload
 def _toml_encoder(value: SupportsPPF) -> Array: ...
 @toml.register_encoder
-def _toml_encoder(
-    value: Path
-    | frozenset[object]
-    | AnyModifier
-    | _Collector
-    | AnyTagger
-    | SupportsPPF,
-) -> String | Array | Table:
+def _toml_encoder(value: _AnyAddedPythonValue) -> _AnyAddedTOMLValue:
     if isinstance(value, Path):
         return toml.item(os.fsdecode(value))
     elif isinstance(value, frozenset):
@@ -183,6 +197,31 @@ def _toml_encoder(
         raise TypeError  # tomlkit handles this exception
 
 
+@overload
+def _to_toml_value(value: enum.Enum) -> String: ...
+@overload
+def _to_toml_value(value: dict[str, object]) -> InlineTable: ...
+@overload
+def _to_toml_value(value: _AnyNativePythonValue) -> _AnyNativeTOMLValue: ...
+@overload
+def _to_toml_value(value: _AnyAddedPythonValue) -> _AnyAddedTOMLValue: ...
+def _to_toml_value(
+    value: enum.Enum | dict[str, object] | _AnyNativePythonValue | _AnyAddedPythonValue,
+) -> String | InlineTable | _AnyNativeTOMLValue | _AnyAddedTOMLValue:
+    hype_parent = None
+
+    if isinstance(value, enum.Enum):
+        # handle enum, as tomlkit will use its member value due to mro
+        value = value.name.lower()
+
+    if isinstance(value, dict):
+        # NOTE: _parent=toml.array() tricks tomlkit to convert all dicts to inline tables
+        #       which does not seem to pose any side effect yet
+        hype_parent = toml.array()
+
+    return toml.item(value, _parent=hype_parent)  # type: ignore[arg-type]  # python-poetry/tomlkit#326
+
+
 def _to_toml_table(obj: object) -> Table:
     init_attr_map = _init_attr_map(type(obj))
 
@@ -195,13 +234,8 @@ def _to_toml_table(obj: object) -> Table:
     ):
         value = getattr(obj, name)
 
-        # handle enum, as tomlkit will use its value due to mro
-        if isinstance(value, enum.Enum):
-            value = value.name.lower()
+        value_ = _to_toml_value(value)
 
-        # NOTE: _parent=toml.array() tricks tomlkit to convert all dicts to inline tables
-        #       which does not seem to pose any side effect yet
-        value_ = toml.item(value, _parent=toml.array())
         table.add(name.removeprefix("_"), value_)
 
     for name in init_attr_map["_GETATTR_NAMES"]:
@@ -233,13 +267,25 @@ def _to_toml_table(obj: object) -> Table:
 
 
 @overload
-def _toml_decoder(value_: bool) -> bool: ...
+def _from_toml_value(value_: bool) -> bool: ...
 @overload
-def _toml_decoder(value_: Table) -> AnyTagger | AnyModifier | _Collector: ...
+def _from_toml_value(value_: Table) -> AnyTagger | AnyModifier | _Collector: ...
 @overload
-def _toml_decoder(value_: AoT) -> tuple[AnyModifier | _Collector, ...]: ...
-def _toml_decoder(value_: bool | Item) -> object:
+def _from_toml_value(value_: AoT) -> tuple[AnyModifier | _Collector, ...]: ...
+@overload
+def _from_toml_value(value_: _AnyNativeNonAoTValue) -> _AnyNativeNonTupleIOValue: ...
+def _from_toml_value(
+    value_: bool | Table | AoT | _AnyNativeNonAoTValue,
+) -> (
+    bool
+    | AnyTagger
+    | AnyModifier
+    | _Collector
+    | tuple[AnyModifier | _Collector, ...]
+    | _AnyNativeNonTupleIOValue
+):
     if isinstance(value_, bool):
+        # tomlkit seems to convert Boolean to bool directly
         return value_
     elif isinstance(value_, Table) and ("class" in value_):
         module_name, cls_name = value_.pop("class")
@@ -248,9 +294,9 @@ def _toml_decoder(value_: bool | Item) -> object:
         assert issubclass(cls, _Tagger | _Modifier | _Collector)
 
         args, kwargs = _from_toml_table(cls, value_)
-        return cls(*args, **kwargs)
+        return cls(*args, **kwargs)  # type: ignore[no-any-return]
     elif isinstance(value_, AoT) and all("class" in item for item in value_):
-        return tuple(_toml_decoder(item) for item in value_)
+        return tuple(_from_toml_value(item) for item in value_)
     elif isinstance(value_, AoT) and any("class" in item for item in value_):
         raise TypeError
     else:
@@ -275,7 +321,7 @@ def _from_toml_table(cls: type, table: Table) -> tuple[tuple[Any, ...], dict[str
             # TODO: implement this after scipy/scipy#15928
             continue
 
-        value = _toml_decoder(value_)
+        value = _from_toml_value(value_)
 
         if name in init_attr_map["_ARG_NAMES"]:
             args += (value,)
