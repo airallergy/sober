@@ -31,7 +31,7 @@ _T = TypeVar("_T")
 #############################################################################
 
 
-def each_tuple_is_non_empty_and_starts_with_int(
+def _each_tuple_is_non_empty_and_starts_with_int(
     args: tuple[tuple[_T, ...], ...],
 ) -> TypeGuard[tuple[tuple[int, *tuple[_T, ...]], ...]]:
     # python/mypy#3497
@@ -78,7 +78,7 @@ class _Multiplier(ABC):
 
     @_pre_evaluation_hook
     def _evaluate(self, *ctrl_key_vecs: tuple[float, ...]) -> None:
-        if each_tuple_is_non_empty_and_starts_with_int(ctrl_key_vecs):
+        if _each_tuple_is_non_empty_and_starts_with_int(ctrl_key_vecs):
             batch = _evaluate(
                 *ctrl_key_vecs,
                 input_manager=self._input_manager,

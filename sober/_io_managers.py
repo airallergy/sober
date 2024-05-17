@@ -62,7 +62,7 @@ if TYPE_CHECKING:
     _AnyBatchOutputs: TypeAlias = tuple[tuple[float, ...], ...]
 
 
-def each_job_is_non_empty_and_starts_with_path(
+def _each_job_is_non_empty_and_starts_with_path(
     args: tuple[tuple[str, tuple[AnyModelModifierValue | AnyModifierValue, ...]], ...],
 ) -> TypeGuard[tuple[tuple[str, tuple[Path, *tuple[AnyModelModifierValue, ...]]], ...]]:
     # a first-item-being-Path issue
@@ -299,7 +299,7 @@ class _InputManager:
             for i, task in enumerate(aligned)
         )
 
-        if each_job_is_non_empty_and_starts_with_path(job):
+        if _each_job_is_non_empty_and_starts_with_path(job):
             return job
         else:
             # impossible, there is at least the weather modifer
