@@ -150,11 +150,7 @@ class _InputManager:
         has_names = any(input._name for input in self)
         for i, input in enumerate(self):
             input._index = i
-
-            if isinstance(input, WeatherModifier):
-                input._label = "W"  # P0
-            else:
-                input._label = f"P{input._index}"
+            input._label = f"I{input._index}"
 
             if has_names:
                 if not input._name:
