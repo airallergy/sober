@@ -342,7 +342,8 @@ def _algorithm(
             **_operators(algorithm_name, p_crossover, p_mutation, sampling),
         )
     else:
-        assert reference_directions
+        if TYPE_CHECKING:
+            assert reference_directions is not None
 
         return NSGA3(
             reference_directions,
