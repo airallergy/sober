@@ -10,7 +10,7 @@ readme = "README.md"
 python = "^3.12"
 pymoo = "^0.6.1"
 eppy = "^0.5.63"
-numpy = "^1.23"
+numpy = "^2.0"
 scipy = "^1.12"
 psutil = "^5.9.5"
 

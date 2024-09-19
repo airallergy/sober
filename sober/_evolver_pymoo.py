@@ -234,9 +234,9 @@ class _Problem(Problem):  # type: ignore[misc]  # pymoo
         objectives = self._output_manager._recorded_objectives(batch_dir)
         constraints = self._output_manager._recorded_constraints(batch_dir)
 
-        out["F"] = np.asarray(objectives, dtype=np.float_)
+        out["F"] = np.asarray(objectives, dtype=float)
         if self._output_manager._constraints:
-            out["G"] = np.asarray(constraints, dtype=np.float_)
+            out["G"] = np.asarray(constraints, dtype=float)
 
         _log(self._evaluation_dir, f"evaluated {batch_uid}")
 
