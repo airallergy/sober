@@ -53,7 +53,7 @@ def _logger_identifier(cwd: Path) -> str:
 class _Filter(logging.Filter):
     """indents stdout/stderr before formatting"""
 
-    def filter(self, record: logging.LogRecord) -> bool:
+    def filter(self, record: logging.LogRecord) -> bool | logging.LogRecord:
         if record.levelno == logging.DEBUG:
             # indent each line and remove the last \n if present
             record.msg = "\t" + "\n\t".join(record.msg.splitlines())
