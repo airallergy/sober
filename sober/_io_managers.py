@@ -286,7 +286,7 @@ class _InputManager:
             (
                 f"T{i:0{i_task_width}}",
                 tuple(
-                    input(item, *(aligned[i][j] for j in input._input_indices))
+                    input(item, *(task[j] for j in input._input_indices))
                     if isinstance(input, FunctionalModifier)
                     else item
                     for input, item in zip(self, task, strict=True)
