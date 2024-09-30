@@ -14,7 +14,7 @@ from sober._typing import AnyModelModifierValue, AnyModifierValue
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
-    from typing import Concatenate, Self, TypeAlias
+    from typing import Concatenate, Self
 
     from eppy.bunch_subclass import EpBunch
 
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     # NOTE: ... implies accepting args and kwargs, but only kwargs are accepted
     #       could be corrected using Protocol, but why bother
     # TODO: consider resticting at least one previous output
-    _AnyFunc: TypeAlias = Callable[
+    type _AnyFunc = Callable[
         Concatenate[Iterable[AnyModifierValue], ...], AnyModelModifierValue
     ]
 

@@ -11,11 +11,11 @@ python = "^3.12"
 pymoo = "^0.6.1"
 eppy = "^0.5.63"
 numpy = "^2.0"
-scipy = "^1.12"
+scipy = "^1.13"
 psutil = "^5.9.5"
 
 [tool.poetry.group.dev.dependencies]
-mypy = "^1.10"
+mypy = "^1.11.2"
 pytest = "^8.2.0"
 pytest-cov = "^5.0.0"
 ruff = "~0.6.0"
@@ -88,7 +88,7 @@ line-ending = "lf"
 skip-magic-trailing-comma = true
 
 [tool.mypy]
-enable_incomplete_feature = ["PreciseTupleTypes"]
+enable_incomplete_feature = ["PreciseTupleTypes", "NewGenericSyntax"]
 ignore_missing_imports = true
 strict = true
 

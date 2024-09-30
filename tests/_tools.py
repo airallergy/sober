@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
-    from typing import Any, TypeAlias, TypeGuard, TypeVar
+    from typing import Any, TypeGuard, TypeVar
 
     # borrowed from typeshed
     _T = TypeVar("_T")
-    _GetObjsPredicateTypeGuard: TypeAlias = Callable[[Any], TypeGuard[_T]]
-    _GetObjsReturnTypeGuard: TypeAlias = list[_T]
+    type _GetObjsPredicateTypeGuard[_T] = Callable[[Any], TypeGuard[_T]]
+    type _GetObjsReturnTypeGuard[_T] = list[_T]
 
 
 def _is_cls_or_func(obj: object) -> TypeGuard[type[Any] | FunctionType]:

@@ -16,13 +16,13 @@ from sober._tools import _parsed_path, _parsed_str_iterable, _run, _uuid
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Any, Final, Literal, TypeAlias
+    from typing import Any, Final, Literal
 
     from sober._typing import AnyCoreLevel, AnyLanguage, AnyStrPath
 
-    _AnyDirection: TypeAlias = Literal["minimise", "maximise"]
-    _AnyBounds: TypeAlias = tuple[float, float]
-    _AnyEPOutputType: TypeAlias = Literal["variable", "meter"]
+    type _AnyDirection = Literal["minimise", "maximise"]
+    type _AnyBounds = tuple[float, float]
+    type _AnyEPOutputType = Literal["variable", "meter"]
 
     # TODO: below goes to tests when made
     # assert [

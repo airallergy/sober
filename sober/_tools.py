@@ -25,7 +25,6 @@ if TYPE_CHECKING:
         ParamSpec,
         Protocol,
         Self,
-        TypeAlias,
         TypeVar,
         TypeVarTuple,
     )
@@ -254,7 +253,7 @@ class _Loop:
 
 #############################  package typing  ##############################
 # this technically belongs to _typing.py, but put here to avoid circular import
-AnyParallel: TypeAlias = _Pool | _Loop
+type AnyParallel = _Pool | _Loop
 #############################################################################
 
 

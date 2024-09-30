@@ -1,25 +1,25 @@
 from os import PathLike
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal
 
 ##############################  package typing  ##############################
 # need to remove casts etc. to resolve this block
 
 # python
-AnyStrPath: TypeAlias = str | PathLike[str]
+type AnyStrPath = str | PathLike[str]
 
 
 # input
-AnyModifierKey: TypeAlias = float | int
-AnyModelModifierValue: TypeAlias = float | str
-AnyModifierValue: TypeAlias = AnyStrPath | AnyModelModifierValue
+type AnyModifierKey = float | int
+type AnyModelModifierValue = float | str
+type AnyModifierValue = AnyStrPath | AnyModelModifierValue
 
 ## this contains hype ctrl keys only used for populating jobs
-AnyCtrlKeyVec: TypeAlias = tuple[int, *tuple[AnyModifierKey, ...]]
+type AnyCtrlKeyVec = tuple[int, *tuple[AnyModifierKey, ...]]
 
 
 # output
-AnyCoreLevel: TypeAlias = Literal["task", "job"]
-AnyLevel: TypeAlias = Literal[AnyCoreLevel, "batch", "epoch"]
+type AnyCoreLevel = Literal["task", "job"]
+type AnyLevel = Literal[AnyCoreLevel, "batch", "epoch"]
 #############################################################################
 
 
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     )
 
     # python
-    AnyCmdArgs: TypeAlias = tuple[AnyStrPath, ...]
+    type AnyCmdArgs = tuple[AnyStrPath, ...]
 
     # input
     RVV = TypeVar("RVV", np.float_, np.int_)  # AnyRandomVarValue
@@ -55,30 +55,30 @@ if TYPE_CHECKING:
         def support(self) -> tuple[RVV, RVV]: ...
         def ppf(self, q: Iterable[float]) -> NDArray[np.float_]: ...
 
-    AnyTagger: TypeAlias = _IDFTagger | _TextTagger
-    AnyModifier: TypeAlias = _RealModifier | _IntegralModifier[AnyModifierValue]
+    type AnyTagger = _IDFTagger | _TextTagger
+    type AnyModifier = _RealModifier | _IntegralModifier[AnyModifierValue]
 
     ## TODO: use Intersection after python/typing#213
-    AnyIntegralModelModifier: TypeAlias = (
+    type AnyIntegralModelModifier = (
         DiscreteModifier | CategoricalModifier | FunctionalModifier
     )
-    AnyRealModelModifier: TypeAlias = ContinuousModifier
-    AnyModelModifier: TypeAlias = AnyRealModelModifier | AnyIntegralModelModifier
+    type AnyRealModelModifier = ContinuousModifier
+    type AnyModelModifier = AnyRealModelModifier | AnyIntegralModelModifier
 
     # io managers
-    AnyModelTask: TypeAlias = tuple[AnyModelModifierValue, ...]
-    AnyTask: TypeAlias = tuple[Path, *AnyModelTask]
-    AnyTaskItem: TypeAlias = tuple[str, AnyTask]
-    AnyJob: TypeAlias = tuple[AnyTaskItem, ...]
-    AnyJobItem: TypeAlias = tuple[str, AnyJob]
-    AnyBatch: TypeAlias = tuple[AnyJobItem, ...]
+    type AnyModelTask = tuple[AnyModelModifierValue, ...]
+    type AnyTask = tuple[Path, *AnyModelTask]
+    type AnyTaskItem = tuple[str, AnyTask]
+    type AnyJob = tuple[AnyTaskItem, ...]
+    type AnyJobItem = tuple[str, AnyJob]
+    type AnyBatch = tuple[AnyJobItem, ...]
 
     # problem
-    AnySampleMode: TypeAlias = Literal["elementwise", "cartesian", "auto"]
+    type AnySampleMode = Literal["elementwise", "cartesian", "auto"]
 
     # config
-    AnyModelType: TypeAlias = Literal[".idf", ".imf"]
-    AnyLanguage: TypeAlias = Literal["python"]
+    type AnyModelType = Literal[".idf", ".imf"]
+    type AnyLanguage = Literal["python"]
 
     class ElementwiseNoiseSampleKwargs(TypedDict):
         mode: Literal["elementwise"]
@@ -95,14 +95,14 @@ if TYPE_CHECKING:
         method: NotRequired[Literal["random", "latin hypercube"]]
         seed: NotRequired[int]
 
-    NoiseSampleKwargs: TypeAlias = (
+    type NoiseSampleKwargs = (
         ElementwiseNoiseSampleKwargs
         | CartesianNoiseSampleKwargs
         | AutoNoiseSampleKwargs
     )
 
     # pymoo
-    AnyX: TypeAlias = dict[str, np.int_ | np.float_]
-    AnyF: TypeAlias = NDArray[np.float_]
-    AnyG: TypeAlias = NDArray[np.float_]
-    AnyReferenceDirections: TypeAlias = NDArray[np.float_]
+    type AnyX = dict[str, np.int_ | np.float_]
+    type AnyF = NDArray[np.float_]
+    type AnyG = NDArray[np.float_]
+    type AnyReferenceDirections = NDArray[np.float_]

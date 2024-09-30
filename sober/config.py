@@ -12,7 +12,7 @@ import psutil
 from sober._tools import _parsed_path
 
 if TYPE_CHECKING:
-    from typing import Final, Literal, TypeAlias, TypedDict
+    from typing import Final, Literal, TypedDict
 
     from sober._typing import AnyLanguage, AnyModelType, AnyStrPath
 
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
         exec_python: str
         n_processes: int
 
-    _AnyPathConfigName: TypeAlias = Literal[
+    type _AnyPathConfigName = Literal[
         "schema_energyplus",
         "exec_energyplus",
         "exec_epmacro",
@@ -38,8 +38,8 @@ if TYPE_CHECKING:
         "exec_readvars",
         "exec_python",
     ]
-    _AnyIntConfigName: TypeAlias = Literal["n_processes"]
-    _AnyConfigName: TypeAlias = Literal[_AnyPathConfigName, _AnyIntConfigName]
+    type _AnyIntConfigName = Literal["n_processes"]
+    type _AnyConfigName = Literal[_AnyPathConfigName, _AnyIntConfigName]
 
 
 _RECORDS_FILENAMES: Final[_RecordsFilenames] = {  # python/typing#1388

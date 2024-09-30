@@ -39,7 +39,7 @@ from sober.output import RVICollector, ScriptCollector, _Collector, _CopyCollect
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
-    from typing import Any, Final, TypeAlias, TypeGuard
+    from typing import Any, Final, TypeGuard
 
     from sober._tools import AnyParallel
     from sober._typing import (
@@ -57,9 +57,9 @@ if TYPE_CHECKING:
     )
     from sober.input import _Modifier
 
-    _AnyConverter: TypeAlias = Callable[[float], float]
-    _AnyUIDs: TypeAlias = tuple[str, ...]
-    _AnyBatchOutputs: TypeAlias = tuple[tuple[float, ...], ...]
+    type _AnyConverter = Callable[[float], float]
+    type _AnyUIDs = tuple[str, ...]
+    type _AnyBatchOutputs = tuple[tuple[float, ...], ...]
 
 
 def _each_job_is_non_empty_and_starts_with_path(
