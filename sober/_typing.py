@@ -46,14 +46,14 @@ if TYPE_CHECKING:
     type AnyCmdArgs = tuple[AnyStrPath, ...]
 
     # input
-    RVV = TypeVar("RVV", np.float_, np.int_)  # AnyRandomVarValue
+    RVV = TypeVar("RVV", np.float64, np.int_)  # AnyRandomVarValue
 
     class SupportsPPF(Protocol):
         # NOTE: not yet seeing a benefit differing float and int
         __slots__ = ()
 
         def support(self) -> tuple[RVV, RVV]: ...
-        def ppf(self, q: Iterable[float]) -> NDArray[np.float_]: ...
+        def ppf(self, q: Iterable[float]) -> NDArray[np.float64]: ...
 
     type AnyTagger = _IDFTagger | _TextTagger
     type AnyModifier = _RealModifier | _IntegralModifier[AnyModifierValue]
@@ -102,7 +102,7 @@ if TYPE_CHECKING:
     )
 
     # pymoo
-    type AnyX = dict[str, np.int_ | np.float_]
-    type AnyF = NDArray[np.float_]
-    type AnyG = NDArray[np.float_]
-    type AnyReferenceDirections = NDArray[np.float_]
+    type AnyX = dict[str, np.int_ | np.float64]
+    type AnyF = NDArray[np.float64]
+    type AnyG = NDArray[np.float64]
+    type AnyReferenceDirections = NDArray[np.float64]
