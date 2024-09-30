@@ -170,6 +170,12 @@ def config_energyplus(
         exec_expandobjects = root / "ExpandObjects"
         exec_readvars = root / "PostProcess" / "ReadVarsESO"
 
+        if platform.system() == "Windows":
+            exec_energyplus = exec_energyplus.with_suffix(".exe")
+            exec_epmacro = exec_epmacro.with_suffix(".exe")
+            exec_expandobjects = exec_expandobjects.with_suffix(".exe")
+            exec_readvars = exec_readvars.with_suffix(".exe")
+
     if (schema_energyplus is None) or (exec_energyplus is None):
         raise ValueError(
             "one of 'version', 'root' or 'schema_energyplus & exec_energyplus' needs to be provided."
