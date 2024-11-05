@@ -6,6 +6,3 @@ __pycache__
 .vscode
 .ipynb_checkpoints
 .coverage
-
-# do not lock dependecies for now
-poetry.lock
