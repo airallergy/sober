@@ -5,6 +5,8 @@ description = "sober optimises built environment robustly"
 authors = ["Cheng Cui <cheng.cui.95@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/airallergy/sober"
+repository = "https://github.com/airallergy/sober"
 
 [tool.poetry.dependencies]
 python = "^3.12"
