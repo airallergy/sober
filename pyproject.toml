@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sober"
-version = "0.1.0"
+version = "0.1.1"
 description = "sober optimises built environment robustly"
 authors = ["Cheng Cui <cheng.cui.95@gmail.com>"]
 license = "MIT"
