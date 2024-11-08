@@ -122,8 +122,8 @@ class _Collector(ABC):
             if (
                 (math.isnan(low) or math.isnan(high))
                 or (math.isinf(low) and math.isinf(high))
-                or (low == math.inf)
-                or (high == -math.inf)
+                or (math.isinf(low) and low > 0)
+                or (math.isinf(high) and high < 0)
                 or (low >= high)
             ):
                 raise ValueError(f"invalid constraint bounds: {self._bounds}.")
@@ -139,18 +139,16 @@ class _Collector(ABC):
 
     def _to_constraint(self, value: float) -> float:
         # convert each constraint to <= 0
-        match self._bounds:
-            case (None, float() as upper):
-                return value - upper
-            case (float() as lower, None):
-                return lower - value
-            case (float() as lower, float() as upper):
-                # lower <= value <= upper
-                # ==> - (upper - lower) / 2 <= value - (upper + lower) / 2 <= (upper - lower) / 2
-                # ==> abs(2 < value - (upper + lower) / 2) <= (upper - lower) / 2
-                return abs(value - (upper + lower) / 2) - (upper - lower) / 2
-            case _:
-                raise ValueError(f"bounds not recognised: {self._bounds}.")
+        low, high = self._bounds
+        if math.isinf(low):
+            return value - high
+        elif math.isinf(high):
+            return low - value
+        else:
+            # low <= value <= high
+            # ==> - (high - low) / 2 <= value - (high + low) / 2 <= (high - low) / 2
+            # ==> abs(2 < value - (high + low) / 2) <= (high - low) / 2
+            return abs(value - (high + low) / 2) - (high - low) / 2
 
 
 #############################################################################
