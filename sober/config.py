@@ -20,6 +20,7 @@ if TYPE_CHECKING:
         task: str
         job: str
         batch: str
+        epoch: str
 
     class _Config(TypedDict, total=False):
         schema_energyplus: str
@@ -46,6 +47,7 @@ _RECORDS_FILENAMES: Final[_RecordsFilenames] = {  # python/typing#1388
     "task": "task_records.csv",
     "job": "job_records.csv",
     "batch": "batch_records.csv",
+    "epoch": "epoch_records.csv",  # not used
 }
 
 _config: _Config

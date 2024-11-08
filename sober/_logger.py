@@ -7,10 +7,9 @@ import os
 import platform
 import sys
 from contextlib import ContextDecorator
-from typing import TYPE_CHECKING, get_args
+from typing import TYPE_CHECKING
 
 import sober.config as cf
-from sober._typing import AnyLevel  # get_args
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -26,7 +25,7 @@ if TYPE_CHECKING:
         TypeVar,
     )
 
-    from sober._typing import AnyCmdArgs
+    from sober._typing import AnyCmdArgs, AnyLevel
 
     class _SubprocessResult(Protocol):
         __slots__ = ("returncode", "stdout")
@@ -138,8 +137,8 @@ class _LoggerManager(ContextDecorator):
             # get the level from the func name
             # the func name should follow the pattern of _{action}_{level}
             level = func.__code__.co_name.split("_")[-1]
-            assert level in get_args(
-                AnyLevel
+            assert (
+                level in cf._RECORDS_FILENAMES
             ), f"the func name pattern is not recognised: {func.__code__.co_name}."
             self._level = level  # type: ignore[assignment] # python/mypy#12535, python/mypy#15106
 

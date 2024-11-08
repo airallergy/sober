@@ -15,11 +15,6 @@ type AnyModifierValue = AnyStrPath | AnyModelModifierValue
 
 ## this contains hype ctrl keys only used for populating jobs
 type AnyCtrlKeyVec = tuple[int, *tuple[AnyModifierKey, ...]]
-
-
-# output
-type AnyCoreLevel = Literal["task", "job"]
-type AnyLevel = Literal[AnyCoreLevel, "batch", "epoch"]
 #############################################################################
 
 
@@ -64,6 +59,10 @@ if TYPE_CHECKING:
     )
     type AnyRealModelModifier = ContinuousModifier
     type AnyModelModifier = AnyRealModelModifier | AnyIntegralModelModifier
+
+    # output
+    type AnyCoreLevel = Literal["task", "job"]
+    type AnyLevel = Literal[AnyCoreLevel, "batch", "epoch"]
 
     # io managers
     type AnyModelTask = tuple[AnyModelModifierValue, ...]
