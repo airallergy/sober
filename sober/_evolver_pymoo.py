@@ -147,7 +147,7 @@ else:
     from pymoo.optimize import minimize
     from pymoo.util.ref_dirs.energy import RieszEnergyReferenceDirectionFactory
 
-__all__ = ("Algorithm", "MaximumGenerationTermination", "minimize")
+__all__ = ("Algorithm", "MaximumGenerationTermination", "Population", "minimize")
 
 
 #############################################################################
