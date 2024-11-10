@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import itertools as it
 import pickle
+import shutil
 from abc import ABC
 from typing import TYPE_CHECKING
+
+import numpy as np
 
 import sober._evolver_pymoo as pm
 import sober.config as cf
 from sober._logger import _log, _LoggerManager
-from sober._tools import _parsed_path, _pre_evaluation_hook, _write_records
+from sober._tools import (
+    _parsed_path,
+    _pre_evaluation_hook,
+    _read_records,
+    _write_records,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -73,57 +81,52 @@ class _PymooEvolver(_Evolver):
         super().__init__(input_manager, output_manager, evaluation_dir)
 
     def _record_survival(
-        self, level: Literal["batch"], record_dir: Path, result: pm.Result
+        self, level: Literal["batch"], record_dir: Path, algorithm: pm.Algorithm
     ) -> None:
-        # get evaluated individuals
-        if result.algorithm.save_history:
-            # from all generations
-            individuals = tuple(
-                it.chain.from_iterable(item.pop for item in result.history)
+        # read all job records
+        for i, uid in enumerate(algorithm.data["batch_uids"]):
+            batch_dir = record_dir / uid
+
+            job_header_row, job_record_rows = _read_records(
+                batch_dir / cf._RECORDS_FILENAMES["job"]
             )
-        else:
-            # from the last generation
-            individuals = tuple(result.pop)
 
-        # re-evaluate survival of individuals
-        population = pm._survival(individuals, result.algorithm)
+            job_record_rows = [[f"{uid}-{row[0]}", *row[1:]] for row in job_record_rows]
 
-        # create header row
-        # TODO: consider prepending retrieved UIDs
-        header_row = (
-            tuple(item._label for item in self._input_manager)
-            + tuple(self._output_manager._objectives)
-            + tuple(self._output_manager._constraints)
-            + ("is_pareto", "is_feasible")
+            if i == 0:
+                header_row = job_header_row
+                record_rows = job_record_rows
+            else:
+                assert header_row == job_header_row
+                record_rows += job_record_rows
+
+            if self._output_manager._removes_subdirs:
+                shutil.rmtree(batch_dir)
+
+        # recompute survival of all evaluated solutions
+        objectives = self._output_manager._recorded_objectives(record_rows)
+        constraints = self._output_manager._recorded_constraints(record_rows)
+
+        population = pm.Population.new(
+            F=np.asarray(objectives, dtype=float),
+            G=np.asarray(constraints, dtype=float),
+            index=np.asarray(range(len(objectives)), dtype=int),
         )
 
-        # convert pymoo x to ctrl value vecs
-        ctrl_key_vecs = tuple(
-            tuple(
-                item.X[input._label].item()
-                if input._is_ctrl
-                else input._hype_ctrl_key()
-                for input in self._input_manager
-            )
-            for item in population
+        # TODO: eliminate duplicates
+
+        survivors = algorithm.survival.do(
+            algorithm.problem, population, algorithm=algorithm
         )
-        ctrl_value_vecs = tuple(
-            tuple(
-                item(key) if item._is_ctrl else item._hype_ctrl_value()
-                for item, key in zip(self._input_manager, ctrl_key_vec, strict=True)
-            )
-            for ctrl_key_vec in ctrl_key_vecs
+        population = pm.Population.create(
+            *sorted(survivors, key=lambda x: x.data["index"])
         )
 
-        # create record rows
-        # NOTE: pymoo sums cvs of all constraints
-        #       hence all(individual.FEAS) == individual.FEAS[0]
+        # append survival info
+        header_row += ["is_pareto", "is_feasible"]
         record_rows = [
-            ctrl_value_vec
-            + tuple(item.F)
-            + tuple(item.G)
-            + (item.get("rank") == 0, all(item.FEAS))
-            for item, ctrl_value_vec in zip(population, ctrl_value_vecs, strict=True)
+            [*row, str(item.get("rank") == 0), str(item.FEAS[0])]
+            for row, item in zip(record_rows, population, strict=True)
         ]
 
         # write records
@@ -204,7 +207,7 @@ class _PymooEvolver(_Evolver):
             result = algorithm.result()
             result.algorithm = algorithm  # mimic pm.minimize
 
-        self._record_survival("batch", epoch_dir, result)
+        self._record_survival("batch", epoch_dir, result.algorithm)
 
         return result
 

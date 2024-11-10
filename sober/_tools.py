@@ -93,9 +93,9 @@ def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
 
 
 def _write_records(
-    record_file: Path, header_row: Iterable[object], *record_rows: Iterable[object]
+    records_file: Path, header_row: Iterable[object], *record_rows: Iterable[object]
 ) -> None:
-    with record_file.open("wt", newline="") as fp:
+    with records_file.open("wt", newline="") as fp:
         writer = csv.writer(fp, dialect="excel")
 
         # write header
@@ -104,16 +104,17 @@ def _write_records(
         writer.writerows(record_rows)
 
 
-@ft.cache  # NOTE: ruff: B019  # TODO: consider generalised to _read_records
-def _recorded_batch(batch_dir: Path) -> tuple[tuple[str, ...], ...]:
+def _read_records(records_file: Path) -> tuple[list[str], list[list[str]]]:
     # read job records
-    with (batch_dir / cf._RECORDS_FILENAMES["job"]).open("rt", newline="") as fp:
+    with records_file.open("rt", newline="") as fp:
         reader = csv.reader(fp, dialect="excel")
 
-        # skip the header row
-        next(reader)
+        # read header
+        header_row = next(reader)
+        # read values
+        record_rows = list(reader)
 
-        return tuple(map(tuple, reader))
+        return header_row, record_rows
 
 
 #############################################################################

@@ -71,6 +71,7 @@ if TYPE_CHECKING:
     type AnyJob = tuple[AnyTaskItem, ...]
     type AnyJobItem = tuple[str, AnyJob]
     type AnyBatch = tuple[AnyJobItem, ...]
+    type AnyUIDs = tuple[str, ...]
 
     # problem
     type AnySampleMode = Literal["elementwise", "cartesian", "auto"]

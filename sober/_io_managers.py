@@ -20,12 +20,7 @@ from sober._simulator import (
     _run_expandobjects,
     _split_model,
 )
-from sober._tools import (
-    _natural_width,
-    _parsed_str_iterable,
-    _recorded_batch,
-    _write_records,
-)
+from sober._tools import _natural_width, _parsed_str_iterable, _write_records
 from sober._typing import AnyModifierValue  # cast
 from sober.input import (
     FunctionalModifier,
@@ -53,12 +48,12 @@ if TYPE_CHECKING:
         AnyModelTask,
         AnyModelType,
         AnyTask,
+        AnyUIDs,
         NoiseSampleKwargs,
     )
     from sober.input import _Modifier
 
     type _AnyConverter = Callable[[float], float]
-    type _AnyUIDs = tuple[str, ...]
     type _AnyBatchOutputs = tuple[tuple[float, ...], ...]
 
 
@@ -549,7 +544,7 @@ class _OutputManager:
                 raise ValueError(f"duplicates found in {name[1:]}: {labels}.")
 
     def _record_final(
-        self, level: AnyCoreLevel, record_dir: Path, uids: _AnyUIDs
+        self, level: AnyCoreLevel, record_dir: Path, uids: AnyUIDs
     ) -> None:
         # only final outputs
         with (record_dir / cf._RECORDS_FILENAMES[level]).open("rt", newline="") as fp:
@@ -642,7 +637,7 @@ class _OutputManager:
             item(task_dir)
 
     @_LoggerManager()
-    def _scan_job(self, job_dir: Path, task_uids: _AnyUIDs) -> None:
+    def _scan_job(self, job_dir: Path, task_uids: AnyUIDs) -> None:
         # scan tasks
         for task_uid in task_uids:
             self._scan_task(job_dir / task_uid)
@@ -683,6 +678,10 @@ class _OutputManager:
     def _clean_task(self, task_dir: Path) -> None:
         # clean task files
         for path in task_dir.glob("*"):
+            # skip records files
+            if path.name in cf._RECORDS_FILENAMES:
+                continue
+
             if any(
                 path.match(pattern) and path.is_file()
                 for pattern in self._clean_patterns
@@ -707,26 +706,26 @@ class _OutputManager:
         for item, _ in zip(uid_pairs, scheduled, strict=True):
             _log(batch_dir, f"cleaned {'-'.join(item)}")
 
-    def _recorded_objectives(self, batch_dir: Path) -> _AnyBatchOutputs:
+    def _recorded_objectives(self, record_rows: list[list[str]]) -> _AnyBatchOutputs:
         # slice objective values
         return tuple(
             tuple(
-                func(float(job_values[i]))
+                func(float(row[i]))
                 for i, func in zip(
                     self._objective_indices, self._to_objectives, strict=True
                 )
             )
-            for job_values in _recorded_batch(batch_dir)
+            for row in record_rows
         )
 
-    def _recorded_constraints(self, batch_dir: Path) -> _AnyBatchOutputs:
+    def _recorded_constraints(self, record_rows: list[list[str]]) -> _AnyBatchOutputs:
         # slice constraints values
         return tuple(
             tuple(
-                func(float(job_values[i]))
+                func(float(row[i]))
                 for i, func in zip(
                     self._constraint_indices, self._to_constraints, strict=True
                 )
             )
-            for job_values in _recorded_batch(batch_dir)
+            for row in record_rows
         )

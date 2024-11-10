@@ -16,9 +16,10 @@ from pymoo.operators.repair.rounding import RoundingRepair
 from pymoo.operators.selection.tournament import TournamentSelection
 from pymoo.termination.max_gen import MaximumGenerationTermination
 
+import sober.config as cf
 from sober._evaluator import _evaluate
 from sober._logger import _log
-from sober._tools import _natural_width
+from sober._tools import _natural_width, _read_records
 from sober._typing import AnyCtrlKeyVec
 from sober.input import _RealModifier
 
@@ -29,7 +30,6 @@ if TYPE_CHECKING:
     from typing import Literal, NotRequired, Protocol, Self, TypedDict
 
     from numpy.typing import NDArray
-    from pymoo.algorithms.base.genetic import GeneticAlgorithm
     from pymoo.core.termination import Termination as Termination
 
     from sober._io_managers import _InputManager, _OutputManager
@@ -67,6 +67,13 @@ if TYPE_CHECKING:
         def __iter__(self) -> Iterator[Individual]: ...
         @classmethod
         def create(cls, *args: Individual) -> Self: ...
+        @classmethod
+        def new(
+            cls,
+            F: NDArray[np.float64],  # noqa: N803
+            G: NDArray[np.float64],  # noqa: N803
+            index: NDArray[np.int_],
+        ) -> Self: ...
 
     class MixedVariableSampling(MixedVariableSampling_):  # type: ignore[misc]
         # this cannot be defined via Protocol as Protocol cannot be instantiated
@@ -208,7 +215,12 @@ class _Problem(Problem):  # type: ignore[misc]  # pymoo
 
             self._i_batch_width = _natural_width(expected_n_generations)
 
+            algorithm.data["batch_uids"] = []
+
         batch_uid = f"B{i_batch:0{self._i_batch_width}}"
+
+        # store batch uid
+        algorithm.data["batch_uids"].append(batch_uid)
 
         # convert pymoo x to ctrl key vecs
         ctrl_key_vecs = tuple(
@@ -231,8 +243,11 @@ class _Problem(Problem):  # type: ignore[misc]  # pymoo
             output_manager=self._output_manager,
             batch_dir=batch_dir,
         )
-        objectives = self._output_manager._recorded_objectives(batch_dir)
-        constraints = self._output_manager._recorded_constraints(batch_dir)
+
+        job_records_file = batch_dir / cf._RECORDS_FILENAMES["job"]
+        _, job_record_rows = _read_records(job_records_file)
+        objectives = self._output_manager._recorded_objectives(job_record_rows)
+        constraints = self._output_manager._recorded_constraints(job_record_rows)
 
         out["F"] = np.asarray(objectives, dtype=float)
         if self._output_manager._constraints:
@@ -241,7 +256,15 @@ class _Problem(Problem):  # type: ignore[misc]  # pymoo
         _log(self._evaluation_dir, f"evaluated {batch_uid}")
 
         if self._output_manager._removes_subdirs:
-            shutil.rmtree(batch_dir)
+            # leave out job_records.csv for compiling batch_records.csv later
+            for path in batch_dir.glob("*"):
+                if path.samefile(job_records_file):
+                    continue
+
+                if path.is_dir():
+                    shutil.rmtree(path)
+                else:
+                    path.unlink()
 
 
 #############################################################################
@@ -355,22 +378,6 @@ def _algorithm(
 #############################################################################
 #######                       UTILITY FUNCTIONS                       #######
 #############################################################################
-def _survival(
-    individuals: Iterable[Individual], algorithm: GeneticAlgorithm
-) -> Population:
-    """evaluates survival of individuals"""
-    population = Population.create(*individuals)
-
-    # remove duplicates
-    population = MixedVariableDuplicateElimination().do(population)
-
-    # runs survival
-    # this resets the value of Individual().data["rank"] for each individual
-    algorithm.survival.do(algorithm.problem, population, algorithm=algorithm)
-
-    return population
-
-
 def _default_reference_directions(
     n_dims: int, population_size: int, seed: int | None
 ) -> AnyReferenceDirections:
