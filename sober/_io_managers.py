@@ -164,7 +164,7 @@ class _InputManager:
 
     def _tagged(self, model_file: Path) -> str:
         # read the model file as str
-        with model_file.open("rt") as fp:
+        with open(model_file) as fp:
             model = fp.read()
 
         # tag all inputs with a _TextTagger
@@ -337,7 +337,7 @@ class _InputManager:
         model = self._detagged(self._tagged_model, task[1:])
 
         # write the task model file
-        with (task_dir / ("in" + self._model_type)).open("wt") as fp:
+        with open(task_dir / ("in" + self._model_type), "w") as fp:
             fp.write(model)
 
         # run epmacro if needed
@@ -547,7 +547,7 @@ class _OutputManager:
         self, level: AnyCoreLevel, record_dir: Path, uids: AnyUIDs
     ) -> None:
         # only final outputs
-        with (record_dir / cf._RECORDS_FILENAMES[level]).open("rt", newline="") as fp:
+        with open(record_dir / cf._RECORDS_FILENAMES[level], newline="") as fp:
             reader = csv.reader(fp, dialect="excel")
 
             header_row = next(reader)
@@ -572,7 +572,7 @@ class _OutputManager:
                 if not output._is_final:
                     continue
 
-                with (record_dir / uid / output._filename).open("rt", newline="") as fp:
+                with open(record_dir / uid / output._filename, newline="") as fp:
                     reader = csv.reader(fp, dialect="excel")
 
                     if i:

@@ -193,7 +193,7 @@ class _PymooEvolver(_Evolver):
                 )
                 # as per [1], algorithm.n_gen has been increased for next gen at this point, hence -2
                 if algorithm.n_gen - 2 == i_gen_checkpoint:
-                    with (epoch_dir / "checkpoint.pickle").open("wb") as fp:
+                    with open(epoch_dir / "checkpoint.pickle", "wb") as fp:
                         pickle.dump((cf._config, self, algorithm), fp)
 
                     _log(
@@ -297,7 +297,7 @@ class _PymooEvolver(_Evolver):
 
         checkpoint_file = _parsed_path(checkpoint_file, "checkpoint file")
 
-        with checkpoint_file.open("rb") as fp:
+        with open(checkpoint_file, "rb") as fp:
             config, self, algorithm = pickle.load(fp)
 
         # checks validity of the checkpoint file

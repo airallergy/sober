@@ -95,7 +95,7 @@ def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
 def _write_records(
     records_file: Path, header_row: Iterable[object], *record_rows: Iterable[object]
 ) -> None:
-    with records_file.open("wt", newline="") as fp:
+    with open(records_file, "w", newline="") as fp:
         writer = csv.writer(fp, dialect="excel")
 
         # write header
@@ -106,7 +106,7 @@ def _write_records(
 
 def _read_records(records_file: Path) -> tuple[list[str], list[list[str]]]:
     # read job records
-    with records_file.open("rt", newline="") as fp:
+    with open(records_file, newline="") as fp:
         reader = csv.reader(fp, dialect="excel")
 
         # read header

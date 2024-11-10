@@ -201,9 +201,9 @@ class RVICollector(_Collector):
         _run_readvars(cwd, self._rvi_file, self._ep_output_frequency)
 
         # remove trailing space
-        # with (cwd / self._filename).open("rt") as fp:
+        # with open(cwd / self._filename) as fp:
         #     lines = fp.read().splitlines()
-        # with (cwd / self._filename).open("wt") as fp:
+        # with open(cwd / self._filename, "w") as fp:
         #     fp.write("\n".join(line.strip() for line in lines) + "\n")
 
     def _check_args(self) -> None:
@@ -231,7 +231,7 @@ class RVICollector(_Collector):
 
         rvi_filestem = _uuid(type(self).__name__, *rvi_str.splitlines())
         self._rvi_file = config_dir / (rvi_filestem + ".rvi")
-        with self._rvi_file.open("wt") as fp:
+        with open(self._rvi_file, "w") as fp:
             fp.write(rvi_str)
 
 
