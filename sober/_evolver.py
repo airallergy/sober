@@ -90,15 +90,16 @@ class _PymooEvolver(_Evolver):
             job_header_row, job_record_rows = _read_records(
                 batch_dir / cf._RECORDS_FILENAMES["job"]
             )
-
-            job_record_rows = [[f"{uid}-{row[0]}", *row[1:]] for row in job_record_rows]
+            job_batch_uid_column = [uid] * len(job_record_rows)
 
             if i == 0:
                 header_row = job_header_row
                 record_rows = job_record_rows
+                batch_uid_column = job_batch_uid_column
             else:
                 assert header_row == job_header_row
                 record_rows += job_record_rows
+                batch_uid_column += job_batch_uid_column
 
             if self._output_manager._removes_subdirs:
                 shutil.rmtree(batch_dir)
@@ -123,10 +124,13 @@ class _PymooEvolver(_Evolver):
         )
 
         # append survival info
-        header_row += ["is_pareto", "is_feasible"]
+
+        header_row = ["BatchUID", *header_row, "is_pareto", "is_feasible"]
         record_rows = [
-            [*row, str(item.get("rank") == 0), str(item.FEAS[0])]
-            for row, item in zip(record_rows, population, strict=True)
+            [batch_uid, *row, str(item.get("rank") == 0), str(item.FEAS[0])]
+            for batch_uid, row, item in zip(
+                batch_uid_column, record_rows, population, strict=True
+            )
         ]
 
         # write records
