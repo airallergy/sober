@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Evolver(ABC):
-    """an abstract base class for evolvers"""
+    """An abstract base class for evolvers."""
 
     _HAS_BATCHES: Final = True
 
@@ -64,7 +64,7 @@ class _Evolver(ABC):
 #######                        EVOLVER CLASSES                        #######
 #############################################################################
 class _PymooEvolver(_Evolver):
-    """evolves via pymoo"""
+    """Evolve via pymoo."""
 
     __slots__ = ("_problem",)
 
@@ -226,8 +226,7 @@ class _PymooEvolver(_Evolver):
         checkpoint_interval: int,
         seed: int | None,
     ) -> pm.Result:
-        """runs optimisation via the NSGA2 algorithm"""
-
+        """Run optimisation via the NSGA2 algorithm."""
         if init_population_size <= 0:
             init_population_size = population_size
         sampling = pm._sampling(self._problem, init_population_size)
@@ -257,8 +256,7 @@ class _PymooEvolver(_Evolver):
         checkpoint_interval: int,
         seed: int | None,
     ) -> pm.Result:
-        """runs optimisation via the NSGA3 algorithm"""
-
+        """Run optimisation via the NSGA3 algorithm."""
         if init_population_size <= 0:
             init_population_size = population_size
         sampling = pm._sampling(self._problem, init_population_size)
@@ -293,7 +291,7 @@ class _PymooEvolver(_Evolver):
         termination: pm.Termination | None,
         checkpoint_interval: int,
     ) -> pm.Result:
-        """resumes optimisation using checkpoint files"""
+        """Resume optimisation using checkpoint files."""
         # NOTE: although seed will not be reset
         #       randomness is not reproducible when resuming for some unknown reason
         # TODO: explore implementing custom serialisation for Problem via TOML/YAML

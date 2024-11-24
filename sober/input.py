@@ -1,3 +1,5 @@
+"""Classes for defining inputs."""
+
 from __future__ import annotations
 
 import math
@@ -29,7 +31,7 @@ if TYPE_CHECKING:
     #       could be corrected using Protocol, but why bother
     # TODO: consider resticting at least one previous output
     type _AnyFunc = Callable[
-        Concatenate[Iterable[AnyModifierValue], ...], AnyModelModifierValue
+        Concatenate[tuple[AnyModifierValue, ...], ...], AnyModelModifierValue
     ]
 
 
@@ -39,7 +41,7 @@ if TYPE_CHECKING:
 
 
 class _IDF(Protocol):
-    """a minimum stub to help mypy recognise variance"""
+    """A minimum stub to help mypy recognise variance."""
 
     __slots__ = ()
 
@@ -54,7 +56,7 @@ _MV_co = TypeVar("_MV_co", bound=AnyModifierValue, covariant=True)  # AnyModifie
 
 @final
 class _Noise(Any):  # type: ignore[misc]
-    """a helper class for _hype_ctrl_value"""
+    """A helper class for _hype_ctrl_value."""
 
     __slots__ = ("_s",)
 
@@ -66,7 +68,7 @@ class _Noise(Any):  # type: ignore[misc]
         return self  # type: ignore[no-any-return]
 
     def __str__(self) -> str:
-        """controls csv.writer"""
+        """Control csv.writer."""
         return f"<noise {self._s}>"
 
 
@@ -74,7 +76,7 @@ class _Noise(Any):  # type: ignore[misc]
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Tagger(ABC, Generic[_TM]):
-    """an abstract base class for taggers"""
+    """An abstract base class for taggers."""
 
     __slots__ = ("_tags",)
 
@@ -95,7 +97,7 @@ class _Tagger(ABC, Generic[_TM]):
 
 
 class _IDFTagger(_Tagger[_IDF]):
-    """an abstract base class for taggers in the IDF format"""
+    """An abstract base class for taggers in the IDF format."""
 
     __slots__ = ()
 
@@ -104,7 +106,7 @@ class _IDFTagger(_Tagger[_IDF]):
 
 
 class _TextTagger(_Tagger[str]):
-    """an abstract base class for taggers in the text format"""
+    """An abstract base class for taggers in the text format."""
 
     __slots__ = ()
 
@@ -113,7 +115,7 @@ class _TextTagger(_Tagger[str]):
 
 
 class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
-    """an abstract base class for input modifiers"""
+    """An abstract base class for input modifiers."""
 
     __slots__ = (
         "_bounds",
@@ -190,7 +192,7 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
 
 
 class _RealModifier(_Modifier[float, float]):
-    """an abstract base class for input modifiers of real variables"""
+    """An abstract base class for input modifiers of real variables."""
 
     __slots__ = ()
 
@@ -220,7 +222,7 @@ class _RealModifier(_Modifier[float, float]):
 
 
 class _IntegralModifier(_Modifier[int, _MV_co]):
-    """an abstract base class for input modifiers of integral variables"""
+    """An abstract base class for input modifiers of integral variables."""
 
     __slots__ = ("_options",)
 
@@ -266,8 +268,7 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
 
 
 class _ModelModifierMixin(ABC):
-    """an abstract base class for common functions in model modification
-    (as opposed to the weather modifier)"""
+    """An abstract base class for common functions in model modification."""
 
     __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
 
@@ -287,11 +288,19 @@ class _ModelModifierMixin(ABC):
 #######                        TAGGER CLASSES                         #######
 #############################################################################
 class IndexTagger(_IDFTagger):
-    """tags regular commands by indexing
+    """Tag regular commands by indexing.
 
-    index_trio == (class_name, object_name, field_name)
+    This tagger locates the EnergyPlus field to be modified through indexing, which is
+    informed by an index trio comprising the class name, the object name and the
+    field name. Multiple index trios can be specified to modify multiple EnergyPlus
+    fields with the same value.
 
-    no support for nested regular commands inside macro files
+    Currently, tagging inside macro files are not supported.
+
+    Parameters
+    ----------
+    *index_trios : iterables of str
+        Single or multiple index trios.
     """
 
     __slots__ = ("_index_trios",)
@@ -331,11 +340,22 @@ class IndexTagger(_IDFTagger):
 
 
 class StringTagger(_TextTagger):
-    """tags regular and macro commands by string replacement
+    """Tag regular and macro commands by string replacement.
 
-    string_trio == (string, prefix, suffix)
+    This tagger locates the regular or the macro command to be modified through string
+    replacement, which is informed by an string trio comprising the string, the prefix
+    and the suffix. Multiple string trios can be specified to modify multiple regular or
+    macro commands with the same value.
 
-    no support for nested macro commands inside macro files
+    The prefix and the suffix are useful to locate the right string to be replaced, when
+    the string itself is not unique in the EnergyPlus model.
+
+    Currently, tagging inside macro files are not supported.
+
+    Parameters
+    ----------
+    *string_trios : iterables of str
+        Single or multiple string trios.
     """
 
     __slots__ = ("_string_trios",)
@@ -386,7 +406,19 @@ class StringTagger(_TextTagger):
 #######                       MODIFIER CLASSES                        #######
 #############################################################################
 class WeatherModifier(_IntegralModifier[Path]):
-    """modifies the weather input"""
+    """Modify the weather input variable.
+
+    Parameters
+    ----------
+    *options : strs or path-like objects
+        Single or multiple options.
+    distribution : SupportsPPF, optional
+        Probability distribution defined by `scipy`.
+    is_noise : bool, optional
+        Whether the variable is uncertain.
+    name : str, optional
+        Variable name.
+    """
 
     __slots__ = ()
 
@@ -414,7 +446,23 @@ class WeatherModifier(_IntegralModifier[Path]):
 
 
 class ContinuousModifier(_ModelModifierMixin, _RealModifier):
-    """modifies continuous inputs"""
+    """Modify a continuous input variable.
+
+    Parameters
+    ----------
+    tagger : Tagger
+        A tagger object.
+    low : float
+        Lower limit.
+    high : float
+        Upper limit.
+    distribution : SupportsPPF, optional
+        Probability distribution defined by `scipy`.
+    is_noise : bool, optional
+        Whether the variable is uncertain.
+    name : str, optional
+        Variable name.
+    """
 
     __slots__ = ("_tagger",)
 
@@ -440,7 +488,21 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
 
 
 class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
-    """modifies discrete inputs"""
+    """Modify a discrete input variable.
+
+    Parameters
+    ----------
+    tagger : Tagger
+        A tagger object.
+    *options : floats
+        Single or multiple options.
+    distribution : SupportsPPF, optional
+        Probability distribution defined by `scipy`.
+    is_noise : bool, optional
+        Whether the variable is uncertain.
+    name : str, optional
+        Variable name.
+    """
 
     __slots__ = ("_tagger",)
 
@@ -459,7 +521,21 @@ class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
 
 
 class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
-    """modifies categorical inputs"""
+    """Modify a categorical input variable.
+
+    Parameters
+    ----------
+    tagger : Tagger
+        A tagger object.
+    *options : floats
+        Single or multiple options.
+    distribution : SupportsPPF, optional
+        Probability distribution defined by `scipy`.
+    is_noise : bool, optional
+        Whether the variable is uncertain.
+    name : str, optional
+        Variable name.
+    """
 
     __slots__ = ("_tagger",)
 
@@ -478,7 +554,24 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
 
 
 class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifierValue]):
-    """modifies functional inputs"""
+    """Modify a functional input variable.
+
+    This modifier is useful to define dependent input variables.
+
+    Parameters
+    ----------
+    tagger : Tagger
+        A tagger object.
+    func : _AnyFunc
+        A function that takes a tuple of input values as the argument and returns an
+        input value.
+    input_indices : iterable of int
+        Coincident input indices to input values passed into `func`.
+    func_kwargs : dict, optional
+        Additional keyword arguments passed into `func`.
+    name : str, optional
+        Variable name.
+    """
 
     __slots__ = ("_tagger", "_func", "_input_indices", "_func_kwargs")
 
@@ -505,7 +598,7 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
 
         self._is_ctrl = False
 
-    def __call__(
+    def __call__(  # noqa: D102  # astral-sh/ruff#8085
         self, key: object, *input_values: AnyModifierValue
     ) -> AnyModelModifierValue:
         del key

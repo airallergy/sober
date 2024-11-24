@@ -17,8 +17,6 @@ if TYPE_CHECKING:
 #######                     SIMULATION FUNCTIONS                      #######
 #############################################################################
 def _run_epmacro(cwd: Path) -> None:
-    """runs EPMacro"""
-
     cmd_args = (cf._config["exec_epmacro"],)
     _run(cmd_args, cwd)
 
@@ -28,8 +26,6 @@ def _run_epmacro(cwd: Path) -> None:
 
 
 def _run_expandobjects(cwd: Path) -> None:
-    """runs ExpandObjects"""
-
     # make a symlink to the idd file in cwd
     idd_file = cwd / Path(cf._config["schema_energyplus"]).name
     idd_file.symlink_to(cf._config["schema_energyplus"])
@@ -45,15 +41,11 @@ def _run_expandobjects(cwd: Path) -> None:
 
 
 def _run_energyplus(cwd: Path) -> None:
-    """runs EnergyPlus"""
-
     cmd_args = (cf._config["exec_energyplus"],)
     _run(cmd_args, cwd)
 
 
 def _run_readvars(cwd: Path, rvi_file: Path, frequency: str) -> None:
-    """runs ReadVarsESO"""
-
     cmd_args = (
         cf._config["exec_readvars"],
         rvi_file,
@@ -68,8 +60,7 @@ def _run_readvars(cwd: Path, rvi_file: Path, frequency: str) -> None:
 #######                       PARSING FUNCTIONS                       #######
 #############################################################################
 def _resolved_path(path: AnyStrPath, default_parent: Path) -> Path:
-    """a helper function to resolve paths of mixed absolute and relative"""
-
+    """Resolve mixed absolute and relative paths."""
     # inclined to consider 'resolve' here as debug info for users
 
     pure_path = PurePath(path)
@@ -80,9 +71,10 @@ def _resolved_path(path: AnyStrPath, default_parent: Path) -> Path:
 
 
 def _resolved_macros(macro_lines: Sequence[str], model_dir: Path) -> list[str]:
-    """resolves paths in macro commands used to incorporate external files
-    macro lines should have been trimmed before passed in"""
+    """Resolve paths in macro commands.
 
+    Macro lines should have been trimmed before passed in.
+    """
     # set the model directory as fileprefix
     # in case the first macro command is a relative one
     fileprefix = model_dir
@@ -106,8 +98,7 @@ def _resolved_macros(macro_lines: Sequence[str], model_dir: Path) -> list[str]:
 
 
 def _split_model(model: str, model_dir: Path) -> tuple[str, str]:
-    """splits an EnergyPlus model into macros and regulars"""
-
+    """Split an EnergyPlus model into macro and regular commands."""
     macro_lines = []
     regular_lines = []
     for line in model.splitlines():

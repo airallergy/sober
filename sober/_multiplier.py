@@ -45,7 +45,7 @@ def _each_tuple_is_non_empty_and_starts_with_int(
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Multiplier(ABC):
-    """an abstract base class for multipliers"""
+    """An abstract base class for multipliers."""
 
     _HAS_BATCHES: Final = False
 
@@ -98,7 +98,7 @@ class _Multiplier(ABC):
 #######                      ELEMENTWISE PRODUCT                      #######
 #############################################################################
 class _InverseTransformQuantile:
-    """generates quantiles for inverse transform sampling"""
+    """Generate quantiles for inverse transform sampling."""
 
     __slots__ = ("_n_dims",)
 
@@ -126,7 +126,7 @@ class _InverseTransformQuantile:
 
 
 class _ElementwiseMultiplier(_Multiplier):
-    """samples an elementwise product"""
+    """Sample an elementwise product."""
 
     __slots__ = ("_quantile",)
 
@@ -178,9 +178,11 @@ class _ElementwiseMultiplier(_Multiplier):
 #######                       CARTESIAN PRODUCT                       #######
 #############################################################################
 class _LazyCartesianProduct(Generic[_T]):
-    """allows indexing a Cartesian product without evaluating all
-    which enables super fast sampling
-    inspired by http://phrogz.net/lazy-cartesian-product"""
+    """Allow indexing a Cartesian product without evaluating all.
+
+    This enables super fast sampling, inspired by
+    http://phrogz.net/lazy-cartesian-product.
+    """
 
     __slots__ = ("_tuples", "_divs", "_mods", "_len")
 
@@ -214,7 +216,7 @@ class _LazyCartesianProduct(Generic[_T]):
 
 
 class _CartesianMultiplier(_Multiplier):
-    """samples a cartesian product"""
+    """Sample a Cartesian product."""
 
     __slots__ = ("_product",)
 

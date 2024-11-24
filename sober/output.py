@@ -1,3 +1,5 @@
+"""Classes for defining outputs."""
+
 from __future__ import annotations
 
 import enum
@@ -49,7 +51,7 @@ class _EPOutputType(enum.StrEnum):
 #######                     ABSTRACT BASE CLASSES                     #######
 #############################################################################
 class _Collector(ABC):
-    """an abstract base class for output collector"""
+    """An abstract base class for output collector."""
 
     __slots__ = (
         "_filename",
@@ -155,7 +157,36 @@ class _Collector(ABC):
 #######                       COLLECTOR CLASSES                       #######
 #############################################################################
 class RVICollector(_Collector):
-    """collects rvi outputs"""
+    """Collects outputs by RVI.
+
+    This collector retrieves EnergyPlus simulation results defined by either
+    `Output:Variable` or `Output:Meter` via the ReadVarsESO programme, the required RVI
+    file is auto-generated.
+
+    Parameters
+    ----------
+    ep_output_names : str or iterable of str
+        EnergyPlus output names.
+    ep_output_type : {'variable', 'meter'}
+        EnergyPlus output type.
+    filename : str
+        Output filename, this must end with `.csv`.
+    ep_output_keys : str or iterable of str, optional
+        Specific names for EnergyPlus variable outputs, only applicable when
+        `ep_output_type` is set to `variable`.
+    ep_output_frequency : str, optional
+        EnergyPlus output frequency.
+    objectives : str or iterable of str, optional
+        Optimisation objectives, which must match the output names in the output file.
+    constraints : str or iterable of str, optional
+        Optimisation constraints, which must match the output names in the output file.
+    direction : {'minimise', 'maximise'}, default: `'minimise'`
+        Optimisation constraint direction.
+    bounds : tuple of float, default: `(-math.inf, 0)`
+        Optimisation constraint bounds.
+    is_final : bool, default: `True`
+        Whether the output is final and recorded.
+    """
 
     # TODO: consider switching to/adding EP native csv once NREL/EnergyPlus#9395
 
@@ -197,7 +228,7 @@ class RVICollector(_Collector):
             filename, "task", objectives, constraints, direction, bounds, is_final
         )
 
-    def __call__(self, cwd: Path) -> None:
+    def __call__(self, cwd: Path) -> None:  # noqa: D102  # astral-sh/ruff#8085
         _run_readvars(cwd, self._rvi_file, self._ep_output_frequency)
 
         # remove trailing space
@@ -236,7 +267,43 @@ class RVICollector(_Collector):
 
 
 class ScriptCollector(_Collector):
-    """collects script outputs"""
+    """Collects outputs by script.
+
+    This collector computes user-defined outputs by calling user-provided scripts, which
+    can be used for either the task- or the job-level output collection. The task level
+    usually deals with building performance metrics, whilst the job level can calculate
+    robustness measures. A `loads_kwargs` method is provided to conveniently retrieve
+    useful output-related data inside scripts.
+
+    Currently only a Python script is supported.
+
+    Parameters
+    ----------
+    script_file : str or path-like object
+        Script file path.
+    script_language : {'python'}
+        Script language, whose executable path must be configured via `config_script`.
+    filename : str
+        Output filename.
+    script_kwargs : dict, optional
+        Additional keyword arguments passed into the script.
+    level : {'task', 'job'}, default: `'task'`
+        Output collection level.
+    objectives : str or iterable of str, optional
+        Optimisation objectives, which must match the output names in the output file.
+    constraints : str or iterable of str, optional
+        Optimisation constraints, which must match the output names in the output file.
+    direction : {'minimise', 'maximise'}, default: `'minimise'`
+        Optimisation constraint direction.
+    bounds : tuple of float, default: `(-math.inf, 0)`
+        Optimisation constraint bounds.
+    is_final : bool, default: `True`
+        Whether the output is final and recorded.
+
+    Methods
+    -------
+    loads_kwargs
+    """
 
     _RESERVED_KWARGS_KEYS: Final = frozenset(
         {"cwd", "filename", "objectives", "constraints"}
@@ -271,7 +338,7 @@ class ScriptCollector(_Collector):
             filename, level, objectives, constraints, direction, bounds, is_final
         )
 
-    def __call__(self, cwd: Path) -> None:
+    def __call__(self, cwd: Path) -> None:  # noqa: D102  # astral-sh/ruff#8085
         exec_language = cf._config["exec_" + self._script_language]  # type: ignore[literal-required]  # python/mypy#12554
 
         cmd_args = (exec_language, self._script_file, self._dumps_kwargs(cwd))
@@ -299,14 +366,26 @@ class ScriptCollector(_Collector):
 
     @staticmethod
     def loads_kwargs() -> Any:  # Any: typeshed  # pep728
+        """Retrieve keyword arguments in scripts.
+
+        Returns
+        -------
+        dict
+            Keys of this dictionary are 'cwd', 'filename', 'objectives', 'constraints',
+            in addition to any key in `script_kwargs`. If `level` is set to `'task'`,
+            the current working directory is the task directory in which this script is
+            executed, otherwise it is the job directory.
+        """
         import sys
 
         return json.loads(sys.argv[1])
 
 
 class _CopyCollector(_Collector):
-    """copies task final outputs as job final outputs
-    NOTE: this is for handling non-noisy cases only"""
+    """Copy task final outputs as job final outputs.
+
+    This is for handling non-noisy cases only.
+    """
 
     __slots__ = ()
 

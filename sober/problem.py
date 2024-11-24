@@ -1,3 +1,5 @@
+"""Class for defining problem."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload
@@ -28,7 +30,56 @@ if TYPE_CHECKING:
 #######                         PROBLEM CLASS                         #######
 #############################################################################
 class Problem:
-    """defines the parametrics/optimisation problem"""
+    """Define a parametrics/optimisation problem.
+
+    Parameters
+    ----------
+    model_file : str or path-like object
+        Model file path.
+    weather_input : WeatherModifier
+        Weather input variable.
+    model_inputs : iterable of ModelModifier, optional
+        Model input variables.
+    outputs : iterable of Collector, optional
+        Output variables.
+    evaluation_dir : str or path-like object, optional
+        Evaluation directory path, default is a directory named 'evaluation' in the same
+        folder as the model file.
+    has_templates : bool, default: `False`
+        Whether the model has HVAC templates.
+    noise_sample_kwargs : dict, optional
+        Settings for sampling uncertain variables, including
+
+        +------------+-----------------+----------------------------------------+
+        | Key        | Description     | Value type                             |
+        +============+=================+========================================+
+        | `'mode'`   | Sampling mode   | `{'elementwise', 'cartesian', 'auto'}` |
+        +------------+-----------------+----------------------------------------+
+        | `'size'`   | Sample size     | `int`                                  |
+        +------------+-----------------+----------------------------------------+
+        | `'method'` | Sampling method | `{'random', 'latin hypercube'}`        |
+        +------------+-----------------+----------------------------------------+
+        | `'seed'`   | Random seed     | `int`                                  |
+        +------------+-----------------+----------------------------------------+
+
+        - If `'mode'='elementwise'`, `'size'` and `'method'` are mandatory.
+        - If `'mode'='cartesian'`, all model inputs must be non-continuous variables,
+        - If `'mode'='auto'`, the sampling mode is set to `'cartesian'` if all variables
+        are non-continuous, otherwise `'elementwise'`.
+    clean_patterns : str or iterable of str, default: `{'*.audit', '*.end', 'sqlite.err'}`
+        Patterns to clean simulation files.
+        This is ignored if `removes_subdirs` is set to `True`.
+    removes_subdirs : bool, default: `False`
+        Whether to remove the subdirectories in the evaluation directory.
+
+    Methods
+    -------
+    run_random
+    run_latin_hypercube
+    run_exhaustive
+    run_nsga2
+    run_nsga3
+    """
 
     __slots__ = (
         "_model_file",
@@ -87,7 +138,7 @@ class Problem:
     @overload
     def __getattr__(self, name: Literal["_pymoo"], /) -> _PymooEvolver: ...  # type: ignore[misc]  # python/mypy#8203
     def __getattr__(self, name: str, /) -> object:
-        """lazily set these attributes when they are called for the first time"""
+        """Lazily set these attributes when they are called for the first time."""
         match name:
             case "_elementwise":
                 self._elementwise = _ElementwiseMultiplier(
@@ -127,8 +178,17 @@ class Problem:
     def run_random(
         self, size: int, /, *, mode: AnySampleMode = "auto", seed: int | None = None
     ) -> None:
-        """runs parametrics via a random sample"""
+        """Run parametrics via a random sample.
 
+        Parameters
+        ----------
+        size : int
+            Sample size.
+        mode : {'elementwise', 'cartesian', 'auto'}, default: `'auto'`
+            Sampling mode.
+        seed : int, optional
+            Random seed.
+        """
         if mode == "auto":
             mode = "elementwise" if self._input_manager._has_real_ctrls else "cartesian"
 
@@ -138,13 +198,19 @@ class Problem:
             self._cartesian._random(size, seed)
 
     def run_latin_hypercube(self, size: int, /, *, seed: int | None = None) -> None:
-        """runs parametrics via a latin hypercube sample"""
+        """Run parametrics via a latin hypercube sample.
 
+        Parameters
+        ----------
+        size : int
+            Sample size.
+        seed : int, optional
+            Random seed.
+        """
         self._elementwise._latin_hypercube(size, seed)
 
     def run_exhaustive(self) -> None:
-        """runs parametrics via the exhaustive sample"""
-
+        """Run parametrics via the exhaustive sample."""
         self._cartesian._exhaustive()
 
     def run_nsga2(
@@ -160,8 +226,36 @@ class Problem:
         checkpoint_interval: int = 0,
         seed: int | None = None,
     ) -> pm.Result:
-        """runs optimisation via the NSGA2 algorithm"""
+        """Run optimisation via the NSGA2 algorithm.
 
+        Parameters
+        ----------
+        population_size : int
+            Population size.
+        termination : pymoo.Termination
+            Termination criterion, see https://pymoo.org/interface/termination.html.
+        p_crossover : float, default: `1.0`
+            Crossover probability.
+        p_mutation : float, default: `0.2`
+            Mutation probability.
+        init_population_size : int, default: `0`
+            Initial population size. This allows setting a different (usually larger)
+            population size for the first generation. Any non-positive value falls back
+            to the value of `population_size`.
+        saves_history : bool, default: `True`
+            Whether to save the iteration history, see
+            https://pymoo.org/interface/minimize.html.
+        checkpoint_interval : int, default: `0`
+            Frequency of saving a checkpoint. Any non-positive value disables the
+            checkpoint function.
+        seed : int, optional
+            Random seed.
+
+        Returns
+        -------
+        pymoo.Result
+            Pymoo result object, see https://pymoo.org/interface/result.html.
+        """
         return self._pymoo._nsga2(
             population_size,
             termination,
@@ -187,8 +281,40 @@ class Problem:
         checkpoint_interval: int = 0,
         seed: int | None = None,
     ) -> pm.Result:
-        """runs optimisation via the NSGA3 algorithm"""
+        """Run optimisation via the NSGA3 algorithm.
 
+        Parameters
+        ----------
+        population_size : int
+            Population size.
+        termination : pymoo.Termination
+            Termination criterion, see https://pymoo.org/interface/termination.html.
+        reference_directions : numpy.ndarray, optional
+            Reference directions, see https://pymoo.org/misc/reference_directions.html.
+            The Riesz s-Energy method is used to generate reference directions as per
+            the input count and the population size.
+        p_crossover : float, default: `1.0`
+            Crossover probability.
+        p_mutation : float, default: `0.2`
+            Mutation probability.
+        init_population_size : int, default: `0`
+            Initial population size. This allows setting a different (usually larger)
+            population size for the first generation. Any non-positive value falls back
+            to the value of `population_size`.
+        saves_history : bool, default: `True`
+            Whether to save the iteration history, see
+            https://pymoo.org/interface/minimize.html.
+        checkpoint_interval : int, default: `0`
+            Frequency of saving a checkpoint. Any non-positive value disables the
+            checkpoint function.
+        seed : int, optional
+            Random seed.
+
+        Returns
+        -------
+        pymoo.Result
+            Pymoo result object, see https://pymoo.org/interface/result.html.
+        """
         return self._pymoo._nsga3(
             population_size,
             termination,
@@ -209,5 +335,22 @@ class Problem:
         termination: pm.Termination | None = None,
         checkpoint_interval: int = 0,
     ) -> pm.Result:
-        """resumes optimisation using a checkpoint file"""
+        """Resume optimisation using a checkpoint.
+
+        Parameters
+        ----------
+        checkpoint_file : str or path-like object
+            Checkpoint file path.
+        termination : pymoo.Termination, optional
+            Termination criterion. The one in the checkpoint will be reused if not
+            specified.
+        checkpoint_interval : int, default: `0`
+            Frequency of saving a checkpoint. Any non-positive value disables the
+            checkpoint function.
+
+        Returns
+        -------
+        pymoo.Result
+            Pymoo result object, see https://pymoo.org/interface/result.html.
+        """
         return _PymooEvolver.resume(checkpoint_file, termination, checkpoint_interval)

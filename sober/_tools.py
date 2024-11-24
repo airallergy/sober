@@ -68,8 +68,7 @@ else:
 #######                    MISCELLANEOUS FUNCTIONS                    #######
 #############################################################################
 def _natural_width(x: int) -> int:
-    """returns the digit count of a natural number"""
-
+    """Calculate the digit count of a natural number."""
     assert isinstance(x, int)  # TODO: remove runtime type checks that have been typed
     assert x > 0
 
@@ -77,14 +76,12 @@ def _natural_width(x: int) -> int:
 
 
 def _uuid(*feature_group: str) -> str:
-    """an uuid generator"""
-
+    """Generate a UUID based on feature strings."""
     return str(uuid.uuid5(uuid.NAMESPACE_X500, "-".join(feature_group)))
 
 
 def _run(cmd_args: AnyCmdArgs, cwd: Path) -> None:
-    """a helper function for subprocess.run to enable logging"""
-
+    """Enable logging for subprocess.run."""
     # run subprocess and pass the result object to logging
     with _log(cwd, caller_depth=1, cmd_args=cmd_args) as l:
         l._result = sp.run(
@@ -121,7 +118,7 @@ def _read_records(records_file: Path) -> tuple[list[str], list[list[str]]]:
 #######                   ARGUMENT PARSE FUNCTIONS                    #######
 #############################################################################
 def _parsed_str_iterable(s: str | Iterable[str], who: str = "") -> tuple[str, ...]:
-    """converts str or an iterable of str to a tuple of str"""
+    """Convert str or an iterable of str to a tuple of str."""
     t = (s,) if isinstance(s, str) else tuple(s)
 
     if who:
@@ -135,10 +132,10 @@ def _parsed_str_iterable(s: str | Iterable[str], who: str = "") -> tuple[str, ..
 
 
 def _parsed_path(path: AnyStrPath, who: str = "") -> Path:
-    """converts path to a Path object
-    and checks existence if who is specified (i.e. non-empty str)
-    """
+    """Convert AnyStrPath to a Path object.
 
+    Path existence is also check when who is specified (i.e. non-empty str).
+    """
     path = Path(path).resolve()
 
     if who and not path.exists():
@@ -184,8 +181,10 @@ else:
 
 
 class _Pool(Pool):
-    """a helper class for multiprocessing.pool.Pool
-    this includes setting defaults, unifying method names and implementing starimap"""
+    """A helper class for multiprocessing.pool.Pool.
+
+    This includes setting defaults, unifying method names and implementing starimap.
+    """
 
     if TYPE_CHECKING:
         # [1]
@@ -213,9 +212,10 @@ class _Pool(Pool):
     def _starmap(
         self, func: Callable[..., _R_co], iterable: Iterable[Iterable[Any]]
     ) -> Iterator[_R_co]:
-        """an implementation of starimap
-        borrowed from https://stackoverflow.com/a/57364423"""
+        """Implement a lazy version of `starimap` analogous to `imap`.
 
+        The implementation is borrowed from https://stackoverflow.com/a/57364423.
+        """
         self._check_running()
 
         task_batches = _Pool._get_tasks(func, iterable, 1)
@@ -230,8 +230,10 @@ class _Pool(Pool):
 
 
 class _Loop:
-    """a helper class for loop
-    this includes making a context manager and unifying method names"""
+    """A helper class for loop.
+
+    This includes making a context manager and unifying method names.
+    """
 
     __slots__ = ()
 
@@ -263,9 +265,7 @@ def _Parallel(  # noqa: N802
     initialiser: Callable[[*_InitArgs], None] | None = None,
     initargs: tuple[*_InitArgs] = (),  # type: ignore[assignment]  # python/mypy#17113
 ) -> AnyParallel:
-    """a helper function to distribute parallel computation
-    based on the requested number of processes"""
-
+    """Distribute parallel computation based on the requested number of processes."""
     # allows n_processes <= 0 for now
     if n_processes > 1:
         return _Pool(n_processes, initialiser, initargs)

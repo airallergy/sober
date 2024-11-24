@@ -73,7 +73,7 @@ def _each_job_is_non_empty_and_starts_with_path(
 #######                    INPUTS MANAGER CLASSES                     #######
 #############################################################################
 class _InputManager:
-    """manages input modification"""
+    """Manage input modification."""
 
     _MODEL_TYPES: Final = frozenset({".idf", ".imf"})
 
@@ -417,7 +417,7 @@ class _InputManager:
 #######                    OUTPUTS MANAGER CLASSES                    #######
 #############################################################################
 class _OutputManager:
-    """manages output collection"""
+    """Manage output collection."""
 
     _DEFAULT_CLEAN_PATTERNS: Final = frozenset({"*.audit", "*.end", "sqlite.err"})
 

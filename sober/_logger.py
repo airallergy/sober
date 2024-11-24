@@ -41,16 +41,14 @@ _HOST_STEM: Final = platform.node().split(".")[0]
 
 
 def _logger_identifier(cwd: Path) -> str:
-    """returns a unique logger identifier
-    currently just using the full path to cwd"""
-
+    """Return a unique logger identifier."""
     # TODO: ruff: LOG002
 
     return os.fsdecode(cwd)
 
 
 class _Filter(logging.Filter):
-    """indents stdout/stderr before formatting"""
+    """Indent stdout/stderr before formatting."""
 
     def filter(self, record: logging.LogRecord) -> bool | logging.LogRecord:
         if record.levelno == logging.DEBUG:
@@ -70,12 +68,14 @@ class _Filter(logging.Filter):
 
 
 class _Formatter(logging.Formatter):
-    """enables logging detailed stdout/stderr from called programmes
-    e.g. simulation progress from EnergyPlus
-         prints in user Python scripts
-    this is realised by reiniting format as per logging level
-    currently DEBUG means stdout/stderr
-              INFO means high-level progress"""
+    """Enable logging detailed stdout/stderr from called programmes.
+
+    E.g. simulation progress from EnergyPlus, prints in user Python scripts.
+
+    This is realised by reiniting format as per logging level, currently
+    - `DEBUG` means stdout/stderr,
+    - `INFO` means high-level progress.
+    """
 
     _FMT_DEFAULT: Final = (
         f"%(asctime)s {_HOST_STEM} %(caller_name)s[%(process)d]: %(message)s"
@@ -100,10 +100,10 @@ class _Formatter(logging.Formatter):
 
 
 class _LoggerManager(ContextDecorator):
-    """manages the logger at each level for each action
-    and dies upon each completion
-    each directory/log file has their own logger
-    differentiated by the logger name"""
+    """Manage the logger at each level for each action and die upon completion.
+
+    Each directory/log file has their own logger, differentiated by the logger name.
+    """
 
     __slots__ = ("_is_first", "_name", "_level", "_log_file", "_logger")
 
@@ -187,7 +187,7 @@ class _LoggerManager(ContextDecorator):
 
 
 class _SubprocessLogger:
-    """facilitates retrieving stdout/stderr from a subprocess"""
+    """Facilitate retrieving stdout/stderr from a subprocess."""
 
     __slots__ = ("_logger", "_cmd", "_result")
 
@@ -212,18 +212,23 @@ class _SubprocessLogger:
 
 
 def _rgetattr(obj: object, names: tuple[str, ...]) -> Any:
-    """a recursive getattr"""
+    """Get a named attribute from an object recursively.
+
+    This is a recursive requivalent to `getattr`.
+    """
     return ft.reduce(getattr, names, obj)
 
 
 def _log(
     cwd: Path, msg: str = "", caller_depth: Literal[0, 1] = 0, cmd_args: AnyCmdArgs = ()
 ) -> _SubprocessLogger:
-    """transfers the log message
-    inside each function with a managed logger (decorated by _LoggerManager)
-    caller_depth is either 0 or 1, 0 for calling that passes in message directly
-                                   1 for calling along with a subprocess"""
+    """Transfer the log message.
 
+    Inside each function with a managed logger (decorated by _LoggerManager),
+    caller_depth is either 0 or 1:
+    - 0 for calling that passes in message directly,
+    - 1 for calling along with a subprocess.
+    """
     # get the logger identifier
     name = _logger_identifier(cwd)
     assert name in logging.Logger.manager.loggerDict, f"unmanaged logger: {name}."

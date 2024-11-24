@@ -154,7 +154,7 @@ __all__ = ("Algorithm", "MaximumGenerationTermination", "Population", "minimize"
 #######                   PYMOO PROBLEM CHILD CLASS                   #######
 #############################################################################
 class _Problem(Problem):  # type: ignore[misc]  # pymoo
-    """interfaces the pymoo problem"""
+    """Interface the pymoo problem."""
 
     _input_manager: _InputManager
     _output_manager: _OutputManager
@@ -271,8 +271,7 @@ class _Problem(Problem):  # type: ignore[misc]  # pymoo
 #######                      OPERATOR FUNCTIONS                       #######
 #############################################################################
 def _sampling(problem: Problem, init_population_size: int) -> Population:
-    """samples the initial generation"""
-
+    """Sample the initial generation."""
     return MixedVariableSampling()(problem, init_population_size)
 
 
@@ -282,8 +281,7 @@ def _operators(
     p_mutation: float,
     sampling: Population,
 ) -> _PymooOperators:
-    """a pymoo operators constructor"""
-
+    """Construct pymoo operators."""
     # defaults from respective algorithm classes in pymoo
     selections = {
         "nsga2": TournamentSelection(func_comp=binary_tournament),
@@ -357,8 +355,7 @@ def _algorithm(
     sampling: Population,
     reference_directions: None | AnyReferenceDirections = None,
 ) -> NSGA2 | NSGA3:
-    """a pymoo algorithm constructor"""
-
+    """Instantiate the pymoo algorithm."""
     if algorithm_name == "nsga2":
         return NSGA2(
             population_size,

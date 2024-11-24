@@ -1,3 +1,5 @@
+"""Functions for configuring sober."""
+
 from __future__ import annotations
 
 import os
@@ -57,7 +59,7 @@ _has_batches: bool  # dependent on analysis type (parametrics or optimisation)
 def __getattr__(  # type: ignore[misc]  # python/mypy#8203
     name: Literal["_config"], /
 ) -> _Config:
-    """lazily set these attributes when they are called for the first time"""
+    """Lazily set these attributes when they are called for the first time."""
     match name:
         case "_config":
             global _config
@@ -72,9 +74,10 @@ def __getattr__(  # type: ignore[misc]  # python/mypy#8203
 #######                    CONFIGURATION FUNCTIONS                    #######
 #############################################################################
 def _set_config(config: _Config) -> None:
-    """sets configuration
-    this helps copy configuration into child processes when using multiprocessing"""
+    """Set configuration.
 
+    This helps copy configuration into child processes when using multiprocessing.
+    """
     for name, value in config.items():
         _set_config_item(name, value)  # type: ignore[call-overload]  # python/mypy#7981
 
@@ -85,8 +88,7 @@ def _check_config(
     has_rvis: bool,
     languages: frozenset[AnyLanguage],
 ) -> None:
-    """checks the configuration sufficiency"""
-
+    """Check the configuration sufficiency."""
     if "n_processes" not in _config:
         _config["n_processes"] = psutil.cpu_count(logical=False) - 1
 
@@ -134,8 +136,7 @@ def _set_config_item(name: _AnyConfigName, value: Path | int) -> None:
 
 
 def _default_energyplus_root(major: str, minor: str, patch: str = "0") -> str:
-    """returns the default EnergyPlus installation directory"""
-
+    """Return the default EnergyPlus installation directory."""
     version = f"{major}-{minor}-{patch}"
     match platform.system():
         case "Linux":
@@ -158,7 +159,34 @@ def config_energyplus(
     exec_expandobjects: AnyStrPath | None = None,
     exec_readvars: AnyStrPath | None = None,
 ) -> None:
-    """sets EnergyPlus-related configuration"""
+    """Configure EnergyPlus-related file paths.
+
+    Three methods to find these paths are available.
+
+    1. If `version` is specified, the default EnergyPlus installation directory on the
+    current operating system will be used to find all paths.
+    2. If `version` is not specified and `root` is specified, the user-specified
+    EnergyPlus installation directory will be used to find all paths.
+    3. If neither `version` nor `root` is specified, each path can be specified
+    separately, where `schema_energyplus` and `exec_energyplus` are mandatory.
+
+    Parameters
+    ----------
+    version : str, optional
+        EnergyPlus version.
+    root : str or path-like object, optional
+        EnergyPlus installation directory path.
+    schema_energyplus : str or path-like object, optional
+        Energy+.idd file path.
+    exec_energyplus : str or path-like object, optional
+        EnergyPlus executable path.
+    exec_epmacro : str or path-like object, optional
+        EPMacro executable path.
+    exec_expandobjects : str or path-like object, optional
+        ExpandObjects executable path.
+    exec_readvars : str or path-like object, optional
+        ReadVarsESO executable path.
+    """
     # TODO: change this to non-mandatory when metamodelling is supported
 
     if version is not None:
@@ -206,14 +234,25 @@ def config_energyplus(
 
 
 def config_parallel(*, n_processes: int | None = None) -> None:
-    """sets parallel-related configuration"""
+    """Configure parallel-related settings.
 
+    Parameters
+    ----------
+    n_processes : int, optional
+        Number of prcesses to be parallelised, default is the total number of
+        accessible CPU cores minus one.
+    """
     if n_processes is not None:
         _set_config_item("n_processes", n_processes)
 
 
 def config_script(*, exec_python: AnyStrPath | None = None) -> None:
-    """sets script-related configuration"""
+    """Configure script language paths.
 
+    Parameters
+    ----------
+    exec_python : str or path-like object, optional
+        Python executable path, which can be obtained by `sys.executable`.
+    """
     if exec_python is not None:
         _set_config_item("exec_python", _parsed_path(exec_python, "python executable"))

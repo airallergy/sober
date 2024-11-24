@@ -1,3 +1,5 @@
+"""**sober** **o**ptimises **b**uilt **e**nvironment **r**obustly."""
+
 from sober._evolver_pymoo import MaximumGenerationTermination
 from sober.config import config_energyplus, config_parallel, config_script
 from sober.input import (
