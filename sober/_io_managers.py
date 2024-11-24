@@ -499,8 +499,8 @@ class _OutputManager:
                             item._filename,
                             item._objectives,
                             item._constraints,
-                            item._direction,
-                            item._bounds,
+                            item._objective_direction,
+                            item._constraint_bounds,
                             item._is_final,
                         )
                     )

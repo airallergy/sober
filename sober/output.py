@@ -22,21 +22,21 @@ if TYPE_CHECKING:
 
     from sober._typing import AnyCoreLevel, AnyLanguage, AnyStrPath
 
-    type _AnyDirection = Literal["minimise", "maximise"]
-    type _AnyBounds = tuple[float, float]
+    type _AnyObjectiveDirection = Literal["minimise", "maximise"]
+    type _AnyConstraintBounds = tuple[float, float]
     type _AnyEPOutputType = Literal["variable", "meter"]
 
     # TODO: below goes to tests when made
     # assert [
-    #     item.upper() for item in get_args(_AnyDirection)
-    # ] == _Direction._member_names_
+    #     item.upper() for item in get_args(_AnyObjectiveDirection)
+    # ] == _ObjectiveDirection._member_names_
     # assert [
     #     item.upper() for item in get_args(_AnyEPOutputType)
     # ] == _EPOutputType._member_names_
 
 
 @enum.unique
-class _Direction(enum.IntEnum):
+class _ObjectiveDirection(enum.IntEnum):
     MINIMISE = 1
     MAXIMISE = -1
 
@@ -58,8 +58,8 @@ class _Collector(ABC):
         "_level",
         "_objectives",
         "_constraints",
-        "_direction",
-        "_bounds",
+        "_objective_direction",
+        "_constraint_bounds",
         "_is_final",
         "_is_copied",
     )
@@ -68,8 +68,8 @@ class _Collector(ABC):
     _level: AnyCoreLevel
     _objectives: tuple[str, ...]
     _constraints: tuple[str, ...]
-    _direction: _Direction
-    _bounds: _AnyBounds
+    _objective_direction: _ObjectiveDirection
+    _constraint_bounds: _AnyConstraintBounds
     _is_final: bool
     _is_copied: bool
 
@@ -80,16 +80,16 @@ class _Collector(ABC):
         level: AnyCoreLevel,
         objectives: str | Iterable[str],
         constraints: str | Iterable[str],
-        direction: _AnyDirection,
-        bounds: _AnyBounds,
+        objective_direction: _AnyObjectiveDirection,
+        constraint_bounds: _AnyConstraintBounds,
         is_final: bool,
     ) -> None:
         self._filename = filename
         self._level = level
         self._objectives = _parsed_str_iterable(objectives, "objectives")
         self._constraints = _parsed_str_iterable(constraints, "constraints")
-        self._direction = _Direction[direction.upper()]
-        self._bounds = bounds
+        self._objective_direction = _ObjectiveDirection[objective_direction.upper()]
+        self._constraint_bounds = constraint_bounds
         self._is_final = is_final
         self._is_copied = False
 
@@ -120,7 +120,7 @@ class _Collector(ABC):
                     f"a collector containing constraints needs to be final: {self._filename}."
                 )
 
-            low, high = self._bounds
+            low, high = self._constraint_bounds
             if (
                 (math.isnan(low) or math.isnan(high))
                 or (math.isinf(low) and math.isinf(high))
@@ -128,7 +128,9 @@ class _Collector(ABC):
                 or (math.isinf(high) and high < 0)
                 or (low >= high)
             ):
-                raise ValueError(f"invalid constraint bounds: {self._bounds}.")
+                raise ValueError(
+                    f"invalid constraint bounds: {self._constraint_bounds}."
+                )
 
         if self._is_final and (self._filename.split(".")[-1] != "csv"):
             raise ValueError(
@@ -137,11 +139,11 @@ class _Collector(ABC):
 
     def _to_objective(self, value: float) -> float:
         # convert each objective to minimise
-        return value * self._direction.value
+        return value * self._objective_direction.value
 
     def _to_constraint(self, value: float) -> float:
         # convert each constraint to <= 0
-        low, high = self._bounds
+        low, high = self._constraint_bounds
         if math.isinf(low):
             return value - high
         elif math.isinf(high):
@@ -180,9 +182,9 @@ class RVICollector(_Collector):
         Optimisation objectives, which must match the output names in the output file.
     constraints : str or iterable of str, optional
         Optimisation constraints, which must match the output names in the output file.
-    direction : {'minimise', 'maximise'}, default: `'minimise'`
-        Optimisation constraint direction.
-    bounds : tuple of float, default: `(-math.inf, 0)`
+    objective_direction : {'minimise', 'maximise'}, default: `'minimise'`
+        Optimisation objective direction.
+    constraint_bounds : tuple of float, default: `(-math.inf, 0)`
         Optimisation constraint bounds.
     is_final : bool, default: `True`
         Whether the output is final and recorded.
@@ -215,8 +217,8 @@ class RVICollector(_Collector):
         *,
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
-        direction: _AnyDirection = "minimise",
-        bounds: _AnyBounds = (-math.inf, 0),
+        objective_direction: _AnyObjectiveDirection = "minimise",
+        constraint_bounds: _AnyConstraintBounds = (-math.inf, 0),
         is_final: bool = True,
     ) -> None:
         self._ep_output_names = _parsed_str_iterable(ep_output_names, "ep output names")
@@ -225,7 +227,13 @@ class RVICollector(_Collector):
         self._ep_output_frequency = ep_output_frequency
 
         super().__init__(
-            filename, "task", objectives, constraints, direction, bounds, is_final
+            filename,
+            "task",
+            objectives,
+            constraints,
+            objective_direction,
+            constraint_bounds,
+            is_final,
         )
 
     def __call__(self, cwd: Path) -> None:  # noqa: D102  # astral-sh/ruff#8085
@@ -293,9 +301,9 @@ class ScriptCollector(_Collector):
         Optimisation objectives, which must match the output names in the output file.
     constraints : str or iterable of str, optional
         Optimisation constraints, which must match the output names in the output file.
-    direction : {'minimise', 'maximise'}, default: `'minimise'`
-        Optimisation constraint direction.
-    bounds : tuple of float, default: `(-math.inf, 0)`
+    objective_direction : {'minimise', 'maximise'}, default: `'minimise'`
+        Optimisation objective direction.
+    constraint_bounds : tuple of float, default: `(-math.inf, 0)`
         Optimisation constraint bounds.
     is_final : bool, default: `True`
         Whether the output is final and recorded.
@@ -326,8 +334,8 @@ class ScriptCollector(_Collector):
         level: AnyCoreLevel = "task",
         objectives: str | Iterable[str] = (),
         constraints: str | Iterable[str] = (),
-        direction: _AnyDirection = "minimise",
-        bounds: _AnyBounds = (-math.inf, 0),
+        objective_direction: _AnyObjectiveDirection = "minimise",
+        constraint_bounds: _AnyConstraintBounds = (-math.inf, 0),
         is_final: bool = True,
     ) -> None:
         self._script_file = _parsed_path(script_file, "script file")
@@ -335,7 +343,13 @@ class ScriptCollector(_Collector):
         self._script_kwargs = {} if script_kwargs is None else script_kwargs
 
         super().__init__(
-            filename, level, objectives, constraints, direction, bounds, is_final
+            filename,
+            level,
+            objectives,
+            constraints,
+            objective_direction,
+            constraint_bounds,
+            is_final,
         )
 
     def __call__(self, cwd: Path) -> None:  # noqa: D102  # astral-sh/ruff#8085
@@ -394,8 +408,8 @@ class _CopyCollector(_Collector):
         filename: str,
         objectives: tuple[str, ...],
         constraints: tuple[str, ...],
-        direction: _Direction,
-        bounds: _AnyBounds,
+        objective_direction: _ObjectiveDirection,
+        constraint_bounds: _AnyConstraintBounds,
         is_final: bool,
     ) -> None:
         # overwrite _Collector's __init__, as all args have been parsed
@@ -403,8 +417,8 @@ class _CopyCollector(_Collector):
         self._level = "job"
         self._objectives = objectives
         self._constraints = constraints
-        self._direction = direction
-        self._bounds = bounds
+        self._objective_direction = objective_direction
+        self._constraint_bounds = constraint_bounds
         self._is_final = is_final
         self._is_copied = False
 
