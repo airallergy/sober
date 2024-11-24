@@ -4,8 +4,20 @@
     <img alt="sober logo" src="doc/source/logo/sober_logo_black.svg" width="300">
 </picture>
 
-**sober** — **sober** **o**ptimises **b**uilt **e**nvironment **r**obustly
+**sober** **o**ptimises **b**uilt **e**nvironment **r**obustly
 
 ---
 
-Alpha phase, in development.
+## Installation
+
+**sober** can be installed via either `conda`:
+
+```zsh
+conda install -c conda-forge sober
+```
+
+or `pip`:
+
+```zsh
+pip install sober
+```
