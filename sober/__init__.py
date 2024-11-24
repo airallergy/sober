@@ -14,7 +14,7 @@ from sober.input import (
 from sober.output import RVICollector, ScriptCollector
 from sober.problem import Problem
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"
 
 __all__ = (
     "CategoricalModifier",
