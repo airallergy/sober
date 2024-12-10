@@ -125,9 +125,9 @@ class _PymooEvolver(_Evolver):
 
         # append survival info
 
-        header_row = ["BatchUID", *header_row, "is_pareto", "is_feasible"]
+        header_row = ["BatchUID", "IsPareto", "IsFeasible", *header_row]
         record_rows = [
-            [batch_uid, *row, str(item.get("rank") == 0), str(item.FEAS[0])]
+            [batch_uid, str(item.get("rank") == 0), str(item.FEAS[0]), *row]
             for batch_uid, row, item in zip(
                 batch_uid_column, record_rows, population, strict=True
             )
