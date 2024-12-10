@@ -347,8 +347,8 @@ class StringTagger(_TextTagger):
     and the suffix. Multiple string trios can be specified to modify multiple regular or
     macro commands with the same value.
 
-    The prefix and the suffix are useful to locate the right string to be replaced, when
-    the string itself is not unique in the EnergyPlus model.
+    The prefix and the suffix are useful to delimit the right string to be replaced,
+    when the string itself is not unique in the EnergyPlus model.
 
     Currently, tagging inside macro files are not supported.
 
@@ -380,12 +380,6 @@ class StringTagger(_TextTagger):
         # cast: python/mypy#4573, python/mypy#7853 may help, but the above assignment is too dynamic
         _string_trios = cast(tuple[tuple[str, str, str], ...], _string_trios)
 
-        for string, prefix, suffix in _string_trios:
-            if not (string.startswith(prefix) and string.endswith(suffix)):
-                raise ValueError(
-                    f"string needs to share the prefix and the suffix: '{string}, {prefix}, {suffix}'."
-                )
-
         # remove duplicate trios
         self._string_trios = tuple(set(_string_trios))
 
@@ -395,10 +389,14 @@ class StringTagger(_TextTagger):
         for (string, prefix, suffix), tag in zip(
             self._string_trios, self._tags, strict=True
         ):
-            if string not in model:
-                raise ValueError(f"string is not found in the model: '{string}'.")
+            delimited_string = prefix + string + suffix
 
-            model = model.replace(string, prefix + tag + suffix)
+            if delimited_string not in model:
+                raise ValueError(
+                    f"delimited string is not found in the model: '{delimited_string}'."
+                )
+
+            model = model.replace(delimited_string, prefix + tag + suffix)
         return model
 
 
