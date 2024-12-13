@@ -32,9 +32,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: format
-        run: uvx ruff format --check
+        run: uv run ruff format --diff
       - name: lint
-        run: uvx ruff check
+        run: uv run ruff check --diff
       - name: install dependencies
         run: uv sync --all-extras --all-groups
       - name: run tests
