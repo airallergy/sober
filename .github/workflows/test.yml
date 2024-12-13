@@ -1,0 +1,37 @@
+name: Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    tags: ["*"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.5.*"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: install dependencies
+        run: uv sync --all-extras --all-groups
+      - name: run tests
+        run: uv run pytest
