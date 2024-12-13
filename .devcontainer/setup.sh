@@ -1,1 +1,1 @@
-poetry install
+uv sync --all-extras --all-groups
