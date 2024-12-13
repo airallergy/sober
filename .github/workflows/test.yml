@@ -31,6 +31,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: format
+        run: uvx ruff format --check
+      - name: lint
+        run: uvx ruff check
       - name: install dependencies
         run: uv sync --all-extras --all-groups
       - name: run tests
