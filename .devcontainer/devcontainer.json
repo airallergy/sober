@@ -5,24 +5,24 @@
     },
     "postCreateCommand": "bash .devcontainer/setup.sh",
     "customizations": {
-        "settings": {
-            "[python]": {
-                "editor.codeActionsOnSave": {
-                    "source.organizeImports": "explicit",
-                    "source.fixAll": "explicit"
-                },
-                "editor.defaultFormatter": "charliermarsh.ruff"
-            },
-            "editor.formatOnSave": true,
-            "mypy-type-checker.importStrategy": "fromEnvironment",
-            "ruff.importStrategy": "fromEnvironment"
-        },
         "vscode": {
             "extensions": [
                 "ms-python.python",
                 "ms-python.mypy-type-checker",
                 "charliermarsh.ruff"
-            ]
+            ],
+            "settings": {
+                "[python]": {
+                    "editor.codeActionsOnSave": {
+                        "source.organizeImports": "explicit",
+                        "source.fixAll": "explicit"
+                    },
+                    "editor.defaultFormatter": "charliermarsh.ruff"
+                },
+                "editor.formatOnSave": true,
+                "mypy-type-checker.importStrategy": "fromEnvironment",
+                "ruff.importStrategy": "fromEnvironment"
+            }
         }
     }
 }
