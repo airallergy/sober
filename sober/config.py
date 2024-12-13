@@ -73,6 +73,12 @@ def __getattr__(  # type: ignore[misc]  # python/mypy#8203
 #############################################################################
 #######                    CONFIGURATION FUNCTIONS                    #######
 #############################################################################
+def _parsed_exec_filename(filename: str) -> str:
+    if platform.system() == "Windows":
+        filename += ".exe"
+    return filename
+
+
 def _set_config(config: _Config) -> None:
     """Set configuration.
 
@@ -195,16 +201,10 @@ def config_energyplus(
     if root is not None:
         root = _parsed_path(root, "energyplus root")
         schema_energyplus = root / "Energy+.idd"
-        exec_energyplus = root / "energyplus"
-        exec_epmacro = root / "EPMacro"
-        exec_expandobjects = root / "ExpandObjects"
-        exec_readvars = root / "PostProcess" / "ReadVarsESO"
-
-        if platform.system() == "Windows":
-            exec_energyplus = exec_energyplus.with_suffix(".exe")
-            exec_epmacro = exec_epmacro.with_suffix(".exe")
-            exec_expandobjects = exec_expandobjects.with_suffix(".exe")
-            exec_readvars = exec_readvars.with_suffix(".exe")
+        exec_energyplus = root / _parsed_exec_filename("energyplus")
+        exec_epmacro = root / _parsed_exec_filename("EPMacro")
+        exec_expandobjects = root / _parsed_exec_filename("ExpandObjects")
+        exec_readvars = root / "PostProcess" / _parsed_exec_filename("ReadVarsESO")
 
     if (schema_energyplus is None) or (exec_energyplus is None):
         raise ValueError(

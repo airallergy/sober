@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools as it
 import os.path
+import platform
 from typing import TYPE_CHECKING
 
 import pytest
@@ -13,16 +14,18 @@ if TYPE_CHECKING:
 
     from sober.config import _Config
 
+EXEC_SUFFIX = ".exe" if platform.system() == "Windows" else ""
+
 
 @pytest.fixture(scope="module")
 def ep_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     root = tmp_path_factory.mktemp("ep_folder")
     (root / "Energy+.idd").touch()
-    (root / "energyplus").touch()
-    (root / "EPMacro").touch()
-    (root / "ExpandObjects").touch()
+    (root / f"energyplus{EXEC_SUFFIX}").touch()
+    (root / f"EPMacro{EXEC_SUFFIX}").touch()
+    (root / f"ExpandObjects{EXEC_SUFFIX}").touch()
     (root / "PostProcess").mkdir()
-    (root / "PostProcess" / "ReadVarsESO").touch()
+    (root / "PostProcess" / f"ReadVarsESO{EXEC_SUFFIX}").touch()
     return root
 
 
@@ -30,10 +33,12 @@ def ep_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def ep_files(ep_dir: Path) -> _Config:
     return {
         "schema_energyplus": os.path.join(ep_dir, "Energy+.idd"),
-        "exec_energyplus": os.path.join(ep_dir, "energyplus"),
-        "exec_epmacro": os.path.join(ep_dir, "EPMacro"),
-        "exec_expandobjects": os.path.join(ep_dir, "ExpandObjects"),
-        "exec_readvars": os.path.join(ep_dir, "PostProcess", "ReadVarsESO"),
+        "exec_energyplus": os.path.join(ep_dir, f"energyplus{EXEC_SUFFIX}"),
+        "exec_epmacro": os.path.join(ep_dir, f"EPMacro{EXEC_SUFFIX}"),
+        "exec_expandobjects": os.path.join(ep_dir, f"ExpandObjects{EXEC_SUFFIX}"),
+        "exec_readvars": os.path.join(
+            ep_dir, "PostProcess", f"ReadVarsESO{EXEC_SUFFIX}"
+        ),
     }
 
 
@@ -54,16 +59,16 @@ def config_energyplus_kwargs(
         (
             {
                 "schema_energyplus": ("ep_dir", "Energy+.idd"),
-                "exec_energyplus": ("ep_dir", "energyplus"),
+                "exec_energyplus": ("ep_dir", f"energyplus{EXEC_SUFFIX}"),
             },
             [slice(2)],  # via schema_energyplus & exec_energyplus
         ),
         (
             {
                 "schema_energyplus": ("ep_dir", "Energy+.idd"),
-                "exec_energyplus": ("ep_dir", "energyplus"),
-                "exec_epmacro": ("ep_dir", "EPMacro"),
-                "exec_readvars": ("ep_dir", "PostProcess", "ReadVarsESO"),
+                "exec_energyplus": ("ep_dir", f"energyplus{EXEC_SUFFIX}"),
+                "exec_epmacro": ("ep_dir", f"EPMacro{EXEC_SUFFIX}"),
+                "exec_readvars": ("ep_dir", "PostProcess", f"ReadVarsESO{EXEC_SUFFIX}"),
             },
             [
                 slice(3),
@@ -111,7 +116,7 @@ def test_config_energyplus_pass(
                 },
                 {
                     "schema_energyplus": ("ep_dir", "Energy+.idd"),
-                    "exec_energyplus": ("ep_dir", "energyplus"),
+                    "exec_energyplus": ("ep_dir", f"energyplus{EXEC_SUFFIX}"),
                     "exec_epmacro": ("this", "is", "non-existent"),
                 },
             ],
@@ -127,7 +132,13 @@ def test_config_energyplus_pass(
             [
                 {},
                 {"schema_energyplus": ("ep_dir", "Energy+.idd")},
-                {"exec_readvars": ("ep_dir", "PostProcess", "ReadVarsESO")},
+                {
+                    "exec_readvars": (
+                        "ep_dir",
+                        "PostProcess",
+                        f"ReadVarsESO{EXEC_SUFFIX}",
+                    )
+                },
             ],
             [
                 (
