@@ -1,5 +1,8 @@
 {
     "name": "sober",
+    "containerEnv": {
+        "UV_PROJECT_ENVIRONMENT": "/home/vscode/.venv"
+    },
     "build": {
         "dockerfile": "Dockerfile"
     },
@@ -24,5 +27,6 @@
                 "ruff.importStrategy": "fromEnvironment"
             }
         }
-    }
+    },
+    "remoteUser": "vscode"
 }
