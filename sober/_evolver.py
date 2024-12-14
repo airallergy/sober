@@ -114,7 +114,9 @@ class _PymooEvolver(_Evolver):
             index=np.asarray(range(len(objectives)), dtype=int),
         )
 
-        # TODO: eliminate duplicates
+        # NOTE: problems with only integral variables probably have duplicates
+        #       but pymoo's non-dominated sorting seems to work well with duplicates
+        #       no need for actions for now
 
         survivors = algorithm.survival.do(
             algorithm.problem, population, algorithm=algorithm
@@ -124,10 +126,15 @@ class _PymooEvolver(_Evolver):
         )
 
         # append survival info
-
-        header_row = ["BatchUID", "IsPareto", "IsFeasible", *header_row]
+        header_row = [
+            "BatchUID",
+            header_row[0],
+            "IsPareto",
+            "IsFeasible",
+            *header_row[1:],
+        ]
         record_rows = [
-            [batch_uid, str(item.get("rank") == 0), str(item.FEAS[0]), *row]
+            [batch_uid, row[0], str(item.get("rank") == 0), str(item.FEAS[0]), *row[1:]]
             for batch_uid, row, item in zip(
                 batch_uid_column, record_rows, population, strict=True
             )
