@@ -137,9 +137,9 @@ class _LoggerManager(ContextDecorator):
             # get the level from the func name
             # the func name should follow the pattern of _{action}_{level}
             level = func.__code__.co_name.split("_")[-1]
-            assert (
-                level in cf._RECORDS_FILENAMES
-            ), f"the func name pattern is not recognised: {func.__code__.co_name}."
+            assert level in cf._RECORDS_FILENAMES, (
+                f"the func name pattern is not recognised: {func.__code__.co_name}."
+            )
             self._level = level  # type: ignore[assignment] # python/mypy#12535, python/mypy#15106
 
             # set the log filename

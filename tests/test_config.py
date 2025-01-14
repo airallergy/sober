@@ -124,7 +124,7 @@ def test_config_energyplus_pass(
                 (
                     FileNotFoundError,  # from _tools._parsed_path
                     "endswith",
-                    f"not found: '{os.path.join(os.getcwd(), 'this','is','non-existent')}'.",
+                    f"not found: '{os.path.join(os.getcwd(), 'this', 'is', 'non-existent')}'.",
                 )
             ],
         ),
