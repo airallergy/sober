@@ -15,6 +15,7 @@
                 "charliermarsh.ruff"
             ],
             "settings": {
+                "python.defaultInterpreterPath": "/home/vscode/.venv/bin/python",
                 "[python]": {
                     "editor.codeActionsOnSave": {
                         "source.organizeImports": "explicit",
