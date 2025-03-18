@@ -20,7 +20,6 @@ import sober.config as cf
 from sober._evaluator import _evaluate
 from sober._logger import _log
 from sober._tools import _natural_width, _read_records
-from sober._typing import AnyCtrlKeyVec
 from sober.input import _RealModifier
 
 if TYPE_CHECKING:
@@ -33,7 +32,7 @@ if TYPE_CHECKING:
     from pymoo.core.termination import Termination as Termination
 
     from sober._io_managers import _InputManager, _OutputManager
-    from sober._typing import AnyF, AnyG, AnyReferenceDirections, AnyX
+    from sober._typing import AnyCtrlKeyVec, AnyF, AnyG, AnyReferenceDirections, AnyX
 
     class _PymooOut(TypedDict):
         F: AnyF | None
@@ -233,7 +232,7 @@ class _Problem(Problem):  # type: ignore[misc]  # pymoo
             for ctrl_key_map in x
         )
 
-        ctrl_key_vecs = cast(tuple[AnyCtrlKeyVec, ...], ctrl_key_vecs)  # mypy
+        ctrl_key_vecs = cast("tuple[AnyCtrlKeyVec, ...]", ctrl_key_vecs)  # mypy
 
         # evaluate and get objectives and constraints
         batch_dir = self._evaluation_dir / batch_uid

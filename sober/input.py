@@ -319,7 +319,7 @@ class IndexTagger(_IDFTagger):
         # >>> x = _index_trios[0]
         # >>> assert len(x) == 3
         # >>> reveal_type(x)  # x: tuple[str, str, str]
-        _index_trios = cast(tuple[tuple[str, str, str], ...], _index_trios)
+        _index_trios = cast("tuple[tuple[str, str, str], ...]", _index_trios)
 
         # remove duplicate trios
         self._index_trios = tuple(set(_index_trios))
@@ -378,7 +378,7 @@ class StringTagger(_TextTagger):
         _string_trios = tuple(item + ("",) * (3 - len(item)) for item in _string_trios)
 
         # cast: python/mypy#4573, python/mypy#7853 may help, but the above assignment is too dynamic
-        _string_trios = cast(tuple[tuple[str, str, str], ...], _string_trios)
+        _string_trios = cast("tuple[tuple[str, str, str], ...]", _string_trios)
 
         # remove duplicate trios
         self._string_trios = tuple(set(_string_trios))

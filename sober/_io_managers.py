@@ -21,7 +21,6 @@ from sober._simulator import (
     _split_model,
 )
 from sober._tools import _natural_width, _parsed_str_iterable, _write_records
-from sober._typing import AnyModifierValue  # cast
 from sober.input import (
     FunctionalModifier,
     WeatherModifier,
@@ -30,7 +29,7 @@ from sober.input import (
     _RealModifier,
     _TextTagger,
 )
-from sober.output import RVICollector, ScriptCollector, _Collector, _CopyCollector
+from sober.output import RVICollector, ScriptCollector, _CopyCollector
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
@@ -47,11 +46,13 @@ if TYPE_CHECKING:
         AnyModelModifierValue,
         AnyModelTask,
         AnyModelType,
+        AnyModifierValue,
         AnyTask,
         AnyUIDs,
         NoiseSampleKwargs,
     )
     from sober.input import _Modifier
+    from sober.output import _Collector
 
     type _AnyConverter = Callable[[float], float]
     type _AnyBatchOutputs = tuple[tuple[float, ...], ...]
@@ -204,7 +205,7 @@ class _InputManager:
             if isinstance(tagger, _IDFTagger):
                 idf = tagger._tagged(idf)
 
-        return macros + cast(str, idf.idfstr())  # eppy
+        return macros + cast("str", idf.idfstr())  # eppy
 
     def _task_items(self, ctrl_key_vec: AnyCtrlKeyVec) -> AnyJob:
         # align ctrl and noise keys and convert non-functional keys
@@ -254,7 +255,7 @@ class _InputManager:
             )
 
             # cast: python/mypy#5247
-            aligned = cast(tuple[tuple[AnyModifierValue, ...], ...], aligned)
+            aligned = cast("tuple[tuple[AnyModifierValue, ...], ...]", aligned)
         else:
             if self._has_real_noises:
                 raise ValueError(
@@ -264,7 +265,9 @@ class _InputManager:
             aligned = tuple(
                 it.product(
                     *(
-                        tuple(cast(_IntegralModifier[AnyModifierValue], input))  # mypy
+                        tuple(
+                            cast("_IntegralModifier[AnyModifierValue]", input)  # mypy
+                        )
                         if input._is_noise
                         else (input(key) if input._is_ctrl else key,)
                         for input, key in zip(self, ctrl_key_vec, strict=True)
@@ -568,7 +571,7 @@ class _OutputManager:
             assert uid == record_rows[i][0]
 
             for output in getattr(self, f"_{level}_outputs"):
-                output = cast(_Collector, output)  # cast: python/mypy#11142
+                output = cast("_Collector", output)  # cast: python/mypy#11142
                 if not output._is_final:
                     continue
 

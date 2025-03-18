@@ -13,8 +13,6 @@ import scipy.stats.qmc
 
 from sober._evaluator import _evaluate
 from sober._tools import _pre_evaluation_hook
-from sober._typing import AnyModifierValue
-from sober.input import _IntegralModifier
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -22,6 +20,8 @@ if TYPE_CHECKING:
     from typing import Any, Final, TypeGuard
 
     from sober._io_managers import _InputManager, _OutputManager
+    from sober._typing import AnyModifierValue
+    from sober.input import _IntegralModifier
 
 
 ##############################  module typing  ##############################
@@ -113,7 +113,7 @@ class _InverseTransformQuantile:
         sample_quantile_vecs = rng.uniform(size=(self._n_dims, size)).tolist()
 
         # cast: numpy/numpy#16544
-        return cast(list[list[float]], sample_quantile_vecs)
+        return cast("list[list[float]]", sample_quantile_vecs)
 
     def _latin_hypercube(self, size: int, seed: int | None) -> list[list[float]]:
         rng = np.random.default_rng(seed)
@@ -122,7 +122,7 @@ class _InverseTransformQuantile:
         sample_quantile_vecs = sampler.random(size).T.tolist()
 
         # cast: numpy/numpy#16544
-        return cast(list[list[float]], sample_quantile_vecs)
+        return cast("list[list[float]]", sample_quantile_vecs)
 
 
 class _ElementwiseMultiplier(_Multiplier):
@@ -150,7 +150,7 @@ class _ElementwiseMultiplier(_Multiplier):
         )
 
         # cast: python/mypy#5247
-        ctrl_key_vecs = cast(tuple[tuple[float | int, ...], ...], ctrl_key_vecs)
+        ctrl_key_vecs = cast("tuple[tuple[float | int, ...], ...]", ctrl_key_vecs)
 
         self._evaluate(*ctrl_key_vecs)
 
@@ -256,7 +256,7 @@ class _CartesianMultiplier(_Multiplier):
 
         # set the lazy cartesian product
         ctrl_lens = tuple(
-            len(cast(_IntegralModifier[AnyModifierValue], item))  # mypy
+            len(cast("_IntegralModifier[AnyModifierValue]", item))  # mypy
             if item._is_ctrl
             else item._hype_ctrl_len()
             for item in self._input_manager
@@ -276,7 +276,7 @@ class _CartesianMultiplier(_Multiplier):
         sample_indices = rng.choice(len_product, size, replace=False).tolist()
 
         # cast: numpy/numpy#16544
-        sample_indices = cast(list[int], sample_indices)
+        sample_indices = cast("list[int]", sample_indices)
 
         self(*sample_indices)
 
