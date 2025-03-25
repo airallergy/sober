@@ -177,7 +177,7 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     def _key_icdf(self, *quantiles: float) -> tuple[float, ...]:
         # NOTE: scipy rv_discrete ppf does not convert to int, but rvs does
         #       this surprising behaviour is handled manually
-        return tuple(self._distribution.ppf(quantiles).tolist())
+        return tuple(self._distribution.ppf(quantiles).tolist())  # type: ignore[arg-type]  # numpy/scipy typing is not quite there
 
     def _hype_ctrl_key(self) -> int:
         assert not self._is_ctrl
