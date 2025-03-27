@@ -119,6 +119,7 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
 
     __slots__ = (
         "_bounds",
+        "_tagger",
         "_distribution",
         "_is_ctrl",
         "_is_noise",
@@ -128,6 +129,7 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     )
 
     _bounds: tuple[float, float]
+    _tagger: AnyTagger | None
     _distribution: SupportsPPF
     _is_ctrl: bool
     _is_noise: bool
@@ -139,11 +141,13 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     def __init__(
         self,
         bounds: tuple[float, float],
+        tagger: AnyTagger | None,
         distribution: SupportsPPF,
         is_noise: bool,
         name: str,
     ) -> None:
         self._bounds = bounds
+        self._tagger = tagger
         self._distribution = distribution
         self._is_ctrl = not is_noise  # FunctionalModifier is neither, overwrites later
         self._is_noise = is_noise
@@ -173,6 +177,13 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
                 f"the support of the distribution is inconsistent: '{self._distribution}'."
             )
 
+    def _detagged(self, tagged_model: str, *values: _SupportsStr) -> str:
+        if self._tagger is None:
+            # TODO: handle this later
+            raise NotImplementedError
+
+        return self._tagger._detagged(tagged_model, *values)
+
     @abstractmethod
     def _key_icdf(self, *quantiles: float) -> tuple[float, ...]:
         # NOTE: scipy rv_discrete ppf does not convert to int, but rvs does
@@ -200,6 +211,7 @@ class _RealModifier(_Modifier[float, float]):
     def __init__(
         self,
         bounds: tuple[float, float],
+        tagger: AnyTagger | None,
         distribution: SupportsPPF | None,
         is_noise: bool,
         name: str,
@@ -208,7 +220,7 @@ class _RealModifier(_Modifier[float, float]):
             low, high = bounds
             distribution = scipy.stats.uniform(loc=low, scale=high - low)
 
-        super().__init__(bounds, distribution, is_noise, name)
+        super().__init__(bounds, tagger, distribution, is_noise, name)
 
     def __call__(self, key: float) -> float:
         return key
@@ -232,6 +244,7 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
     def __init__(
         self,
         options: tuple[_MV_co, ...],
+        tagger: AnyTagger | None,
         distribution: SupportsPPF | None,
         is_noise: bool,
         name: str,
@@ -244,7 +257,7 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
             low, high = bounds
             distribution = scipy.stats.randint(low=low, high=high + 1)
 
-        super().__init__(bounds, distribution, is_noise, name)
+        super().__init__(bounds, tagger, distribution, is_noise, name)
 
     def __iter__(self) -> Iterator[_MV_co]:
         yield from self._options
@@ -265,23 +278,6 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
         # FunctionalModifier overwrites later
         assert not self._is_ctrl
         return _Noise("{...}")
-
-
-class _ModelModifierMixin(ABC):
-    """An abstract base class for common functions in model modification."""
-
-    __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
-
-    _tagger: AnyTagger
-
-    @abstractmethod
-    def __init__(self, tagger: AnyTagger, *args: object, **kwargs: object) -> None:
-        self._tagger = tagger  # type: ignore[misc]  # [1] microsoft/pyright#2039
-
-        super().__init__(*args, **kwargs)  # NOTE: to _RealModifier/_IntegralModifier
-
-    def _detagged(self, tagged_model: str, *values: _SupportsStr) -> str:
-        return self._tagger._detagged(tagged_model, *values)
 
 
 #############################################################################
@@ -429,6 +425,7 @@ class WeatherModifier(_IntegralModifier[Path]):
     ) -> None:
         super().__init__(
             tuple(_parsed_path(item, "weather file") for item in options),
+            None,
             distribution,
             is_noise,
             name,
@@ -443,7 +440,7 @@ class WeatherModifier(_IntegralModifier[Path]):
                 raise ValueError(f"'{item}' is no epw file.")
 
 
-class ContinuousModifier(_ModelModifierMixin, _RealModifier):
+class ContinuousModifier(_RealModifier):
     """Modify a continuous input variable.
 
     Parameters
@@ -462,7 +459,7 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
         Variable name.
     """
 
-    __slots__ = ("_tagger",)
+    __slots__ = ()
 
     def __init__(
         self,
@@ -470,12 +467,12 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
         high: float,
         /,
         *,
-        tagger: AnyTagger,
+        tagger: AnyTagger | None = None,
         distribution: SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
     ) -> None:
-        super().__init__(tagger, (low, high), distribution, is_noise, name)
+        super().__init__((low, high), tagger, distribution, is_noise, name)
 
     def _check_args(self) -> None:
         super()._check_args()
@@ -485,7 +482,7 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
             raise ValueError(f"the low '{low}' is equal to the high '{high}'.")
 
 
-class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
+class DiscreteModifier(_IntegralModifier[float]):
     """Modify a discrete input variable.
 
     Parameters
@@ -502,23 +499,23 @@ class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
         Variable name.
     """
 
-    __slots__ = ("_tagger",)
+    __slots__ = ()
 
     def __init__(
         self,
         *options: float,
-        tagger: AnyTagger,
+        tagger: AnyTagger | None = None,
         distribution: SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
     ) -> None:
-        super().__init__(tagger, options, distribution, is_noise, name)
+        super().__init__(options, tagger, distribution, is_noise, name)
 
     def _check_args(self) -> None:
         super()._check_args()
 
 
-class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
+class CategoricalModifier(_IntegralModifier[str]):
     """Modify a categorical input variable.
 
     Parameters
@@ -535,23 +532,23 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
         Variable name.
     """
 
-    __slots__ = ("_tagger",)
+    __slots__ = ()
 
     def __init__(
         self,
         *options: str,
-        tagger: AnyTagger,
+        tagger: AnyTagger | None = None,
         distribution: SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
     ) -> None:
-        super().__init__(tagger, options, distribution, is_noise, name)
+        super().__init__(options, tagger, distribution, is_noise, name)
 
     def _check_args(self) -> None:
         super()._check_args()
 
 
-class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifierValue]):
+class FunctionalModifier(_IntegralModifier[AnyModelModifierValue]):
     """Modify a functional input variable.
 
     This modifier is useful to define dependent input variables.
@@ -571,7 +568,7 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
         Variable name.
     """
 
-    __slots__ = ("_tagger", "_func", "_input_indices", "_func_kwargs")
+    __slots__ = ("_func", "_input_indices", "_func_kwargs")
 
     _func: _AnyFunc
     _input_indices: tuple[int, ...]
@@ -584,7 +581,7 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
         input_indices: Iterable[int],
         func_kwargs: dict[str, object] | None = None,
         *,
-        tagger: AnyTagger,
+        tagger: AnyTagger | None = None,
         name: str = "",
     ) -> None:
         self._func = func
@@ -592,7 +589,7 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
         self._func_kwargs = {} if func_kwargs is None else func_kwargs
 
         func_name = f"<function {self._func.__module__ + '.' + self._func.__code__.co_qualname}>"
-        super().__init__(tagger, (func_name,), None, False, name)
+        super().__init__((func_name,), tagger, None, False, name)
 
         self._is_ctrl = False
 
