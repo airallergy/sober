@@ -448,12 +448,12 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
 
     Parameters
     ----------
-    tagger : Tagger
-        A tagger object.
     low : float
         Lower limit.
     high : float
         Upper limit.
+    tagger : Tagger
+        A tagger object.
     distribution : SupportsPPF, optional
         Probability distribution defined by `scipy`.
     is_noise : bool, optional
@@ -466,11 +466,11 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
 
     def __init__(
         self,
-        tagger: AnyTagger,
         low: float,
         high: float,
         /,
         *,
+        tagger: AnyTagger,
         distribution: SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
@@ -490,10 +490,10 @@ class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
 
     Parameters
     ----------
-    tagger : Tagger
-        A tagger object.
     *options : floats
         Single or multiple options.
+    tagger : Tagger
+        A tagger object.
     distribution : SupportsPPF, optional
         Probability distribution defined by `scipy`.
     is_noise : bool, optional
@@ -506,8 +506,8 @@ class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
 
     def __init__(
         self,
-        tagger: AnyTagger,
         *options: float,
+        tagger: AnyTagger,
         distribution: SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
@@ -523,10 +523,10 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
 
     Parameters
     ----------
-    tagger : Tagger
-        A tagger object.
     *options : floats
         Single or multiple options.
+    tagger : Tagger
+        A tagger object.
     distribution : SupportsPPF, optional
         Probability distribution defined by `scipy`.
     is_noise : bool, optional
@@ -539,8 +539,8 @@ class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
 
     def __init__(
         self,
-        tagger: AnyTagger,
         *options: str,
+        tagger: AnyTagger,
         distribution: SupportsPPF | None = None,
         is_noise: bool = False,
         name: str = "",
@@ -558,8 +558,6 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
 
     Parameters
     ----------
-    tagger : Tagger
-        A tagger object.
     func : _AnyFunc
         A function that takes a tuple of input values as the argument and returns an
         input value.
@@ -567,6 +565,8 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
         Coincident input indices to input values passed into `func`.
     func_kwargs : dict, optional
         Additional keyword arguments passed into `func`.
+    tagger : Tagger
+        A tagger object.
     name : str, optional
         Variable name.
     """
@@ -579,12 +579,12 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
 
     def __init__(
         self,
-        tagger: AnyTagger,
         func: _AnyFunc,
-        input_indices: Iterable[int],
         /,
+        input_indices: Iterable[int],
         func_kwargs: dict[str, object] | None = None,
         *,
+        tagger: AnyTagger,
         name: str = "",
     ) -> None:
         self._func = func
