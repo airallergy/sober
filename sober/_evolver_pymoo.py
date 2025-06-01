@@ -69,8 +69,8 @@ if TYPE_CHECKING:
         @classmethod
         def new(
             cls,
-            F: NDArray[np.float64],  # noqa: N803
-            G: NDArray[np.float64],  # noqa: N803
+            F: NDArray[np.double],  # noqa: N803
+            G: NDArray[np.double],  # noqa: N803
             index: NDArray[np.int_],
         ) -> Self: ...
 
