@@ -134,6 +134,10 @@ class _InputManager:
         )
 
     def _prepare(self, model_file: Path) -> None:
+        # TODO: model_file here is not renamed to model in airallergy/sober#13,
+        #       because this function and the _tagged function below are EP-specific
+        #       they will be moved out of io managers during the actual decoupling
+
         # check model type
         suffix = model_file.suffix
         if suffix not in self._MODEL_TYPES:
