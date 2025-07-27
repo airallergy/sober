@@ -34,7 +34,7 @@ class Problem:
 
     Parameters
     ----------
-    model_file : str or path-like object
+    model : str or path-like object
         Model file path.
     weather_input : WeatherModifier
         Weather input variable.
@@ -82,7 +82,7 @@ class Problem:
     """
 
     __slots__ = (
-        "_model_file",
+        "_model",
         "_input_manager",
         "_output_manager",
         "_evaluation_dir",
@@ -92,7 +92,7 @@ class Problem:
         "_pymoo",
     )
 
-    _model_file: Path
+    _model: Path
     _input_manager: _InputManager
     _output_manager: _OutputManager
     _evaluation_dir: Path
@@ -103,7 +103,7 @@ class Problem:
 
     def __init__(
         self,
-        model_file: AnyStrPath,
+        model: AnyStrPath,
         weather_input: WeatherModifier,
         /,
         model_inputs: Iterable[AnyModelModifier] = (),
@@ -115,13 +115,13 @@ class Problem:
         clean_patterns: str | Iterable[str] = _OutputManager._DEFAULT_CLEAN_PATTERNS,
         removes_subdirs: bool = False,
     ) -> None:
-        self._model_file = _parsed_path(model_file, "model file")
+        self._model = _parsed_path(model, "model file")
         self._input_manager = _InputManager(
             weather_input, model_inputs, has_templates, noise_sample_kwargs
         )
         self._output_manager = _OutputManager(outputs, clean_patterns, removes_subdirs)
         self._evaluation_dir = (
-            self._model_file.parent / "evaluation"
+            self._model.parent / "evaluation"
             if evaluation_dir is None
             else _parsed_path(evaluation_dir)
         )
@@ -172,7 +172,7 @@ class Problem:
         self._config_dir.mkdir(exist_ok=True)
 
         # prepare io managers
-        self._input_manager._prepare(self._model_file)
+        self._input_manager._prepare(self._model)
         self._output_manager._prepare(self._config_dir, self._input_manager._has_noises)
 
     def run_random(
