@@ -456,7 +456,7 @@ class ContinuousModifier(_RealModifier):
         Probability distribution defined by `scipy`.
     is_noise : bool, optional
         Whether the variable is uncertain.
-    tagger : Tagger
+    tagger : Tagger, optional
         A tagger object.
     name : str, optional
         Variable name.
@@ -496,7 +496,7 @@ class DiscreteModifier(_IntegralModifier[float]):
         Probability distribution defined by `scipy`.
     is_noise : bool, optional
         Whether the variable is uncertain.
-    tagger : Tagger
+    tagger : Tagger, optional
         A tagger object.
     name : str, optional
         Variable name.
@@ -529,7 +529,7 @@ class CategoricalModifier(_IntegralModifier[str]):
         Probability distribution defined by `scipy`.
     is_noise : bool, optional
         Whether the variable is uncertain.
-    tagger : Tagger
+    tagger : Tagger, optional
         A tagger object.
     name : str, optional
         Variable name.
@@ -565,7 +565,7 @@ class FunctionalModifier(_IntegralModifier[AnyModelModifierValue]):
         Coincident input indices to input values passed into `func`.
     func_kwargs : dict, optional
         Additional keyword arguments passed into `func`.
-    tagger : Tagger
+    tagger : Tagger, optional
         A tagger object.
     name : str, optional
         Variable name.
