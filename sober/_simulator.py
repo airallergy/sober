@@ -21,8 +21,8 @@ def _run_epmacro(cwd: Path) -> None:
     _run(cmd_args, cwd)
 
     # rename output files
-    (cwd / "out.idf").rename(cwd / "in.idf")
-    (cwd / "audit.out").rename(cwd / "epmacro.audit")
+    (cwd / "out.idf").replace(cwd / "in.idf")
+    (cwd / "audit.out").replace(cwd / "epmacro.audit")
 
 
 def _run_expandobjects(cwd: Path) -> None:
@@ -34,9 +34,9 @@ def _run_expandobjects(cwd: Path) -> None:
     _run(cmd_args, cwd)
 
     # rename output files
-    (cwd / "expanded.idf").rename(cwd / "in.idf")
+    (cwd / "expanded.idf").replace(cwd / "in.idf")
     if (cwd / "expandedidf.err").exists():
-        (cwd / "expandedidf.err").rename(cwd / "expandobjects.audit")
+        (cwd / "expandedidf.err").replace(cwd / "expandobjects.audit")
     idd_file.unlink()
 
 
