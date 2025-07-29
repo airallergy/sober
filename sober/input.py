@@ -122,6 +122,7 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
         "_distribution",
         "_is_ctrl",
         "_is_noise",
+        "_tagger",
         "_name",
         "_index",
         "_label",
@@ -131,6 +132,7 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
     _distribution: SupportsPPF
     _is_ctrl: bool
     _is_noise: bool
+    _tagger: AnyTagger | None
     _name: str
     _index: int
     _label: str
@@ -141,12 +143,14 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
         bounds: tuple[float, float],
         distribution: SupportsPPF,
         is_noise: bool,
+        tagger: AnyTagger | None,
         name: str,
     ) -> None:
         self._bounds = bounds
         self._distribution = distribution
         self._is_ctrl = not is_noise  # FunctionalModifier is neither, overwrites later
         self._is_noise = is_noise
+        self._tagger = tagger
         self._name = name
 
     @abstractmethod
@@ -172,6 +176,16 @@ class _Modifier(ABC, Generic[_MK_contra, _MV_co]):
             raise ValueError(
                 f"the support of the distribution is inconsistent: '{self._distribution}'."
             )
+
+    def _detagged(self, tagged_model: str, *values: _SupportsStr) -> str:
+        if self._tagger is None:
+            # TODO: tagger `input` is allowed to be None in airallergy/sober#8
+            #       but since EP decoupling has not finished at this stage
+            #       tagger being None is still not implemented
+            # TODO: maybe a void tagger is a better idea than allowing None
+            raise NotImplementedError
+
+        return self._tagger._detagged(tagged_model, *values)
 
     @abstractmethod
     def _key_icdf(self, *quantiles: float) -> tuple[float, ...]:
@@ -202,13 +216,14 @@ class _RealModifier(_Modifier[float, float]):
         bounds: tuple[float, float],
         distribution: SupportsPPF | None,
         is_noise: bool,
+        tagger: AnyTagger | None,
         name: str,
     ) -> None:
         if distribution is None:
             low, high = bounds
             distribution = scipy.stats.uniform(loc=low, scale=high - low)
 
-        super().__init__(bounds, distribution, is_noise, name)
+        super().__init__(bounds, distribution, is_noise, tagger, name)
 
     def __call__(self, key: float) -> float:
         return key
@@ -234,6 +249,7 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
         options: tuple[_MV_co, ...],
         distribution: SupportsPPF | None,
         is_noise: bool,
+        tagger: AnyTagger | None,
         name: str,
     ) -> None:
         self._options = options
@@ -244,7 +260,7 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
             low, high = bounds
             distribution = scipy.stats.randint(low=low, high=high + 1)
 
-        super().__init__(bounds, distribution, is_noise, name)
+        super().__init__(bounds, distribution, is_noise, tagger, name)
 
     def __iter__(self) -> Iterator[_MV_co]:
         yield from self._options
@@ -265,23 +281,6 @@ class _IntegralModifier(_Modifier[int, _MV_co]):
         # FunctionalModifier overwrites later
         assert not self._is_ctrl
         return _Noise("{...}")
-
-
-class _ModelModifierMixin(ABC):
-    """An abstract base class for common functions in model modification."""
-
-    __slots__ = ()  # [1] '_tagger' included in child classes' __slots__ to make mixin work
-
-    _tagger: AnyTagger
-
-    @abstractmethod
-    def __init__(self, tagger: AnyTagger, *args: object, **kwargs: object) -> None:
-        self._tagger = tagger  # type: ignore[misc]  # [1] microsoft/pyright#2039
-
-        super().__init__(*args, **kwargs)  # NOTE: to _RealModifier/_IntegralModifier
-
-    def _detagged(self, tagged_model: str, *values: _SupportsStr) -> str:
-        return self._tagger._detagged(tagged_model, *values)
 
 
 #############################################################################
@@ -431,6 +430,7 @@ class WeatherModifier(_IntegralModifier[Path]):
             tuple(_parsed_path(item, "weather file") for item in options),
             distribution,
             is_noise,
+            None,
             name,
         )
 
@@ -443,7 +443,7 @@ class WeatherModifier(_IntegralModifier[Path]):
                 raise ValueError(f"'{item}' is no epw file.")
 
 
-class ContinuousModifier(_ModelModifierMixin, _RealModifier):
+class ContinuousModifier(_RealModifier):
     """Modify a continuous input variable.
 
     Parameters
@@ -452,17 +452,17 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
         Lower limit.
     high : float
         Upper limit.
-    tagger : Tagger
-        A tagger object.
     distribution : SupportsPPF, optional
         Probability distribution defined by `scipy`.
     is_noise : bool, optional
         Whether the variable is uncertain.
+    tagger : Tagger, optional
+        A tagger object.
     name : str, optional
         Variable name.
     """
 
-    __slots__ = ("_tagger",)
+    __slots__ = ()
 
     def __init__(
         self,
@@ -470,12 +470,12 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
         high: float,
         /,
         *,
-        tagger: AnyTagger,
         distribution: SupportsPPF | None = None,
         is_noise: bool = False,
+        tagger: AnyTagger | None = None,
         name: str = "",
     ) -> None:
-        super().__init__(tagger, (low, high), distribution, is_noise, name)
+        super().__init__((low, high), distribution, is_noise, tagger, name)
 
     def _check_args(self) -> None:
         super()._check_args()
@@ -485,73 +485,73 @@ class ContinuousModifier(_ModelModifierMixin, _RealModifier):
             raise ValueError(f"the low '{low}' is equal to the high '{high}'.")
 
 
-class DiscreteModifier(_ModelModifierMixin, _IntegralModifier[float]):
+class DiscreteModifier(_IntegralModifier[float]):
     """Modify a discrete input variable.
 
     Parameters
     ----------
     *options : floats
         Single or multiple options.
-    tagger : Tagger
-        A tagger object.
     distribution : SupportsPPF, optional
         Probability distribution defined by `scipy`.
     is_noise : bool, optional
         Whether the variable is uncertain.
+    tagger : Tagger, optional
+        A tagger object.
     name : str, optional
         Variable name.
     """
 
-    __slots__ = ("_tagger",)
+    __slots__ = ()
 
     def __init__(
         self,
         *options: float,
-        tagger: AnyTagger,
         distribution: SupportsPPF | None = None,
         is_noise: bool = False,
+        tagger: AnyTagger | None = None,
         name: str = "",
     ) -> None:
-        super().__init__(tagger, options, distribution, is_noise, name)
+        super().__init__(options, distribution, is_noise, tagger, name)
 
     def _check_args(self) -> None:
         super()._check_args()
 
 
-class CategoricalModifier(_ModelModifierMixin, _IntegralModifier[str]):
+class CategoricalModifier(_IntegralModifier[str]):
     """Modify a categorical input variable.
 
     Parameters
     ----------
     *options : floats
         Single or multiple options.
-    tagger : Tagger
-        A tagger object.
     distribution : SupportsPPF, optional
         Probability distribution defined by `scipy`.
     is_noise : bool, optional
         Whether the variable is uncertain.
+    tagger : Tagger, optional
+        A tagger object.
     name : str, optional
         Variable name.
     """
 
-    __slots__ = ("_tagger",)
+    __slots__ = ()
 
     def __init__(
         self,
         *options: str,
-        tagger: AnyTagger,
         distribution: SupportsPPF | None = None,
         is_noise: bool = False,
+        tagger: AnyTagger | None = None,
         name: str = "",
     ) -> None:
-        super().__init__(tagger, options, distribution, is_noise, name)
+        super().__init__(options, distribution, is_noise, tagger, name)
 
     def _check_args(self) -> None:
         super()._check_args()
 
 
-class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifierValue]):
+class FunctionalModifier(_IntegralModifier[AnyModelModifierValue]):
     """Modify a functional input variable.
 
     This modifier is useful to define dependent input variables.
@@ -565,13 +565,13 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
         Coincident input indices to input values passed into `func`.
     func_kwargs : dict, optional
         Additional keyword arguments passed into `func`.
-    tagger : Tagger
+    tagger : Tagger, optional
         A tagger object.
     name : str, optional
         Variable name.
     """
 
-    __slots__ = ("_tagger", "_func", "_input_indices", "_func_kwargs")
+    __slots__ = ("_func", "_input_indices", "_func_kwargs")
 
     _func: _AnyFunc
     _input_indices: tuple[int, ...]
@@ -584,7 +584,7 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
         input_indices: Iterable[int],
         func_kwargs: dict[str, object] | None = None,
         *,
-        tagger: AnyTagger,
+        tagger: AnyTagger | None = None,
         name: str = "",
     ) -> None:
         self._func = func
@@ -592,7 +592,7 @@ class FunctionalModifier(_ModelModifierMixin, _IntegralModifier[AnyModelModifier
         self._func_kwargs = {} if func_kwargs is None else func_kwargs
 
         func_name = f"<function {self._func.__module__ + '.' + self._func.__code__.co_qualname}>"
-        super().__init__(tagger, (func_name,), None, False, name)
+        super().__init__((func_name,), None, False, tagger, name)
 
         self._is_ctrl = False
 
