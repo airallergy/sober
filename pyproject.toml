@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sober"
-version = "0.2.2"
+version = "0.3.0"
 description = "sober optimises built environment robustly"
 authors = [{ name = "Cheng Cui", email = "cheng.cui.95@gmail.com" }]
 license = { text = "MIT" }
