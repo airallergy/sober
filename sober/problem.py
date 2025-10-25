@@ -50,17 +50,12 @@ class Problem:
     noise_sample_kwargs : dict, optional
         Settings for sampling uncertain variables, including
 
-        +------------+-----------------+----------------------------------------+
         | Key        | Description     | Value type                             |
-        +============+=================+========================================+
+        |------------|-----------------|----------------------------------------|
         | `'mode'`   | Sampling mode   | `{'elementwise', 'cartesian', 'auto'}` |
-        +------------+-----------------+----------------------------------------+
         | `'size'`   | Sample size     | `int`                                  |
-        +------------+-----------------+----------------------------------------+
         | `'method'` | Sampling method | `{'random', 'latin hypercube'}`        |
-        +------------+-----------------+----------------------------------------+
         | `'seed'`   | Random seed     | `int`                                  |
-        +------------+-----------------+----------------------------------------+
 
         - If `'mode'='elementwise'`, `'size'` and `'method'` are mandatory.
         - If `'mode'='cartesian'`, all model inputs must be non-continuous variables,
