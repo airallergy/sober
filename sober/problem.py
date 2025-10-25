@@ -66,14 +66,6 @@ class Problem:
         This is ignored if `removes_subdirs` is set to `True`.
     removes_subdirs : bool, default: `False`
         Whether to remove the subdirectories in the evaluation directory.
-
-    Methods
-    -------
-    run_random
-    run_latin_hypercube
-    run_exhaustive
-    run_nsga2
-    run_nsga3
     """
 
     __slots__ = (

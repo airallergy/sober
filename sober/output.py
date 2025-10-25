@@ -307,10 +307,6 @@ class ScriptCollector(_Collector):
         Optimisation constraint bounds.
     is_final : bool, default: `True`
         Whether the output is final and recorded.
-
-    Methods
-    -------
-    loads_kwargs
     """
 
     _RESERVED_KWARGS_KEYS: Final = frozenset(
