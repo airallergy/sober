@@ -19,8 +19,8 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://github.com/airallergy/sober"
 repository = "https://github.com/airallergy/sober"
+documentation = "https://airallergy.github.io/sober/"
 
 [dependency-groups]
 dev = [
