@@ -30,7 +30,7 @@ theme:
         name: Switch to system preference
   icon:
     logo: sober_icon
-  favicon: .overrides/.icons/sober_icon.svg
+  favicon: assets/icon/sober_icon.svg
 
 nav:
   - Home: index.md
