@@ -65,5 +65,6 @@ plugins:
             separate_signature: true
 
 markdown_extensions:
+  - attr_list
   - toc:
       permalink: true
