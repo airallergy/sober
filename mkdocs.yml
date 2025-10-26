@@ -8,6 +8,7 @@ copyright: Copyright &copy; 2022-2025 Cheng Cui
 
 theme:
   name: material
+  custom_dir: docs/.overrides
   features:
     - navigation.instant
     - navigation.sections
@@ -27,7 +28,9 @@ theme:
       toggle:
         icon: material/weather-night
         name: Switch to system preference
-  favicon: assets/favicon/sober_favicon.svg
+  icon:
+    logo: sober_icon
+  favicon: .overrides/.icons/sober_icon.svg
 
 nav:
   - Home: index.md
@@ -68,3 +71,9 @@ markdown_extensions:
   - attr_list
   - toc:
       permalink: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      options:
+        custom_icons:
+          - docs/.overrides/.icons
