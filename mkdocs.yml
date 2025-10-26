@@ -27,6 +27,7 @@ theme:
       toggle:
         icon: material/weather-night
         name: Switch to system preference
+  favicon: assets/favicon/sober_favicon.svg
 
 nav:
   - Home: index.md
