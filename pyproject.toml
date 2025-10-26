@@ -17,6 +17,19 @@ dependencies = [
     "pymoo~=0.6.1",
     "scipy~=1.13",
 ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
+]
+
 
 [project.urls]
 repository = "https://github.com/airallergy/sober"
