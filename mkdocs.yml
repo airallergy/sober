@@ -4,7 +4,7 @@ site_description: Documentation for sober
 site_author: Cheng Cui
 repo_url: https://github.com/airallergy/sober
 repo_name: airallergy/sober
-copyright: Copyright &copy; 2022 - 2025 Cheng Cui
+copyright: Copyright &copy; 2022-2025 Cheng Cui
 
 theme:
   name: material
