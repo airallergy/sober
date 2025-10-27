@@ -7,7 +7,7 @@ name = "sober"
 version = "0.3.0"
 description = "sober optimises built environment robustly"
 authors = [{ name = "Cheng Cui", email = "cheng.cui.95@gmail.com" }]
-license = { text = "MIT" }
+license = "BSD-3-Clause"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -21,7 +21,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.12",
