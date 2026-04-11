@@ -29,8 +29,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv sync --all-extras --all-groups
-      - run: uv run ruff format --diff
-      - run: uv run ruff check --diff
+      - run: uv sync --locked --all-extras --all-groups
+      - run: uv run ruff format --check
+      - run: uv run ruff check
       - run: uv run mypy
       - run: uv run pytest
