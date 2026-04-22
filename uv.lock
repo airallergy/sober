@@ -1265,7 +1265,7 @@ dev = [
     { name = "mkdocs-material", specifier = "==9.*" },
     { name = "mkdocstrings", extras = ["python"], specifier = "==0.30.*" },
     { name = "mypy", specifier = "~=1.12" },
-    { name = "pytest", specifier = ">=8,<10" },
+    { name = "pytest", specifier = ">=9.0.3,<10" },
     { name = "pytest-cov", specifier = "==5.*" },
     { name = "ruff", specifier = "==0.11.*" },
 ]
