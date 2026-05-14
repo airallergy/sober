@@ -386,7 +386,7 @@ class ScriptCollector(_Collector):
             the current working directory is the task directory in which this script is
             executed, otherwise it is the job directory.
         """
-        import sys
+        import sys  # noqa: PLC0415
 
         return json.loads(sys.argv[1])
 

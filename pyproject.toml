@@ -92,6 +92,8 @@ ignore = [
     "RET505",
     "RUF023",
     "TRY003",
+    "UP046",   # TODO: suppress for now
+    "UP047",   # TODO: suppress for now
 ]
 
 [tool.ruff.lint.isort]
