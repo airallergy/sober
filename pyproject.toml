@@ -12,7 +12,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "eppy~=0.5.63",
-    "numpy==2.*",
+    "numpy~=2.3",
     "psutil==7.*",
     "pymoo~=0.6.1",
     "scipy~=1.17",

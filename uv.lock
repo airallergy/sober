@@ -2102,7 +2102,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "eppy", specifier = "~=0.5.63" },
-    { name = "numpy", specifier = "==2.*" },
+    { name = "numpy", specifier = "~=2.3" },
     { name = "psutil", specifier = "==7.*" },
     { name = "pymoo", specifier = "~=0.6.1" },
     { name = "scipy", specifier = "~=1.17" },
