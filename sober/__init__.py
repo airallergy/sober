@@ -12,7 +12,7 @@ from sober.input import (
     WeatherModifier,
 )
 from sober.output import RVICollector, ScriptCollector
-from sober.problem import Problem
+from sober.problem import EnergyPlusProblem
 
 __version__ = "0.4.1"
 
@@ -20,10 +20,10 @@ __all__ = (
     "CategoricalModifier",
     "ContinuousModifier",
     "DiscreteModifier",
+    "EnergyPlusProblem",
     "FunctionalModifier",
     "IndexTagger",
     "MaximumGenerationTermination",
-    "Problem",
     "RVICollector",
     "ScriptCollector",
     "StringTagger",

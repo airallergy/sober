@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 #############################################################################
 #######                         PROBLEM CLASS                         #######
 #############################################################################
-class Problem:
+class _Problem:
     """Define a parametrics/optimisation problem.
 
     Parameters
@@ -341,3 +341,71 @@ class Problem:
             Pymoo result object, see https://pymoo.org/interface/result.html.
         """
         return _PymooEvolver.resume(checkpoint_file, termination, checkpoint_interval)
+
+
+class EnergyPlusProblem(_Problem):
+    """Define an EnergyPlus problem.
+
+    Parameters
+    ----------
+    model_file : str or path-like object
+        Model file path.
+    weather_input : WeatherModifier
+        Weather input variable.
+    model_inputs : iterable of ModelModifier, optional
+        Model input variables.
+    outputs : iterable of Collector, optional
+        Output variables.
+    evaluation_dir : str or path-like object, optional
+        Evaluation directory path, default is a directory named 'evaluation' in the same
+        folder as the model file.
+    has_templates : bool, default: `False`
+        Whether the model has HVAC templates.
+    noise_sample_kwargs : dict, optional
+        Settings for sampling uncertain variables, including
+
+        | Key        | Description     | Value type                             |
+        |------------|-----------------|----------------------------------------|
+        | `'mode'`   | Sampling mode   | `{'elementwise', 'cartesian', 'auto'}` |
+        | `'size'`   | Sample size     | `int`                                  |
+        | `'method'` | Sampling method | `{'random', 'latin hypercube'}`        |
+        | `'seed'`   | Random seed     | `int`                                  |
+
+        - If `'mode'='elementwise'`, `'size'` and `'method'` are mandatory.
+        - If `'mode'='cartesian'`, all model inputs must be non-continuous variables,
+        - If `'mode'='auto'`, the sampling mode is set to `'cartesian'` if all variables
+        are non-continuous, otherwise `'elementwise'`.
+    clean_patterns : str or iterable of str, default: `{'*.audit', '*.end', 'sqlite.err'}`
+        Patterns to clean simulation files.
+        This is ignored if `removes_subdirs` is set to `True`.
+    removes_subdirs : bool, default: `False`
+        Whether to remove the subdirectories in the evaluation directory.
+    """
+
+    __slots__ = ()
+
+    def __init__(
+        self,
+        model_file: AnyStrPath,
+        weather_input: WeatherModifier,
+        /,
+        model_inputs: Iterable[AnyModelModifier] = (),
+        outputs: Iterable[_Collector] = (),
+        *,
+        evaluation_dir: AnyStrPath | None = None,
+        has_templates: bool = False,
+        noise_sample_kwargs: NoiseSampleKwargs | None = None,
+        clean_patterns: str | Iterable[str] = _OutputManager._DEFAULT_CLEAN_PATTERNS,
+        removes_subdirs: bool = False,
+    ) -> None:
+        super().__init__(
+            model_file,
+            weather_input,
+            model_inputs,
+            outputs,
+            evaluation_dir=evaluation_dir,
+            has_templates=has_templates,
+            noise_sample_kwargs=noise_sample_kwargs,
+            clean_patterns=clean_patterns,
+            removes_subdirs=removes_subdirs,
+        )
