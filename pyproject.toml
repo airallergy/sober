@@ -27,7 +27,9 @@ dependencies = [
     "eppy~=0.5.63",
     "numpy~=2.4",
     "psutil==7.*",
-    "pymoo~=0.6.1",
+    # pymoo 0.6.2 uses moocore for non-dominated sorting but only requires moocore>=0.1.7
+    # moocore 0.3.1 can crash on duplicate individuals, which was fixed in 0.3.2: multi-objective/moocore#74
+    "pymoo==0.6.1.*",
     "scipy~=1.17",
 ]
 
