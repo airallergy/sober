@@ -7,6 +7,7 @@
         "dockerfile": "Dockerfile"
     },
     "postCreateCommand": "bash .devcontainer/setup.sh",
+    "waitFor": "postCreateCommand",
     "customizations": {
         "vscode": {
             "extensions": [
@@ -15,7 +16,6 @@
                 "charliermarsh.ruff"
             ],
             "settings": {
-                "python.defaultInterpreterPath": "/home/vscode/.venv/bin/python",
                 "[python]": {
                     "editor.codeActionsOnSave": {
                         "source.organizeImports": "explicit",
@@ -25,6 +25,12 @@
                 },
                 "editor.formatOnSave": true,
                 "mypy-type-checker.importStrategy": "fromEnvironment",
+                "python-envs.alwaysUseUv": true,
+                "python-envs.defaultEnvManager": "ms-python.python:venv",
+                "python-envs.defaultPackageManager": "ms-python.python:pip",
+                "python-envs.terminal.autoActivationType": "command",
+                "python.defaultInterpreterPath": "/home/vscode/.venv/bin/python",
+                "python.useEnvironmentsExtension": true,
                 "ruff.importStrategy": "fromEnvironment"
             }
         }
