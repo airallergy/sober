@@ -1,22 +1,15 @@
 [build-system]
-requires = ["hatchling"]
 build-backend = "hatchling.build"
+requires = ["hatchling"]
 
 [project]
 name = "sober"
 version = "0.4.1"
 description = "sober optimises built environment robustly"
-authors = [{ name = "Cheng Cui", email = "cheng.cui.95@gmail.com" }]
-license = "BSD-3-Clause"
 readme = "README.md"
+license = "BSD-3-Clause"
+authors = [{ name = "Cheng Cui", email = "cheng.cui.95@gmail.com" }]
 requires-python = ">=3.12"
-dependencies = [
-    "eppy~=0.5.63",
-    "numpy~=2.3",
-    "psutil==7.*",
-    "pymoo~=0.6.1",
-    "scipy~=1.17",
-]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -30,7 +23,13 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Typing :: Typed",
 ]
-
+dependencies = [
+    "eppy~=0.5.63",
+    "numpy~=2.3",
+    "psutil==7.*",
+    "pymoo~=0.6.1",
+    "scipy~=1.17",
+]
 
 [project.urls]
 repository = "https://github.com/airallergy/sober"
@@ -41,10 +40,14 @@ dev = [
     "mkdocs-material==9.*",
     "mkdocstrings[python]==1.*",
     "mypy~=2.3",
-    "pytest-cov==7.*",
     "pytest>=9.0.3,<10",
+    "pytest-cov==7.*",
     "ruff==0.16.*",
 ]
+
+[tool.ruff.format]
+line-ending = "lf"
+skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
 select = [
@@ -98,28 +101,24 @@ ignore = [
     "UP047",   # TODO: suppress for now
 ]
 
-[tool.ruff.lint.isort]
-split-on-trailing-comma = false
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
+
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**" = ["D"]
-
-[tool.ruff.format]
-line-ending = "lf"
-skip-magic-trailing-comma = true
 
 [tool.mypy]
 files = ["sober", "tests"]
 namespace_packages = false
-enable_incomplete_feature = ["PreciseTupleTypes"]
 ignore_missing_imports = true
 strict = true
+enable_incomplete_feature = ["PreciseTupleTypes"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=sober"
