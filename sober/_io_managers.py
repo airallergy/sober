@@ -21,14 +21,7 @@ from sober._simulator import (
     _split_model,
 )
 from sober._tools import _natural_width, _parsed_str_iterable, _write_records
-from sober.input import (
-    FunctionalModifier,
-    WeatherModifier,
-    _IDFTagger,
-    _IntegralModifier,
-    _RealModifier,
-    _TextTagger,
-)
+from sober.input import FunctionalModifier, _IDFTagger, _RealModifier, _TextTagger
 from sober.output import RVICollector, ScriptCollector, _CopyCollector
 
 if TYPE_CHECKING:
@@ -51,7 +44,7 @@ if TYPE_CHECKING:
         AnyUIDs,
         NoiseSampleKwargs,
     )
-    from sober.input import _Modifier
+    from sober.input import WeatherModifier, _IntegralModifier, _Modifier
     from sober.output import _Collector
 
     type _AnyConverter = Callable[[float], float]

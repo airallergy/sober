@@ -1,5 +1,5 @@
 from os import PathLike
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 ##############################  package typing  ##############################
 # need to remove casts etc. to resolve this block
@@ -21,7 +21,7 @@ type AnyCtrlKeyVec = tuple[int, *tuple[AnyModifierKey, ...]]
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import NotRequired, Protocol, TypedDict, TypeVar
+    from typing import Literal, NotRequired, Protocol, TypedDict, TypeVar
 
     import numpy as np
     from numpy.typing import NDArray
