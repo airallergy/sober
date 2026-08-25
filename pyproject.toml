@@ -25,7 +25,7 @@ classifiers = [
 ]
 dependencies = [
     "eppy~=0.5.63",
-    "numpy~=2.3",
+    "numpy~=2.4",
     "psutil==7.*",
     "pymoo~=0.6.1",
     "scipy~=1.17",
@@ -37,11 +37,12 @@ documentation = "https://airallergy.github.io/sober/"
 
 [dependency-groups]
 dev = [
-    "mkdocs-material==9.*",
+    "mkdocs-material~=9.7",
+    "mkdocstrings-python==2.*",
     "mkdocstrings[python]==1.*",
-    "mypy~=2.3",
-    "pytest>=9.0.3,<10",
-    "pytest-cov==7.*",
+    "mypy==2.3.*",
+    "pytest~=9.1",
+    "pytest-cov~=7.1",
     "ruff==0.16.*",
 ]
 

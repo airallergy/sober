@@ -2171,6 +2171,7 @@ dependencies = [
 dev = [
     { name = "mkdocs-material" },
     { name = "mkdocstrings", extra = ["python"] },
+    { name = "mkdocstrings-python" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -2180,7 +2181,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "eppy", specifier = "~=0.5.63" },
-    { name = "numpy", specifier = "~=2.3" },
+    { name = "numpy", specifier = "~=2.4" },
     { name = "psutil", specifier = "==7.*" },
     { name = "pymoo", specifier = "~=0.6.1" },
     { name = "scipy", specifier = "~=1.17" },
@@ -2188,11 +2189,12 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "mkdocs-material", specifier = "==9.*" },
+    { name = "mkdocs-material", specifier = "~=9.7" },
     { name = "mkdocstrings", extras = ["python"], specifier = "==1.*" },
-    { name = "mypy", specifier = "~=2.3" },
-    { name = "pytest", specifier = ">=9.0.3,<10" },
-    { name = "pytest-cov", specifier = "==7.*" },
+    { name = "mkdocstrings-python", specifier = "==2.*" },
+    { name = "mypy", specifier = "==2.3.*" },
+    { name = "pytest", specifier = "~=9.1" },
+    { name = "pytest-cov", specifier = "~=7.1" },
     { name = "ruff", specifier = "==0.16.*" },
 ]
 
