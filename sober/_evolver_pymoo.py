@@ -352,7 +352,7 @@ def _algorithm(
     p_crossover: float,
     p_mutation: float,
     sampling: Population,
-    reference_directions: None | AnyReferenceDirections = None,
+    reference_directions: AnyReferenceDirections | None = None,
 ) -> NSGA2 | NSGA3:
     """Instantiate the pymoo algorithm."""
     if algorithm_name == "nsga2":

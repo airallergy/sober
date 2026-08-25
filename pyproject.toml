@@ -39,11 +39,11 @@ documentation = "https://airallergy.github.io/sober/"
 [dependency-groups]
 dev = [
     "mkdocs-material==9.*",
-    "mkdocstrings[python]==0.30.*",
-    "mypy~=2.1",
-    "pytest-cov==5.*",
+    "mkdocstrings[python]==1.*",
+    "mypy~=2.3",
+    "pytest-cov==7.*",
     "pytest>=9.0.3,<10",
-    "ruff==0.15.*",
+    "ruff==0.16.*",
 ]
 
 [tool.ruff.lint]
@@ -88,6 +88,7 @@ ignore = [
     "E741",
     "PLR0912",
     "PLR0913",
+    "PLR0917",
     "PLR2004",
     "PLW0603",
     "RET505",
